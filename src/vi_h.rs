@@ -202,6 +202,13 @@ pub fn toupper(c: i32) -> i32 {
     if islower(c) { c - 32 } else { c }
 }
 
+/// `s[i]` as C sees it when `s` is a NUL-terminated string: 0 at or
+/// past the end.
+#[inline]
+pub fn ch(s: &[u8], i: usize) -> u8 {
+    s.get(i).copied().unwrap_or(0)
+}
+
 /// The bytes of a NUL-terminated C string stored in a fixed buffer.
 pub fn cstr(buf: &[u8]) -> &[u8] {
     match buf.iter().position(|&b| b == 0) {

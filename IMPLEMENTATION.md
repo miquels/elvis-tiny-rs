@@ -278,9 +278,9 @@ ported earlier when a previous milestone needs it; record that in the
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `main` | fn | M6 (startup), M8 (loop) | | todo |
-| `trapint` | fn (signal handler) | M8 | | todo |
-| `jmpenv` | global | M8, replaced by interrupt propagation (section 3.7) | | todo |
+| `main` | fn | M6 (startup), M8 (loop) | macOS port 2026-11-10 | done (macOS) |
+| `trapint` | fn (signal handler) | M8 | macOS port 2026-11-10 | done (macOS) |
+| `jmpenv` | global | M8, replaced by interrupt propagation (section 3.7) | macOS port 2026-11-10 | done (macOS) |
 
 #### `vars.c` → `vars.rs`
 
@@ -301,234 +301,234 @@ ported earlier when a previous milestone needs it; record that in the
 | `NEWFILE`, `READONLY`, `HADNUL`, `MODIFIED`, `NOFILE`, `ADDEDNL`; `setflag`, `clrflag`, `tstflag`, `initflags` | flags, macros | M1 | M1 | done |
 | `MARK`, `markline`, `markidx`, `MARK_UNSET`, `MARK_FIRST`, `MARK_LAST`, `MARK_AT_LINE`, `buildmark` | type, macros | M1 | M1 | done |
 | `botline`, `rightcol`, `ctrl`, `DEFAULT` | macros | M1 | M1 | done |
-| `BeforeAfter`, `ChangeText` | control macros | M4 (replaced by an explicit `beforedo`/`afterdo` pair) | | todo |
+| `BeforeAfter`, `ChangeText` | control macros | M4 (replaced by an explicit `beforedo`/`afterdo` pair) | macOS port 2026-11-10 | done (macOS) |
 | `CMD_*` codes, `CMD` type | constants | M6 | M1 | done |
 | `MODE_EX`, `MODE_VI`, `MODE_COLON`, `MODE_QUIT` | constants | M1 | M1 | done |
 | `WHEN_VICMD`, `WHEN_VIINP`, `WHEN_VIREP`, `WHEN_EX`, `WHEN_MSG`, `WHEN_INMV` | constants | M7 | M1 | done |
-| `o_*` option declarations | globals (defined in `opts.c`) | M6 | | todo |
+| `o_*` option declarations | globals (defined in `opts.c`) | M6 | macOS port 2026-11-10 | done (macOS) |
 
 #### `curses.h` + `curses.c` → `curses.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `initscr` | fn | M2 | | todo |
-| `endwin` | fn | M2 | | todo |
-| `suspend_curses` | fn | M2 (M8 verifies) | | todo |
-| `resume_curses` | fn | M2 (M8 verifies) | | todo |
-| `lacking` | static fn | M2 | | todo |
-| `starttcap` | static fn | M2 | | todo |
-| `getsize` | static fn and `SIGWINCH` handler | M2 (M8 verifies signal path) | | todo |
-| `faddch` | fn (tputs callback) | M2 | | todo |
-| `qaddstr` | fn | M2 | | todo |
-| `attrset` | fn | M2 | | todo |
-| `insch` | fn | M2 | | todo |
-| `MUSTHAVE`, `MAYHAVE`, `PAIR` | macros | M2 | | todo |
-| `tgoto`, `tputs`, `tgetent`, `tgetstr`, `tgetflag`, `tgetnum` | external termcap functions (`libtinfo` on Linux, `libncurses` on macOS) | M2, replaced by `terminfo-lean` plus adapters (section 4) | | todo |
-| `ospeed`, `PC`, `stdscr`, `kbuf`, `LINES`, `COLS`, `AM`, `PT`, capability strings `VB` … `TE`, `aend`, `ERASEKEY`, `oldtermio`, `newtermio`, `capbuf`, `cbmem`, `curses_active` | globals | M2 | | todo |
-| `do_VB` … `do_aend` (all `do_*`) | macros | M2 | | todo |
-| `has_*` | macros | M2 | | todo |
-| `qaddch`, `addch`, `_addCR`, `addstr`, `move`, `mvaddch`, `refresh`, `wrefresh`, `wqrefresh`, `standout`, `standend`, `clrtoeol`, `clrtobot`, `insertln`, `deleteln`, `delch` | macros | M2 | | todo |
-| `scrollok`, `raw`, `echo`, `cbreak`, `noraw`, `noecho`, `nocbreak` | no-op macros | M2 (omit calls; note in comment) | | todo |
-| `CHECKBIOS`, `VOIDBIOS`, `KBSIZ`, `A_*` | macros, constants | M2 | | todo |
+| `initscr` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
+| `endwin` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
+| `suspend_curses` | fn | M2 (M8 verifies) | macOS port 2026-11-10 | done (macOS) |
+| `resume_curses` | fn | M2 (M8 verifies) | macOS port 2026-11-10 | done (macOS) |
+| `lacking` | static fn | M2 | macOS port 2026-11-10 | done (macOS) |
+| `starttcap` | static fn | M2 | macOS port 2026-11-10 | done (macOS) |
+| `getsize` | static fn and `SIGWINCH` handler | M2 (M8 verifies signal path) | macOS port 2026-11-10 | done (macOS) |
+| `faddch` | fn (tputs callback) | M2 | macOS port 2026-11-10 | done (macOS) |
+| `qaddstr` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
+| `attrset` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
+| `insch` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
+| `MUSTHAVE`, `MAYHAVE`, `PAIR` | macros | M2 | macOS port 2026-11-10 | done (macOS) |
+| `tgoto`, `tputs`, `tgetent`, `tgetstr`, `tgetflag`, `tgetnum` | external termcap functions (`libtinfo` on Linux, `libncurses` on macOS) | M2, replaced by `terminfo-lean` plus adapters (section 4) | macOS port 2026-11-10 | done (macOS) |
+| `ospeed`, `PC`, `stdscr`, `kbuf`, `LINES`, `COLS`, `AM`, `PT`, capability strings `VB` … `TE`, `aend`, `ERASEKEY`, `oldtermio`, `newtermio`, `capbuf`, `cbmem`, `curses_active` | globals | M2 | macOS port 2026-11-10 | done (macOS) |
+| `do_VB` … `do_aend` (all `do_*`) | macros | M2 | macOS port 2026-11-10 | done (macOS) |
+| `has_*` | macros | M2 | macOS port 2026-11-10 | done (macOS) |
+| `qaddch`, `addch`, `_addCR`, `addstr`, `move`, `mvaddch`, `refresh`, `wrefresh`, `wqrefresh`, `standout`, `standend`, `clrtoeol`, `clrtobot`, `insertln`, `deleteln`, `delch` | macros | M2 | macOS port 2026-11-10 | done (macOS) |
+| `scrollok`, `raw`, `echo`, `cbreak`, `noraw`, `noecho`, `nocbreak` | no-op macros | M2 (omit calls; note in comment) | macOS port 2026-11-10 | done (macOS) |
+| `CHECKBIOS`, `VOIDBIOS`, `KBSIZ`, `A_*` | macros, constants | M2 | macOS port 2026-11-10 | done (macOS) |
 
 #### `blk.c` → `blk.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `blkinit` | fn | M3 | | todo |
-| `blkget` | fn | M3 | | todo |
-| `blkflush` | fn | M3 | | todo |
-| `blkdirty` | fn | M3 | | todo |
-| `blkadd` | fn | M3 | | todo |
-| `blksync` | fn | M3 | | todo |
-| `beforedo` | fn | M4 | | todo |
-| `afterdo` | fn | M4 | | todo |
-| `abortdo` | fn | M4 | | todo |
-| `undo` | fn | M4 | | todo |
-| `NBUFS` (5), `hdr`, `b4cnt`, `blk[]`, `toonew`, `newtoo`, `recycle`, `undocurs`, `oldnlines`, `oldlnum` | constant, globals | M3/M4 | | todo |
+| `blkinit` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `blkget` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `blkflush` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `blkdirty` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `blkadd` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `blksync` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `beforedo` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `afterdo` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `abortdo` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `undo` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `NBUFS` (5), `hdr`, `b4cnt`, `blk[]`, `toonew`, `newtoo`, `recycle`, `undocurs`, `oldnlines`, `oldlnum` | constant, globals | M3/M4 | macOS port 2026-11-10 | done (macOS) |
 
 #### `recycle.c` → `recycle.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `garbage` | fn | M3 | | todo |
-| `allocate` | fn | M3 | | todo |
-| `BTST`, `BSET`, `BCLR`, `TST`, `SET`, `CLR`, `MAXBIT`, `bitmap` | macros, global | M3 | | todo |
+| `garbage` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `allocate` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `BTST`, `BSET`, `BCLR`, `TST`, `SET`, `CLR`, `MAXBIT`, `bitmap` | macros, global | M3 | macOS port 2026-11-10 | done (macOS) |
 
 #### `tmp.c` → `tmp.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `tmpstart` | fn | M3 | | todo |
-| `tmpsave` | fn | M3 | | todo |
-| `tmpabort` | fn | M3 | | todo |
-| `tmpend` | fn | M3 | | todo |
-| `elvis_access` | fn | M3 | | todo |
-| `FAIL` | macro (fatal exit 9) | M3 | | todo |
-| `tmpname` | global | M3 | | todo |
+| `tmpstart` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `tmpsave` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `tmpabort` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `tmpend` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `elvis_access` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `FAIL` | macro (fatal exit 9) | M3 | macOS port 2026-11-10 | done (macOS) |
+| `tmpname` | global | M3 | macOS port 2026-11-10 | done (macOS) |
 
 #### `misc.c` → `misc.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `fetchline` | fn | M3 | | todo |
-| `pfetch` | fn | M3 | | todo |
-| `regerror` | fn | M5 | | todo |
-| `nextline`, `chglevel`, `nextscan`, `nextlnum` | statics | M3 | | todo |
-| `buf` (fetchline-local `static BLK`, found by M0) | static | M3 | | todo |
+| `fetchline` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `pfetch` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
+| `regerror` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
+| `nextline`, `chglevel`, `nextscan`, `nextlnum` | statics | M3 | macOS port 2026-11-10 | done (macOS) |
+| `buf` (fetchline-local `static BLK`, found by M0) | static | M3 | macOS port 2026-11-10 | done (macOS) |
 
 #### `modify.c` → `modify.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `delete` | fn | M4 | | todo |
-| `add` | fn | M4 | | todo |
-| `change` | fn | M4 | | todo |
+| `delete` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `add` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `change` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
 
 #### `cut.c` → `cut.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `cutneeds` | fn | M4 | | todo |
-| `cutfree` | static fn | M4 | | todo |
-| `cutswitch` | fn | M4 | | todo |
-| `cutend` | fn | M4 | | todo |
-| `cutname` | fn | M4 | | todo |
-| `cut` | fn | M4 | | todo |
-| `readcutblk` | static fn | M4 | | todo |
-| `paste` | fn | M4 | | todo |
-| `NANNONS`, `struct cutbuf`, `named[27]`, `annon[NANNONS]`, `cbname` | constant, type, globals | M4 | | todo |
+| `cutneeds` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `cutfree` | static fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `cutswitch` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `cutend` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `cutname` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `cut` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `readcutblk` | static fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `paste` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `NANNONS`, `struct cutbuf`, `named[27]`, `annon[NANNONS]`, `cbname` | constant, type, globals | M4 | macOS port 2026-11-10 | done (macOS) |
 
 #### `regexp.c` → `regexp.rs`, `regsub.c` → `regsub.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `makeclass` | static fn | M5 | | todo |
-| `gettoken` | static fn | M5 | | todo |
-| `calcsize` | static fn | M5 | | todo |
-| `regcomp` | fn | M5 | | todo |
-| `match1` | fn | M5 | | todo |
-| `match` | fn | M5 | | todo |
-| `regexec` | fn | M5 | | todo |
-| `regsub` | fn | M5 | | todo |
-| `META`, `BASE_META`, `INT_META`, `IS_META`, `IS_CLASS`, `IS_START`, `IS_END`, `IS_CLOSURE`, `ADD_META`, `GET_META`, `M_BEGLINE`, `M_ENDLINE`, `M_BEGWORD`, `M_ENDWORD`, `M_ANY`, `M_SPLAT`, `M_PLUS`, `M_QMARK`, `M_CLASS`, `M_START`, `M_END`, `FAIL` | macros | M5 | | todo |
-| `NSUBEXP` (10), `struct regexp` | constant, type | M5 | | todo |
-| `previous` (regexp.c), `class_cnt`, `start_cnt`, `end_stk`, `end_sp`, `retext`, `errorhandler`; `previous` (regsub.c) | globals | M5 | | todo |
+| `makeclass` | static fn | M5 | macOS port 2026-11-10 | done (macOS) |
+| `gettoken` | static fn | M5 | macOS port 2026-11-10 | done (macOS) |
+| `calcsize` | static fn | M5 | macOS port 2026-11-10 | done (macOS) |
+| `regcomp` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
+| `match1` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
+| `match` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
+| `regexec` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
+| `regsub` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
+| `META`, `BASE_META`, `INT_META`, `IS_META`, `IS_CLASS`, `IS_START`, `IS_END`, `IS_CLOSURE`, `ADD_META`, `GET_META`, `M_BEGLINE`, `M_ENDLINE`, `M_BEGWORD`, `M_ENDWORD`, `M_ANY`, `M_SPLAT`, `M_PLUS`, `M_QMARK`, `M_CLASS`, `M_START`, `M_END`, `FAIL` | macros | M5 | macOS port 2026-11-10 | done (macOS) |
+| `NSUBEXP` (10), `struct regexp` | constant, type | M5 | macOS port 2026-11-10 | done (macOS) |
+| `previous` (regexp.c), `class_cnt`, `start_cnt`, `end_stk`, `end_sp`, `retext`, `errorhandler`; `previous` (regsub.c) | globals | M5 | macOS port 2026-11-10 | done (macOS) |
 
 #### `opts.c` → `opts.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `initopts` | fn | M6 | | todo |
-| `dumpopts` | fn | M6 | | todo |
-| `setopts` | fn | M6 | | todo |
-| `MAXWIDTH`, `BOOL`, `NUM`, `STR`, `SET`, `CANSET`, `RCSET`, `MR`, option table | macros, table | M6 | | todo |
-| `o_autoindent` … `o_wrapscan` (all 30 option arrays) | globals | M6 (defaults needed from M1) | M1 (defaults) | todo |
+| `initopts` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `dumpopts` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `setopts` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `MAXWIDTH`, `BOOL`, `NUM`, `STR`, `SET`, `CANSET`, `RCSET`, `MR`, option table | macros, table | M6 | macOS port 2026-11-10 | done (macOS) |
+| `o_autoindent` … `o_wrapscan` (all 30 option arrays) | globals | M6 (defaults needed from M1) | M1 (defaults); rest 2026-11-10 | done (macOS) |
 
 #### `ex.c` → `ex.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `parseptrn` | fn | M6 | | todo |
-| `linespec` | fn | M6 | | todo |
-| `ex` | fn | M6 | | todo |
-| `doexcmd` | fn | M6 | | todo |
-| `doexrc` | fn | M6 | | todo |
-| `exstring` | fn | M6 | | todo |
-| `ARGT`, `FROM`, `TO`, `BANG`, `EXTRA`, `XFILE`, `NOSPC`, `DFLALL`, `DFLNONE`, `NODFL`, `EXRCOK`, `NL`, `PLUS`, `ZERO`, `FILES`, `WORD1`, `FILE1`, `NAMEDF`, `NAMEDFS`, `RANGE`, `NONE`, `isascii` | type, macros | M6 | | todo |
-| `cmdnames[]` table (order is significant for abbreviations), `oldline` | table, static | M6 | | todo |
+| `parseptrn` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `linespec` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `ex` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `doexcmd` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `doexrc` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `exstring` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `ARGT`, `FROM`, `TO`, `BANG`, `EXTRA`, `XFILE`, `NOSPC`, `DFLALL`, `DFLNONE`, `NODFL`, `EXRCOK`, `NL`, `PLUS`, `ZERO`, `FILES`, `WORD1`, `FILE1`, `NAMEDF`, `NAMEDFS`, `RANGE`, `NONE`, `isascii` | type, macros | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmdnames[]` table (order is significant for abbreviations), `oldline` | table, static | M6 | macOS port 2026-11-10 | done (macOS) |
 
 #### `cmd1.c` → `cmd1.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `cmd_mark` | fn | M6 | | todo |
-| `cmd_write` | fn | M6 | | todo |
-| `cmd_write2` | fn | M6 | | todo |
-| `cmd_shell` | fn | M6 | | todo |
-| `cmd_global` | fn | M6 | | todo |
-| `cmd_file` | fn | M6 | | todo |
-| `cmd_edit` | fn | M6 | | todo |
-| `cmd_next` | fn | M6 | | todo |
-| `cmd_xit` | fn | M6 | | todo |
-| `cmd_args` | fn | M6 | | todo |
-| `cmd_cd` | fn | M6 | | todo |
-| `cmd_map` | fn | M6 | | todo |
-| `cmd_set` | fn | M6 | | todo |
-| `cmd_tag` | fn | M6 | | todo |
-| `cmd_visual` | fn | M6 | | todo |
-| `cmd_version` | fn | M6 | | todo |
-| `prevextra`, `whenwarned`, `prevtag` | function-local statics | M6 | | todo |
+| `cmd_mark` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_write` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_write2` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_shell` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_global` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_file` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_edit` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_next` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_xit` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_args` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_cd` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_map` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_set` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_tag` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_visual` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_version` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `prevextra`, `whenwarned`, `prevtag` | function-local statics | M6 | macOS port 2026-11-10 | done (macOS) |
 
 #### `cmd2.c` → `cmd2.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `cmd_substitute` | fn | M6 | | todo |
-| `cmd_delete` | fn | M6 | | todo |
-| `cmd_append` | fn | M6 | | todo |
-| `cmd_put` | fn | M6 | | todo |
-| `cmd_join` | fn | M6 | | todo |
-| `cmd_shift` | fn | M6 | | todo |
-| `cmd_read` | fn | M6 | | todo |
-| `cmd_undo` | fn | M6 | | todo |
-| `cmd_print` | fn | M6 | | todo |
-| `cmd_move` | fn | M6 | | todo |
-| `cmd_source` | fn | M6 | | todo |
-| `optp`, `optg`, `optc` | statics | M6 | | todo |
+| `cmd_substitute` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_delete` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_append` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_put` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_join` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_shift` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_read` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_undo` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_print` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_move` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_source` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `optp`, `optg`, `optc` | statics | M6 | macOS port 2026-11-10 | done (macOS) |
 
 #### `system.c` → `system.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `elvis_system` | fn | M6 | | todo |
-| `rpipe` | static fn | M6 | | todo |
-| `rpclose` | static fn | M6 | | todo |
-| `wildcard` | fn | M6 | | todo |
-| `filter` | fn | M6 | | todo |
-| `PROG`, `PROGLEN`, `environ` | macros, extern | M6 | | todo |
+| `elvis_system` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `rpipe` | static fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `rpclose` | static fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `wildcard` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `filter` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
+| `PROG`, `PROGLEN`, `environ` | macros, extern | M6 | macOS port 2026-11-10 | done (macOS) |
 
 #### `tio.c` → `tio.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `vgets` | fn | M7 | | todo |
-| `beep` | fn | M7 | | todo |
-| `showmsg` | static fn | M7 | | todo |
-| `endmsgs` | fn | M7 | | todo |
-| `msg` | variadic fn | M7 (needed from M3) | | todo |
-| `exrefresh` | fn | M7 (needed from M6) | | todo |
-| `dummy` | static fn (`SIGALRM` handler) | M7, replaced by timed read (section 3.7) | | todo |
-| `getkey` | fn | M7 | | todo |
-| `mapkey` | fn | M7 (needed from M6) | | todo |
-| `dumpkey` | fn | M7 | | todo |
-| `savekeys` | fn | M7 | | todo |
-| `manymsgs`, `pmsg`, `keybuf`, `nkeys`, `next`, `struct _keymap`, `mapped[MAXMAPS]`, getkey statics (`cooked`, `oldwhen`, `oldleft`, `oldtop`, `oldnlines`, `cshape`) | statics | M7 | | todo |
+| `vgets` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `beep` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `showmsg` | static fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `endmsgs` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `msg` | variadic fn | M7 (needed from M3) | macOS port 2026-11-10 | done (macOS) |
+| `exrefresh` | fn | M7 (needed from M6) | macOS port 2026-11-10 | done (macOS) |
+| `dummy` | static fn (`SIGALRM` handler) | M7, replaced by timed read (section 3.7) | macOS port 2026-11-10 | done (macOS) |
+| `getkey` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `mapkey` | fn | M7 (needed from M6) | macOS port 2026-11-10 | done (macOS) |
+| `dumpkey` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `savekeys` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `manymsgs`, `pmsg`, `keybuf`, `nkeys`, `next`, `struct _keymap`, `mapped[MAXMAPS]`, getkey statics (`cooked`, `oldwhen`, `oldleft`, `oldtop`, `oldnlines`, `cshape`) | statics | M7 | macOS port 2026-11-10 | done (macOS) |
 
 #### `input.c` → `input.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `input` | fn | M7 | | todo |
+| `input` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
 
 #### `move1.c` … `move5.c` → `move1.rs` … `move5.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `m_updnto`, `m_right`, `m_left`, `m_tocol`, `m_front`, `m_rear`, `m_fparagraph`, `m_bparagraph`, `m_fsection`, `m_bsection`, `m_match`, `m_tomark`, `isascii` (move1.c) | fns, macro | M7 | | todo |
-| `m_nsrch`, `m_Nsrch`, `m_fsrch`, `m_bsrch`, statics `re`, `prevsf` (move2.c) | fns, statics | M7 | | todo |
-| `m__ch`, `m_fch`, `m_Fch`, `m_tch`, `m_Tch`, static `prev_key` (move3.c) | fns, static | M7 | | todo |
-| `prevfwdfn`, `prevrevfn` (move3.c file statics, found by M0) | statics | M7 | | todo |
-| `m_row`, `m_z`, `m_scroll` (move4.c) | fns | M7 | | todo |
-| `m_fword`, `m_bword`, `m_eword`, `isascii` (move5.c) | fns, macro | M7 | | todo |
+| `m_updnto`, `m_right`, `m_left`, `m_tocol`, `m_front`, `m_rear`, `m_fparagraph`, `m_bparagraph`, `m_fsection`, `m_bsection`, `m_match`, `m_tomark`, `isascii` (move1.c) | fns, macro | M7 | macOS port 2026-11-10 | done (macOS) |
+| `m_nsrch`, `m_Nsrch`, `m_fsrch`, `m_bsrch`, statics `re`, `prevsf` (move2.c) | fns, statics | M7 | macOS port 2026-11-10 | done (macOS) |
+| `m__ch`, `m_fch`, `m_Fch`, `m_tch`, `m_Tch`, static `prev_key` (move3.c) | fns, static | M7 | macOS port 2026-11-10 | done (macOS) |
+| `prevfwdfn`, `prevrevfn` (move3.c file statics, found by M0) | statics | M7 | macOS port 2026-11-10 | done (macOS) |
+| `m_row`, `m_z`, `m_scroll` (move4.c) | fns | M7 | macOS port 2026-11-10 | done (macOS) |
+| `m_fword`, `m_bword`, `m_eword`, `isascii` (move5.c) | fns, macro | M7 | macOS port 2026-11-10 | done (macOS) |
 
 #### `vcmd.c` → `vcmd.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `v_quit`, `v_redraw`, `v_1ex`, `v_undo`, `v_xchar`, `v_mark`, `v_ulcase`, `v_replace`, `v_overtype`, `v_selcut`, `v_paste`, `v_yank`, `v_delete`, `v_insert`, `v_change`, `v_subst`, `v_join`, `shift_help` (static), `v_lshift`, `v_rshift`, `v_filter`, `v_status`, `v_again`, `v_switch`, `v_tag`, `v_keyword`, `v_increment`, `v_xit`, `v_undoline` | fns (one row each when tracking; listed together here for brevity) | M7 | | todo |
-| `flip[]`, `width` (v_replace), `sign` (v_increment) | statics | M7 | | todo |
-| M0 note: `width` is local to `v_overtype` (symbol `v_overtype.width`), not `v_replace` | — | M7 | | todo |
+| `v_quit`, `v_redraw`, `v_1ex`, `v_undo`, `v_xchar`, `v_mark`, `v_ulcase`, `v_replace`, `v_overtype`, `v_selcut`, `v_paste`, `v_yank`, `v_delete`, `v_insert`, `v_change`, `v_subst`, `v_join`, `shift_help` (static), `v_lshift`, `v_rshift`, `v_filter`, `v_status`, `v_again`, `v_switch`, `v_tag`, `v_keyword`, `v_increment`, `v_xit`, `v_undoline` | fns (one row each when tracking; listed together here for brevity) | M7 | macOS port 2026-11-10 | done (macOS) |
+| `flip[]`, `width` (v_replace), `sign` (v_increment) | statics | M7 | macOS port 2026-11-10 | done (macOS) |
+| M0 note: `width` is local to `v_overtype` (symbol `v_overtype.width`), not `v_replace` | — | M7 | macOS port 2026-11-10 | done (macOS) |
 
 Track each `v_*` function as its own row in the checkpoint log (section 7.4)
 when it is ported.
@@ -537,24 +537,24 @@ when it is ported.
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `vi` | fn | M7 | | todo |
-| `adjmove` | fn | M7 | | todo |
-| `m_rear_wrapper`, `m_match_wrapper`, `m_front_wrapper` | static fns | M7 | | todo |
-| `struct keystru`, `vikeys[]` table, `NO_FUNC`, `NO_ARGS_F`, `KEYWORD_F`, `CURSOR_F`, `CURSOR_COUNT_F`, `CURSOR_CNT_KEY_F`, `CURSOR_TEXT_F`, `CURSOR_CNT_CMD_F`, `CURSOR_MOVED_F`, `CURSOR_EOL_F`, argument-kind and flag macros (`MVMT`, `PTMV`, `FRNT`, `INCL`, `LNMD`, `NCOL`, `NREL`, `SDOT`, …) | table, macros | M7 | | todo |
-| `colno` (adjmove static) | static | M7 | | todo |
+| `vi` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `adjmove` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `m_rear_wrapper`, `m_match_wrapper`, `m_front_wrapper` | static fns | M7 | macOS port 2026-11-10 | done (macOS) |
+| `struct keystru`, `vikeys[]` table, `NO_FUNC`, `NO_ARGS_F`, `KEYWORD_F`, `CURSOR_F`, `CURSOR_COUNT_F`, `CURSOR_CNT_KEY_F`, `CURSOR_TEXT_F`, `CURSOR_CNT_CMD_F`, `CURSOR_MOVED_F`, `CURSOR_EOL_F`, argument-kind and flag macros (`MVMT`, `PTMV`, `FRNT`, `INCL`, `LNMD`, `NCOL`, `NREL`, `SDOT`, …) | table, macros | M7 | macOS port 2026-11-10 | done (macOS) |
+| `colno` (adjmove static) | static | M7 | macOS port 2026-11-10 | done (macOS) |
 
 #### `redraw.c` → `redraw.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `redrawrange` | fn | M8 (needed from M4) | | todo |
-| `idx2col` | fn | M8 (needed from M7) | | todo |
-| `mark2phys` | static fn | M8 | | todo |
-| `drawtext` | static fn | M8 | | todo |
-| `smartdrawtext` | static fn | M8 | | todo |
-| `redraw` | fn | M8 (needed from M6) | | todo |
-| `smartlno`, `redrawafter`, `preredraw`, `postredraw`, redraw statics (`pcursor`, `pcol`, `chgs`), smartdrawtext static `chgs` | statics | M8 | | todo |
-| M0 note: `pcursor`, `pcol`, `chgs` are locals of `idx2col` (redraw.c:88-90); the second `chgs` is local to `redraw` (redraw.c:357); `smartdrawtext` has no static | — | M8 | | todo |
+| `redrawrange` | fn | M8 (needed from M4) | macOS port 2026-11-10 | done (macOS) |
+| `idx2col` | fn | M8 (needed from M7) | macOS port 2026-11-10 | done (macOS) |
+| `mark2phys` | static fn | M8 | macOS port 2026-11-10 | done (macOS) |
+| `drawtext` | static fn | M8 | macOS port 2026-11-10 | done (macOS) |
+| `smartdrawtext` | static fn | M8 | macOS port 2026-11-10 | done (macOS) |
+| `redraw` | fn | M8 (needed from M6) | macOS port 2026-11-10 | done (macOS) |
+| `smartlno`, `redrawafter`, `preredraw`, `postredraw`, redraw statics (`pcursor`, `pcol`, `chgs`), smartdrawtext static `chgs` | statics | M8 | macOS port 2026-11-10 | done (macOS) |
+| M0 note: `pcursor`, `pcol`, `chgs` are locals of `idx2col` (redraw.c:88-90); the second `chgs` is local to `redraw` (redraw.c:357); `smartdrawtext` has no static | — | M8 | macOS port 2026-11-10 | done (macOS) |
 
 ### 2.5 Excluded items
 
@@ -1527,6 +1527,19 @@ user asks.
 | B3 | opts.c `setopts` | A string value longer than its option array (`directory` 30 bytes) overflows into the next option | Reject the value (message chosen in M6 per section 6.7) | D7 | options/directory-overflow | pending |
 | B4 | curses.c `getsize` at startup | "Screen too small", then SIGSEGV: `endwin()` writes through `stdscr` before `initscr()` sets it | Same message, restore the terminal, exit 2 | D7 | startup/small-screen | pending |
 | B5 | tio.c `getkey` | On macOS the `alarm(keytime)` read never times out (`SA_RESTART`), so an ambiguous map prefix waits for more keys | Timed read with `keytime` seconds (section 3.7). Linux not yet measured | 3.7 | c-behavior.md "Key timeout" | pending |
+| B6 | ncurses `tgetstr("me")` | Returns `sgr0` trimmed by `_nc_trim_sgr0` (e.g. xterm `\E(B\E[m` → `\E[0m`) | Same trimming reimplemented in `curses.rs` | 4.2 parity | `curses::tests::capprobe_golden` | pending |
+| B7 | curses.c `starttcap` | `tgetent` = -1 prints `Can't read /etc/termcap`, exit 2 | Never produced: every lookup or parse failure is `Unrecognized TERM type`, exit 3 (macOS ncurses never returns -1 either) | 4.4 | `curses::tests::exit_paths` | pending |
+| B8 | tgoto/tparm | Expansion errors produce `OOPS` | Nothing is output for that move; a literal `$` in `cup` is kept via re-encoding | 4.5 | `curses::tests::tgoto_order_and_padding` | pending |
+| B9 | tio.c `msg`, `mapkey`, `vgets` | `pmsg[80]`, `rawin[10]`, `cooked[80]`, `widths[132]` overflow | Message cut at 79 bytes, raw keys at 10, mapped text at 79; `widths` sized to the buffer | D7 | — | pending |
+| B10 | tio.c `msg` in vi mode | ^C at `[More...]` longjmps immediately | Interrupt re-armed and handled at the next checkpoint | D5 | — | pending |
+| B11 | cmd2.c `cmd_substitute`, cmd1.c `cmd_global` | Line over 1024 bytes or `:g` command over 100 bytes overflows `tmpblk`/`cmdln` | New messages `Substitution would make a line too long` and `Global command too long` | D7 | — | pending |
+| B12 | cmd1.c `cmd_global` | `doingglobal` stays set after an interrupted `:g` | Reset on interrupt | D5 | — | pending |
+| B13 | misc.c/move3.c/move5.c line scans | Reading past a line's NUL sees the next line in the cache block | Treated as end of line (`e` on empty line, `2fx`/`;` past end differ) | D7 | — | pending |
+| B14 | regexp.c `[…]` with bytes ≥ 128 | Signed index writes before the class bitmap | Same bytes reproduced in the program, `minlen`, `first`; `bol`/`endp` kept in a 10-byte tail | D7 | `regexp::tests` | pending |
+| B15 | cut.c `cutneeds` | Overflows `need[512]` for cut buffers over ~450000 bytes | Stops at 512 entries | D7 | — | pending |
+| B16 | modify.c `add` | Lines over 1023 bytes corrupt memory (KNOWN.BUGS) | Panics (terminal restored by the panic hook) | D7 | — | pending |
+| B17 | various loops | Interrupt only via longjmp | Extra `take_sigint` checkpoints in `:s` (per match), `:g`, `:w`/`:r`, `<`/`>`, `:p`, searches, `9999a` | D5 | — | pending |
+| B18 | ex.c, vcmd.c, cmd1.c buffers | `%`/`#` expansion, `wildcard`, `v_keyword` `cmdline[130]`, `prevorig`, `args`, `v_increment` `newval[12]` overflow | Truncated to the C buffer size or unbounded where no observable limit exists | D7 | — | pending |
 
 Add entries as they are found. Candidate entries to evaluate: line length over
 `BLKSIZE - 1` (`KNOWN.BUGS`), `msg()` formatting longer than 79 bytes into
@@ -1557,3 +1570,13 @@ Add entries as they are found. Candidate entries to evaluate: line length over
   - `#![allow(dead_code)]` in `main.rs` is temporary; remove it in M9.
   - The `CutBuf.fd` initial value: C statics start at fd 0, the port uses `None` (= `tmpfd`). Confirm in M4 that the field is never read before `cut()` sets it.
 - Next step: repeat M0 and M1 verification on Linux (build, inventory with `nm --defined-only`, `capprobe` with `-ltinfo`, `run.py --update-golden` into `tests/golden/linux/`, `--repeat 3`, key timeout and padding characterization, `cargo test`). Then start M2 step 1 (`starttcap`, `lacking`, `getsize` with `terminfo-lean`).
+
+### Checkpoint 2026-11-10 (2) — M2 to M8 on macOS
+
+- Host: macOS 27.2, arm64, rustc 1.99.1.
+- Milestones: M2 complete on macOS (capability probe parity for all 8 fixtures and both speeds, padding adapter, `cup` expansion, exit paths). M3–M8: every active C function ported; ledger rows marked `done (macOS)`.
+- Files changed: all `src/*.rs`; no changes under `elvis-tiny-c/` or `tests/`.
+- Commands and results: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo build --release` → pass; `cargo test` → 73 passed; `tests/harness/run.py --rust target/debug/elvis-tiny-rs --suite all --repeat 3` → 261 runs, 3 failures, all `startup/small-screen` (B4, intended); enforcement: `unsafe`/`libc` only in `os.rs`, no `todo!`, no `static mut`; `cargo tree -e normal` → `libc`, `terminfo-lean`.
+- New Appendix B entries: B6–B18.
+- Not run: Linux (instructed to ignore for now); per-function unit tests for M3–M8 exist only for storage, regexp, options, ex, move, vcmd, tio, redraw and vi pieces.
+- Next step: user review of B1–B18; Linux verification; M9 (remove `#![allow(dead_code)]`).

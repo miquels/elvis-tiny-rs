@@ -27,6 +27,7 @@ pub const S_IFMT: u32 = libc::S_IFMT as u32;
 pub const S_IFREG: u32 = libc::S_IFREG as u32;
 
 pub const ENOENT: i32 = libc::ENOENT;
+pub const SIGWINCH: i32 = libc::SIGWINCH;
 
 static SIGINT_FLAG: AtomicBool = AtomicBool::new(false);
 static SIGWINCH_FLAG: AtomicBool = AtomicBool::new(false);
@@ -275,6 +276,23 @@ pub fn mkstemp(template: &mut Vec<u8>) -> io::Result<File> {
     Ok(unsafe { File::from_raw_fd(fd) })
 }
 
+/// `dup(2)`: the lowest free descriptor, without `O_CLOEXEC`.
+pub fn dup(f: &File) -> io::Result<File> {
+    // SAFETY: dup() only reads the descriptor number; `f` keeps it open.
+    let fd = unsafe { libc::dup(f.as_raw_fd()) };
+    if fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    // SAFETY: `fd` was just returned by dup() and is owned by nobody else.
+    Ok(unsafe { File::from_raw_fd(fd) })
+}
+
+/// `sync(2)`.
+pub fn sync() {
+    // SAFETY: sync() has no preconditions.
+    unsafe { libc::sync() }
+}
+
 /// `pipe(2)` without `O_CLOEXEC`; returns (read end, write end).
 pub fn pipe() -> io::Result<(File, File)> {
     let mut fds = [0 as libc::c_int; 2];
@@ -407,6 +425,12 @@ pub fn trap_sigwinch() {
 
 pub fn take_sigint() -> bool {
     SIGINT_FLAG.swap(false, Ordering::SeqCst)
+}
+
+/// Sets the `SIGINT` flag again, so the next checkpoint sees an interrupt
+/// that was taken by a function that cannot propagate it.
+pub fn rearm_sigint() {
+    SIGINT_FLAG.store(true, Ordering::SeqCst);
 }
 
 pub fn take_sigwinch() -> bool {
