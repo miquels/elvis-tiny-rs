@@ -4,10 +4,10 @@ use crate::blk::{
     BufId, afterdo, beforedo, blkadd, blkdirty, blkget, fetchline, findblk, locate, skiplines,
 };
 use crate::tio::msg;
-use crate::vars::Editor;
-use crate::vi_h::{
+use crate::types::{
     BLKSIZE, INFINITY, MARK_FIRST, MARK_UNSET, Mark, NMARKS, cstr, mark_at_line, markidx, markline,
 };
+use crate::vars::Editor;
 
 // C: modify.c:delete
 pub fn delete(ed: &mut Editor, frommark: Mark, tomark: Mark) {

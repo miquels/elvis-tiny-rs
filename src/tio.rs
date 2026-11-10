@@ -1,7 +1,7 @@
 //! `tio.c`: terminal input, messages, and key mapping.
 
 use crate::opts::Opt;
-use crate::vi_h::Mode;
+use crate::types::Mode;
 
 use crate::config::{MAXMAPS, ttyread, ttywrite};
 use crate::curses;
@@ -10,8 +10,8 @@ use crate::fmt::{Arg, sprintf};
 use crate::os::{self, ReadOutcome};
 use crate::redraw::redraw;
 use crate::tmp::tmpabort;
+use crate::types::{Interrupted, LONGKEY, MARK_UNSET, R, When, ch, cstr, ctrl, schar};
 use crate::vars::Editor;
-use crate::vi_h::{Interrupted, LONGKEY, MARK_UNSET, R, When, ch, cstr, ctrl, schar};
 
 /// Capacity of `pmsg[80]`.
 pub const PMSG_SIZE: usize = 80;

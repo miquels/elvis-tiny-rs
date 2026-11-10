@@ -24,17 +24,17 @@ mod system;
 mod terminfo;
 mod tio;
 mod tmp;
+mod types;
 mod vars;
 mod vcmd;
 mod vi;
-mod vi_h;
 
 use crate::opts::Opt;
-use crate::vi_h::Cmd;
-use crate::vi_h::Mode;
+use crate::types::Cmd;
+use crate::types::Mode;
 use std::os::unix::ffi::OsStrExt;
 
-use vi_h::{MARK_FIRST, When, ch};
+use types::{MARK_FIRST, When, ch};
 
 // C: main.c:main
 fn main() {
@@ -183,7 +183,7 @@ fn main() {
         let mut path = home.as_bytes().to_vec();
         path.push(config::SLASH);
         path.extend_from_slice(config::HMEXRC);
-        path.truncate(vi_h::BLKSIZE - 1);
+        path.truncate(types::BLKSIZE - 1);
         let _ = ex::doexrc(ed, &path);
     }
     let _ = ex::doexrc(ed, config::EXRC);
@@ -201,7 +201,7 @@ fn main() {
         if !ed.vars.origname.is_empty() {
             blk::beforedo(ed, false);
             blk::afterdo(ed);
-            ed.vars.viflags.clrflag(vi_h::MODIFIED);
+            ed.vars.viflags.clrflag(types::MODIFIED);
         }
     }
 

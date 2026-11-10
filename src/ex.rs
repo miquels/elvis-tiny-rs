@@ -16,9 +16,9 @@ use crate::opts::Opt;
 use crate::os;
 use crate::system::wildcard;
 use crate::tio::{exrefresh, msg, vgets};
+use crate::types::LINEMASK;
+use crate::types::*;
 use crate::vars::Editor;
-use crate::vi_h::LINEMASK;
-use crate::vi_h::*;
 
 /// Function-local statics of the ex commands.
 #[derive(Default)]

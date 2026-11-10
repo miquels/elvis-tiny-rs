@@ -3,9 +3,9 @@
 use crate::blk::{fetchline, pfetch};
 use crate::curses;
 use crate::opts::Opt;
+use crate::types::LINEMASK;
+use crate::types::{INFINITY, MARK_UNSET, Mark, botline, ch, markidx, markline, rightcol, schar};
 use crate::vars::Editor;
-use crate::vi_h::LINEMASK;
-use crate::vi_h::{INFINITY, MARK_UNSET, Mark, botline, ch, markidx, markline, rightcol, schar};
 
 #[derive(Default)]
 pub struct Redraw {

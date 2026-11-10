@@ -2,7 +2,7 @@
 
 use crate::fmt::Arg;
 use crate::opts::Opt;
-use crate::vi_h::Mode;
+use crate::types::Mode;
 use std::fs::File;
 
 use crate::blk::{blkget, blkinit};
@@ -13,11 +13,11 @@ use crate::os;
 use crate::recycle::garbage;
 use crate::redraw::redraw;
 use crate::tio::msg;
-use crate::vars::Editor;
-use crate::vi_h::{
+use crate::types::{
     ADDEDNL, BLKSIZE, HADNUL, INFINITY, MARK_FIRST, MARK_UNSET, MAXBLKS, MODIFIED, NOFILE,
     READONLY, isalnum, isascii, markline, schar,
 };
+use crate::vars::Editor;
 
 /// Capacity of `tmpname[80]`.
 pub const TMPNAME_SIZE: usize = 80;
@@ -464,7 +464,7 @@ mod tests {
     use crate::blk::{afterdo, beforedo, fetchline, undo};
     use crate::cut::{cut, cutname, paste};
     use crate::modify::{add, change, delete};
-    use crate::vi_h::mark_at_line;
+    use crate::types::mark_at_line;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static SEQ: AtomicUsize = AtomicUsize::new(0);

@@ -3,13 +3,13 @@
 
 use std::fs::File;
 
-use crate::vi_h::{Blk, MAXBLKS, Mark, Mode, NMARKS, Viflags};
+use crate::types::{Blk, MAXBLKS, Mark, Mode, NMARKS, Viflags};
 use crate::{
     blk, curses, cut, ex, motion, opts, recycle, redraw, regexp, regsub, tio, tmp, vcmd, vi,
 };
 
 /// Capacity of `args[BLKSIZE]`.
-pub const ARGS_SIZE: usize = crate::vi_h::BLKSIZE;
+pub const ARGS_SIZE: usize = crate::types::BLKSIZE;
 /// Capacity of `origname[256]` and `prevorig[256]`.
 pub const NAME_SIZE: usize = 256;
 

@@ -3,8 +3,8 @@
 use crate::fmt::Arg;
 use crate::opts::Opt;
 use crate::tio::msg;
+use crate::types::{ch, cstr, isalnum, isascii, isupper, schar, tolower};
 use crate::vars::Editor;
-use crate::vi_h::{ch, cstr, isalnum, isascii, isupper, schar, tolower};
 
 pub const NSUBEXP: usize = 10;
 

@@ -9,12 +9,12 @@ use crate::opts::Opt;
 use crate::os;
 use crate::redraw::{idx2col, redraw};
 use crate::tio::{beep, getkey};
+use crate::types::Cmd;
+use crate::types::LINEMASK;
+use crate::types::{BLKSIZE, MARK_UNSET, Mark, R, When, botline, ctrl, markidx, markline};
 use crate::vars::Editor;
 use crate::vcmd::{v_xchar, v_xit};
 use crate::vi::{NCOL, NO_FLAGS, adjmove};
-use crate::vi_h::Cmd;
-use crate::vi_h::LINEMASK;
-use crate::vi_h::{BLKSIZE, MARK_UNSET, Mark, R, When, botline, ctrl, markidx, markline};
 
 /// `key` as the C string `key[2]`: empty when the key is NUL.
 fn keystr(key: &u8) -> &[u8] {

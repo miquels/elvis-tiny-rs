@@ -2,8 +2,8 @@
 
 use crate::blk::pfetch;
 use crate::tio::msg;
+use crate::types::{MARK_UNSET, Mark, R, ch, default, markidx, markline, schar};
 use crate::vars::Editor;
-use crate::vi_h::{MARK_UNSET, Mark, R, ch, default, markidx, markline, schar};
 
 /// One of the `f`, `F`, `t` and `T` commands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -159,7 +159,7 @@ mod tests {
         };
         ed.motion.charsearch.prev = Some(t);
         // `T` at index 0 fails without touching `prev`
-        let r = m__ch(&mut ed, crate::vi_h::mark_at_line(1), 1, b',' as i32).unwrap();
+        let r = m__ch(&mut ed, crate::types::mark_at_line(1), 1, b',' as i32).unwrap();
         assert_eq!(r, MARK_UNSET);
         assert_eq!(ed.motion.charsearch.prev, Some(t.reverse()));
     }

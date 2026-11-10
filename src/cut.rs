@@ -10,9 +10,9 @@ use crate::fmt::Arg;
 use crate::modify::add;
 use crate::os;
 use crate::tio::msg;
+use crate::types::LINEMASK;
+use crate::types::{BLKSIZE, Blk, MARK_UNSET, MAXBLKS, Mark, cstr, markidx, markline};
 use crate::vars::Editor;
-use crate::vi_h::LINEMASK;
-use crate::vi_h::{BLKSIZE, Blk, MARK_UNSET, MAXBLKS, Mark, cstr, markidx, markline};
 
 pub const NANNONS: usize = 9;
 

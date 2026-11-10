@@ -2,7 +2,7 @@
 
 use crate::fmt::Arg;
 use crate::opts::Opt;
-use crate::vi_h::Mode;
+use crate::types::Mode;
 use std::fs::File;
 
 use crate::blk::{afterdo, beforedo, fetchline};
@@ -15,11 +15,11 @@ use crate::regexp::{regcomp, regexec};
 use crate::system::{elvis_system, filter};
 use crate::tio::{dumpkey, exrefresh, mapkey, msg};
 use crate::tmp::{tmpabort, tmpend, tmpsave, tmpstart};
-use crate::vars::{ARGS_SIZE, Editor, NAME_SIZE};
-use crate::vi_h::{
+use crate::types::{
     BLKSIZE, COPYING, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, MODIFIED, Mark, R, READONLY,
     VERSION, When, ch, cstr, isspace, mark_at_line, markline, schar,
 };
+use crate::vars::{ARGS_SIZE, Editor, NAME_SIZE};
 
 /// Capacity of `prevextra[80]`.
 const PREVEXTRA_SIZE: usize = 80;
@@ -746,7 +746,7 @@ mod tests {
     #[test]
     fn cmd_mark_sets_mark() {
         let mut ed = Editor::new();
-        cmd_mark(&mut ed, 0, 5 * 1024, crate::vi_h::Cmd::Mark, false, b"c").unwrap();
+        cmd_mark(&mut ed, 0, 5 * 1024, crate::types::Cmd::Mark, false, b"c").unwrap();
         assert_eq!(ed.vars.mark[2], 5 * 1024);
     }
 }

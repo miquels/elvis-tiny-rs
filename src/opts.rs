@@ -10,7 +10,7 @@ use std::os::unix::ffi::OsStrExt;
 
 use crate::config::{EXRC, KEYWORDPRG, NEEDSYNC, SHELL, TMPDIR};
 use crate::tio::{exrefresh, msg};
-use crate::vi_h::{READONLY, atoi, ch, cstr};
+use crate::types::{READONLY, atoi, ch, cstr};
 
 /// An option, in the order of the C `opts[]` table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -2,8 +2,8 @@
 
 use crate::opts::Opt;
 use crate::regexp::Regexp;
+use crate::types::{ch, cstr};
 use crate::vars::Editor;
-use crate::vi_h::{ch, cstr};
 
 #[derive(Default)]
 pub struct Regsub {

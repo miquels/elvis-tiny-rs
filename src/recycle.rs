@@ -5,8 +5,8 @@ use std::io::{Seek, SeekFrom};
 use crate::config::lseek_read;
 use crate::cut::cutneeds;
 use crate::tio::msg;
+use crate::types::{Blk, MAXBLKS};
 use crate::vars::Editor;
-use crate::vi_h::{Blk, MAXBLKS};
 
 /// Bitmap of free blocks in the first `MAXBIT` blocks of the tmp file.
 /// Blocks past the end of the map always look free.
@@ -73,7 +73,7 @@ pub fn garbage(ed: &mut Editor) {
 /// extended.  (An `Option<u64>` costs more code here.)
 pub fn allocate(ed: &mut Editor) -> i64 {
     match ed.recycle.take_free() {
-        Some(blk) => blk as i64 * crate::vi_h::BLKSIZE as i64,
+        Some(blk) => blk as i64 * crate::types::BLKSIZE as i64,
         None => match ed.vars.tmpfd.as_ref() {
             Some(mut f) => match f.seek(SeekFrom::End(0)) {
                 Ok(p) => p as i64,
@@ -104,7 +104,7 @@ mod tests {
         let mut ed = Editor::new();
         ed.recycle.bitmap = [0; 512];
         ed.recycle.bitmap[2] = 0b0010_0000;
-        assert_eq!(allocate(&mut ed), 21 * crate::vi_h::BLKSIZE as i64);
+        assert_eq!(allocate(&mut ed), 21 * crate::types::BLKSIZE as i64);
         assert_eq!(ed.recycle.bitmap[2], 0);
         // bitmap exhausted and no tmp file: lseek fails
         assert_eq!(allocate(&mut ed), -1);

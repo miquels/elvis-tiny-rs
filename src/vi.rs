@@ -11,17 +11,17 @@ use crate::opts::Opt;
 use crate::os;
 use crate::redraw::{idx2col, redraw};
 use crate::tio::{beep, getkey, msg, vgets};
+use crate::types::LINEMASK;
+use crate::types::Mode;
+use crate::types::{
+    BLKSIZE, MARK_FIRST, MARK_UNSET, Mark, R, When, isupper, isword, mark_at_line, mark_last,
+    markidx, markline, schar,
+};
 use crate::vars::Editor;
 use crate::vcmd::{
     v_1ex, v_again, v_change, v_delete, v_filter, v_increment, v_insert, v_join, v_keyword,
     v_lshift, v_mark, v_overtype, v_paste, v_quit, v_redraw, v_replace, v_rshift, v_selcut,
     v_status, v_subst, v_switch, v_tag, v_ulcase, v_undo, v_undoline, v_xchar, v_xit, v_yank,
-};
-use crate::vi_h::LINEMASK;
-use crate::vi_h::Mode;
-use crate::vi_h::{
-    BLKSIZE, MARK_FIRST, MARK_UNSET, Mark, R, When, isupper, isword, mark_at_line, mark_last,
-    markidx, markline, schar,
 };
 
 /// `adjmove()`'s static: the column vertical motions aim for.

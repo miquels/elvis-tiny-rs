@@ -220,7 +220,7 @@ the ledger before porting.
 |----------|-------------|-------|
 | `main.c` | `src/main.rs` | Entry point, startup, main loop, `trapint` |
 | `config.h` | `src/config.rs` | Constants resolved for the shared Unix settings only |
-| `vi.h` | `src/vi_h.rs` | Constants, `Mark` helpers, flag helpers, shared types. Named `vi_h` to avoid clashing with `vi.rs` |
+| `vi.h` | `src/types.rs` | Constants, `Mark` helpers, flag helpers, shared types. Was `vi_h.rs` until the idiomatic-cleanup pass |
 | `curses.h`, `curses.c` | `src/curses.rs` | Header macros become methods or functions |
 | `regexp.h`, `regexp.c` | `src/regexp.rs` | |
 | `vars.c` | `src/vars.rs` | Shared state, plus the `Editor` struct |

@@ -1,11 +1,11 @@
 //! `move5.c`: word motions.  No module state.
 
 use crate::blk::pfetch;
-use crate::vars::Editor;
-use crate::vi_h::{
+use crate::types::{
     MARK_UNSET, Mark, R, buildmark, ch, default, isalnum, isascii, isspace, isword, markidx,
     markline, schar,
 };
+use crate::vars::Editor;
 
 /// `*text` as a signed C `char`, where `text` indexes `ptext`.  Bytes past
 /// the end read as NUL.

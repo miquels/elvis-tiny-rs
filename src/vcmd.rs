@@ -15,14 +15,14 @@ use crate::os::take_sigint;
 use crate::redraw::redraw;
 use crate::system::{elvis_system, filter};
 use crate::tio::{exrefresh, getkey, msg, vgets};
-use crate::vars::Editor;
-use crate::vi_h::LINEMASK;
-use crate::vi_h::Mode;
-use crate::vi_h::atol;
-use crate::vi_h::{
+use crate::types::LINEMASK;
+use crate::types::Mode;
+use crate::types::atol;
+use crate::types::{
     BLKSIZE, Cmd, Interrupted, MARK_UNSET, Mark, R, When, ch, cstr, default, mark_at_line, markidx,
     markline,
 };
+use crate::vars::Editor;
 
 #[derive(Default)]
 pub struct Vcmd {

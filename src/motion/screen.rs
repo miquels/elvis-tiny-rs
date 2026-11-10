@@ -3,11 +3,11 @@
 use crate::opts::Opt;
 use crate::redraw::redraw;
 use crate::tio::{getkey, msg};
-use crate::vars::Editor;
-use crate::vi_h::{
+use crate::types::{
     MARK_FIRST, MARK_UNSET, Mark, R, When, botline, ctrl, default, mark_at_line, mark_last,
     markidx, markline,
 };
+use crate::vars::Editor;
 
 const CTRL_B: i32 = ctrl(b'B') as i32;
 const CTRL_D: i32 = ctrl(b'D') as i32;

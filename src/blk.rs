@@ -1,16 +1,16 @@
 //! `blk.c`: the block cache for the temporary file, plus do/undo.
 
 use crate::opts::Opt;
-use crate::vi_h::Mode;
+use crate::types::Mode;
 
 use crate::config::{lseek_read, lseek_write};
 use crate::recycle::{allocate, garbage};
 use crate::redraw::redraw;
 use crate::tio::msg;
-use crate::vars::Editor;
-use crate::vi_h::{
+use crate::types::{
     BLKSIZE, Blk, INFINITY, MARK_UNSET, MAXBLKS, MODIFIED, Mark, mark_last, markline,
 };
+use crate::vars::Editor;
 
 pub const NBUFS: usize = 5;
 

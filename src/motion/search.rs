@@ -7,10 +7,10 @@ use crate::opts::Opt;
 use crate::os::take_sigint;
 use crate::regexp::{Regexp, regcomp, regexec};
 use crate::tio::msg;
-use crate::vars::Editor;
-use crate::vi_h::{
+use crate::types::{
     BLKSIZE, Interrupted, MARK_UNSET, Mark, R, atol, ch, cstr, mark_at_line, markidx, markline,
 };
+use crate::vars::Editor;
 
 /// The last search pattern and direction, for `n` and `N`.
 #[derive(Default)]

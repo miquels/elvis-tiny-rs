@@ -13,12 +13,12 @@ use crate::regexp::{regcomp, regexec};
 use crate::regsub::regsub;
 use crate::system::filter;
 use crate::tio::{exrefresh, msg, vgets};
-use crate::vars::Editor;
-use crate::vi_h::Mode;
-use crate::vi_h::{
+use crate::types::Mode;
+use crate::types::{
     BLKSIZE, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, Mark, R, ch, cstr, mark_at_line, mark_last,
     markidx, markline, schar,
 };
+use crate::vars::Editor;
 
 const BLK: Mark = BLKSIZE as Mark;
 

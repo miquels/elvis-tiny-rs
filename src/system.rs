@@ -3,7 +3,7 @@
 
 use crate::fmt::{Arg, sprintf};
 use crate::opts::Opt;
-use crate::vi_h::Mode;
+use crate::types::Mode;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 
@@ -13,9 +13,9 @@ use crate::config::{scratchout_fmt, tread};
 use crate::modify::{add, delete};
 use crate::os::{self, ShellRun, SpawnOpts};
 use crate::tio::msg;
+use crate::types::LINEMASK;
+use crate::types::{BLKSIZE, MODIFIED, Mark, R, cstr};
 use crate::vars::Editor;
-use crate::vi_h::LINEMASK;
-use crate::vi_h::{BLKSIZE, MODIFIED, Mark, R, cstr};
 
 // C: system.c:elvis_system
 /// `None` is `cmd == o_shell` (run an interactive shell).  True if the
