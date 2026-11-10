@@ -1,0 +1,27 @@
+{
+ "mode": "pty",
+ "keys": [
+  [
+   0.5,
+   ""
+  ],
+  [
+   0.2,
+   "$"
+  ],
+  [
+   0.2,
+   "x"
+  ],
+  [
+   0.2,
+   ":wq\r"
+  ]
+ ],
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n"
+ }
+}

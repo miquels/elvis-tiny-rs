@@ -1,0 +1,7 @@
+{
+ "args": [
+  "-e",
+  "new.txt"
+ ],
+ "stdin": "a\nhello\n.\nwq\n"
+}

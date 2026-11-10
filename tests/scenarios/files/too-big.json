@@ -1,0 +1,13 @@
+{
+ "args": [
+  "-e",
+  "big.txt"
+ ],
+ "files": {
+  "big.txt": {
+   "repeat": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+   "count": 5001
+  }
+ },
+ "stdin": "=\nq\n"
+}

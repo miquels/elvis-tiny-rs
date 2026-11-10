@@ -1,0 +1,14 @@
+{
+ "status": -11,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "two\\n",
+   "three\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "Screen too small\\r\\n"
+ ]
+}

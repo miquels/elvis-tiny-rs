@@ -1,0 +1,39 @@
+{
+ "mode": "pty",
+ "keys": [
+  [
+   0.5,
+   ""
+  ],
+  [
+   0.2,
+   "w"
+  ],
+  [
+   0.2,
+   "x"
+  ],
+  [
+   0.2,
+   "jdd"
+  ],
+  [
+   0.2,
+   "Gp"
+  ],
+  [
+   0.2,
+   "0cwNEW\u001b"
+  ],
+  [
+   0.2,
+   ":wq\r"
+  ]
+ ],
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "alpha beta\nsecond line\nthird\n"
+ }
+}

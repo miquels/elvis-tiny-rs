@@ -1,0 +1,10 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "a1\nb2\na3\nb4\n"
+ },
+ "stdin": "g/a/s/$/!/\nv/a/d\n%p\ng/x/g/y/p\nwq\n"
+}

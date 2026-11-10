@@ -1,0 +1,24 @@
+{
+ "mode": "pty",
+ "keys": [
+  [
+   0.5,
+   ""
+  ],
+  [
+   0.2,
+   "jx"
+  ],
+  [
+   0.2,
+   ":wq\r"
+  ]
+ ],
+ "term": "asym-cup",
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "one\ntwo\nthree\n"
+ }
+}

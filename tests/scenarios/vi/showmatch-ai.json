@@ -1,0 +1,27 @@
+{
+ "mode": "pty",
+ "keys": [
+  [
+   0.5,
+   ""
+  ],
+  [
+   0.2,
+   ":set sm ai\r"
+  ],
+  [
+   0.2,
+   "o\tif (x) {\rfoo;\r}\u001b"
+  ],
+  [
+   0.2,
+   ":wq\r"
+  ]
+ ],
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "start\n"
+ }
+}

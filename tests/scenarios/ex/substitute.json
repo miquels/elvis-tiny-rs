@@ -1,0 +1,10 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "aaa bbb\nabab\nnone\n"
+ },
+ "stdin": "%s/a/X/\n2s/b/Y/g\n3s/zz/q/\n%s/\\(X\\)\\(.\\)/\\2\\1/\n%p\nwq\n"
+}

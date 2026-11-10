@@ -1,0 +1,70 @@
+{
+ "status": 0,
+ "files": {
+  "a.txt": [
+   "call foo\\n"
+  ],
+  "src.c": [
+   "int foo;\\n",
+   "int bar(void)\\n",
+   "{\\n",
+   "\\x09return foo;\\n",
+   "}\\n"
+  ],
+  "tags": [
+   "foo\\x09src.c\\x09/^int foo;$/\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\\e[24;1H\\e[K\\e[24;1H\\e[7m \"a.txt\"  1 line, 9 chars \\e[m\\e[K\\e[1;1Hcall foo\\e[K\\n",
+  "\\r\\e[1;1Hcall foo\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r\\e[1;1H\\e[1;6H\\e[24;1H\\e[7m \"src.c\"  5 lines, 40 chars \\e[m\\e[K[More...]\\x07\\x07\\e[24;1H\\e[7m (wrapped) \\e[m\\e[K\\e[2;1Hint bar(void)\\e[K\\n",
+  "\\r\\e[1;1Hint foo;\\e[K\\n",
+  "\\rint bar(void)\\e[K\\n",
+  "\\r{\\e[K\\n",
+  "\\r        return foo;\\e[K\\n",
+  "\\r}\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r\\e[2;1H\\e[24;1H:\\e[Kq\\e[K\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

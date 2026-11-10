@@ -1,0 +1,42 @@
+{
+ "mode": "pty",
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": {
+   "repeat": "aaaa\n",
+   "count": 20000
+  }
+ },
+ "keys": [
+  [
+   0.5,
+   "g/a/s/a/b/g\r"
+  ],
+  [
+   0.05,
+   {
+    "signal": "INT"
+   }
+  ],
+  [
+   1.5,
+   "\r"
+  ],
+  [
+   0.5,
+   ":q!\r"
+  ],
+  [
+   0.5,
+   "q!\r"
+  ]
+ ],
+ "compare": {
+  "output": false,
+  "files": false
+ },
+ "description": "^C during :g; whether it lands mid-command is timing dependent, so only exit status is compared"
+}

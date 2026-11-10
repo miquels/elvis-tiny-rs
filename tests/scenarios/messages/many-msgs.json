@@ -1,0 +1,27 @@
+{
+ "mode": "pty",
+ "keys": [
+  [
+   0.5,
+   ""
+  ],
+  [
+   0.2,
+   ":set bogus1 bogus2\r"
+  ],
+  [
+   0.2,
+   " "
+  ],
+  [
+   0.2,
+   ":q\r"
+  ]
+ ],
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "one\ntwo\nthree\n"
+ }
+}

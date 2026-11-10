@@ -1,0 +1,8 @@
+{
+ "mode": "pty",
+ "args": [
+  "-r"
+ ],
+ "keys": [],
+ "description": "-r prints virec hint and exits 0"
+}

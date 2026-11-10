@@ -1,0 +1,11 @@
+{
+ "progname": "view",
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "one\ntwo\nthree\n"
+ },
+ "stdin": "set readonly?\nw\nq\n"
+}

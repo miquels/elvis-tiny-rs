@@ -1,0 +1,20 @@
+# Synthetic fixtures for the elvis port.  Each entry exercises one rule.
+
+missing-cup|vt100 without cursor addressing,
+	cup@, use=vt100,
+
+missing-el|vt100 without clear to end of line,
+	el@, use=vt100,
+
+asym-cup|minimal terminal with asymmetric cursor addressing,
+	am, cols#80, lines#24,
+	bel=^G, cr=\r, cub1=^H, cud1=\n, cuu1=\E[A, el=\E[K,
+	cup=\E[%p1%{3}%+%d;%p2%{50}%+%dH,
+
+pad-cup|terminal without xon that needs padding,
+	am, cols#80, lines#24, pb#9600,
+	bel=^G, cr=\r, cub1=^H, cud1=\n, cuu1=\E[A$<2>, el=\E[K$<3>,
+	ed=\E[J$<50>, il1=\E[L$<2*>, dl1=\E[M$<2*/>, dch1=\E[P$<1.5*>,
+	smso=\E[7m$<2/>, rmso=\E[m, flash=\E[?5h$<100/>\E[?5l,
+	cup=\E[%i%p1%d;%p2%dH$<5>, ri=\EM$<5, smcup=\E[?1049h$<10>,
+	rmcup=\E[?1049l$<10>, kcuu1=\EOA,

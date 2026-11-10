@@ -1,0 +1,12 @@
+{
+ "args": [
+  "-e",
+  "d"
+ ],
+ "files": {
+  "d": {
+   "dir": true
+  }
+ },
+ "stdin": "q\n"
+}

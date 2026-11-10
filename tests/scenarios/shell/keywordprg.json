@@ -1,0 +1,31 @@
+{
+ "mode": "pty",
+ "keys": [
+  [
+   0.5,
+   ""
+  ],
+  [
+   0.2,
+   ":set kp=kwfixture\r"
+  ],
+  [
+   0.3,
+   "K"
+  ],
+  [
+   1,
+   "\r"
+  ],
+  [
+   0.5,
+   ":q\r"
+  ]
+ ],
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "word here\n"
+ }
+}

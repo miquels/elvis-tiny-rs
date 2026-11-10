@@ -1,0 +1,10 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "one\ntwo\nthree\n"
+ },
+ "stdin": "set all\nset\nq\n"
+}

@@ -1,0 +1,40 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "wo\\n",
+   "three\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1049h\\e[?1h\\e=\\e[24;1H\\e[K\\e[24;1H\\e[7m \"f.txt\"  3 lines, 14 chars \\e[27m\\e[K\\e[1;1Hone\\e[K\\n",
+  "\\r\\e[1;1Hone\\e[K\\n",
+  "\\rtwo\\e[K\\n",
+  "\\rthree\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r\\e[1;1H\\e[2;1Hwo\\e[K\\n",
+  "\\r\\e[2;1H\\e[24;1H:\\e[Kwq\\e[K\\r\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1049l\\e[?1l\\e>"
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "args": [
+  "f"
+ ],
+ "env": {
+  "TERM": null
+ },
+ "stdin": "",
+ "description": "TERM unset exits 1"
+}

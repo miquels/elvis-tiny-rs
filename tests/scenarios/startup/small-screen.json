@@ -1,0 +1,18 @@
+{
+ "mode": "pty",
+ "keys": [
+  [
+   0.5,
+   ""
+  ]
+ ],
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "one\ntwo\nthree\n"
+ },
+ "rows": 24,
+ "cols": 20,
+ "description": "too small screen exits 2"
+}

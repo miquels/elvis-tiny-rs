@@ -1,0 +1,27 @@
+{
+ "mode": "pty",
+ "keys": [
+  [
+   0.5,
+   ""
+  ],
+  [
+   0.2,
+   ":set wm=70\r"
+  ],
+  [
+   0.2,
+   "A word word word word word word word word word word word word word word word word word word word word\u001b"
+  ],
+  [
+   0.2,
+   ":wq\r"
+  ]
+ ],
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "x\n"
+ }
+}

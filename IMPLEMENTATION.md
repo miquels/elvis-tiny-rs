@@ -286,7 +286,7 @@ ported earlier when a previous milestone needs it; record that in the
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `viflags`, `lnum`, `nlines`, `tmpfd`, `origtime`, `origname`, `prevorig`, `prevline`, `mark`, `cursor`, `mode`, `args`, `argno`, `nargs`, `bavar`, `mustredraw`, `changes`, `significant`, `plen`, `pline`, `pchgs`, `ptext`, `tmpblk`, `topline`, `leftcol`, `physcol`, `physrow`, `exwrote`, `doingdot`, `doingglobal`, `rptlines`, `rptlabel`, `U_line`, `U_text` | globals | M1 | | todo |
+| `viflags`, `lnum`, `nlines`, `tmpfd`, `origtime`, `origname`, `prevorig`, `prevline`, `mark`, `cursor`, `mode`, `args`, `argno`, `nargs`, `bavar`, `mustredraw`, `changes`, `significant`, `plen`, `pline`, `pchgs`, `ptext`, `tmpblk`, `topline`, `leftcol`, `physcol`, `physrow`, `exwrote`, `doingdot`, `doingglobal`, `rptlines`, `rptlabel`, `U_line`, `U_text` | globals | M1 | M1 | done |
 
 `bavar` exists only for the `BeforeAfter` macro and is not needed in Rust.
 
@@ -294,17 +294,17 @@ ported earlier when a previous milestone needs it; record that in the
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `ttyread`, `ttywrite`, `tread`, `twrite` | macros | M1 | | todo |
-| `UCHAR`, `uchar`, `REG`, path and name constants from section 1.4 | macros | M1 | | todo |
-| `VERSION`, `COPYING`, `INFINITY`, `LONGKEY`, `MAXRCLEN`, `BLKSIZE`, `MAXBLKS`, `NMARKS` | constants | M1 | | todo |
-| `BLK` union | type | M1 | | todo |
-| `NEWFILE`, `READONLY`, `HADNUL`, `MODIFIED`, `NOFILE`, `ADDEDNL`; `setflag`, `clrflag`, `tstflag`, `initflags` | flags, macros | M1 | | todo |
-| `MARK`, `markline`, `markidx`, `MARK_UNSET`, `MARK_FIRST`, `MARK_LAST`, `MARK_AT_LINE`, `buildmark` | type, macros | M1 | | todo |
-| `botline`, `rightcol`, `ctrl`, `DEFAULT` | macros | M1 | | todo |
+| `ttyread`, `ttywrite`, `tread`, `twrite` | macros | M1 | M1 | done |
+| `UCHAR`, `uchar`, `REG`, path and name constants from section 1.4 | macros | M1 | M1 | done |
+| `VERSION`, `COPYING`, `INFINITY`, `LONGKEY`, `MAXRCLEN`, `BLKSIZE`, `MAXBLKS`, `NMARKS` | constants | M1 | M1 | done |
+| `BLK` union | type | M1 | M1 | done |
+| `NEWFILE`, `READONLY`, `HADNUL`, `MODIFIED`, `NOFILE`, `ADDEDNL`; `setflag`, `clrflag`, `tstflag`, `initflags` | flags, macros | M1 | M1 | done |
+| `MARK`, `markline`, `markidx`, `MARK_UNSET`, `MARK_FIRST`, `MARK_LAST`, `MARK_AT_LINE`, `buildmark` | type, macros | M1 | M1 | done |
+| `botline`, `rightcol`, `ctrl`, `DEFAULT` | macros | M1 | M1 | done |
 | `BeforeAfter`, `ChangeText` | control macros | M4 (replaced by an explicit `beforedo`/`afterdo` pair) | | todo |
-| `CMD_*` codes, `CMD` type | constants | M6 | | todo |
-| `MODE_EX`, `MODE_VI`, `MODE_COLON`, `MODE_QUIT` | constants | M1 | | todo |
-| `WHEN_VICMD`, `WHEN_VIINP`, `WHEN_VIREP`, `WHEN_EX`, `WHEN_MSG`, `WHEN_INMV` | constants | M7 | | todo |
+| `CMD_*` codes, `CMD` type | constants | M6 | M1 | done |
+| `MODE_EX`, `MODE_VI`, `MODE_COLON`, `MODE_QUIT` | constants | M1 | M1 | done |
+| `WHEN_VICMD`, `WHEN_VIINP`, `WHEN_VIREP`, `WHEN_EX`, `WHEN_MSG`, `WHEN_INMV` | constants | M7 | M1 | done |
 | `o_*` option declarations | globals (defined in `opts.c`) | M6 | | todo |
 
 #### `curses.h` + `curses.c` → `curses.rs`
@@ -375,6 +375,7 @@ ported earlier when a previous milestone needs it; record that in the
 | `pfetch` | fn | M3 | | todo |
 | `regerror` | fn | M5 | | todo |
 | `nextline`, `chglevel`, `nextscan`, `nextlnum` | statics | M3 | | todo |
+| `buf` (fetchline-local `static BLK`, found by M0) | static | M3 | | todo |
 
 #### `modify.c` → `modify.rs`
 
@@ -422,7 +423,7 @@ ported earlier when a previous milestone needs it; record that in the
 | `dumpopts` | fn | M6 | | todo |
 | `setopts` | fn | M6 | | todo |
 | `MAXWIDTH`, `BOOL`, `NUM`, `STR`, `SET`, `CANSET`, `RCSET`, `MR`, option table | macros, table | M6 | | todo |
-| `o_autoindent` … `o_wrapscan` (all 30 option arrays) | globals | M6 (defaults needed from M1) | | todo |
+| `o_autoindent` … `o_wrapscan` (all 30 option arrays) | globals | M6 (defaults needed from M1) | M1 (defaults) | todo |
 
 #### `ex.c` → `ex.rs`
 
@@ -517,6 +518,7 @@ ported earlier when a previous milestone needs it; record that in the
 | `m_updnto`, `m_right`, `m_left`, `m_tocol`, `m_front`, `m_rear`, `m_fparagraph`, `m_bparagraph`, `m_fsection`, `m_bsection`, `m_match`, `m_tomark`, `isascii` (move1.c) | fns, macro | M7 | | todo |
 | `m_nsrch`, `m_Nsrch`, `m_fsrch`, `m_bsrch`, statics `re`, `prevsf` (move2.c) | fns, statics | M7 | | todo |
 | `m__ch`, `m_fch`, `m_Fch`, `m_tch`, `m_Tch`, static `prev_key` (move3.c) | fns, static | M7 | | todo |
+| `prevfwdfn`, `prevrevfn` (move3.c file statics, found by M0) | statics | M7 | | todo |
 | `m_row`, `m_z`, `m_scroll` (move4.c) | fns | M7 | | todo |
 | `m_fword`, `m_bword`, `m_eword`, `isascii` (move5.c) | fns, macro | M7 | | todo |
 
@@ -526,6 +528,7 @@ ported earlier when a previous milestone needs it; record that in the
 |--------|------|---|-----------|--------|
 | `v_quit`, `v_redraw`, `v_1ex`, `v_undo`, `v_xchar`, `v_mark`, `v_ulcase`, `v_replace`, `v_overtype`, `v_selcut`, `v_paste`, `v_yank`, `v_delete`, `v_insert`, `v_change`, `v_subst`, `v_join`, `shift_help` (static), `v_lshift`, `v_rshift`, `v_filter`, `v_status`, `v_again`, `v_switch`, `v_tag`, `v_keyword`, `v_increment`, `v_xit`, `v_undoline` | fns (one row each when tracking; listed together here for brevity) | M7 | | todo |
 | `flip[]`, `width` (v_replace), `sign` (v_increment) | statics | M7 | | todo |
+| M0 note: `width` is local to `v_overtype` (symbol `v_overtype.width`), not `v_replace` | — | M7 | | todo |
 
 Track each `v_*` function as its own row in the checkpoint log (section 7.4)
 when it is ported.
@@ -551,6 +554,7 @@ when it is ported.
 | `smartdrawtext` | static fn | M8 | | todo |
 | `redraw` | fn | M8 (needed from M6) | | todo |
 | `smartlno`, `redrawafter`, `preredraw`, `postredraw`, redraw statics (`pcursor`, `pcol`, `chgs`), smartdrawtext static `chgs` | statics | M8 | | todo |
+| M0 note: `pcursor`, `pcol`, `chgs` are locals of `idx2col` (redraw.c:88-90); the second `chgs` is local to `redraw` (redraw.c:357); `smartdrawtext` has no static | — | M8 | | todo |
 
 ### 2.5 Excluded items
 
@@ -1520,6 +1524,9 @@ user asks.
 |----|------------|------------|---------------|--------|-------|---------------|
 | B1 | curses.c `starttcap` | Capability strings copied into an 800-byte buffer without a bound | No limit | D7 | M2 | pending |
 | B2 | main.c `trapint` | Interrupt handled immediately by `siglongjmp` | Interrupt handled at the next checkpoint | D5 | M8 | pending |
+| B3 | opts.c `setopts` | A string value longer than its option array (`directory` 30 bytes) overflows into the next option | Reject the value (message chosen in M6 per section 6.7) | D7 | options/directory-overflow | pending |
+| B4 | curses.c `getsize` at startup | "Screen too small", then SIGSEGV: `endwin()` writes through `stdscr` before `initscr()` sets it | Same message, restore the terminal, exit 2 | D7 | startup/small-screen | pending |
+| B5 | tio.c `getkey` | On macOS the `alarm(keytime)` read never times out (`SA_RESTART`), so an ambiguous map prefix waits for more keys | Timed read with `keytime` seconds (section 3.7). Linux not yet measured | 3.7 | c-behavior.md "Key timeout" | pending |
 
 Add entries as they are found. Candidate entries to evaluate: line length over
 `BLKSIZE - 1` (`KNOWN.BUGS`), `msg()` formatting longer than 79 bytes into
@@ -1528,4 +1535,25 @@ Add entries as they are found. Candidate entries to evaluate: line length over
 
 ### Appendix C: Checkpoint log
 
-No checkpoints yet.
+### Checkpoint 2026-11-10 — M0 and M1 on macOS
+
+- Host OS and version: macOS 27.2 (26B123), arm64; Apple clang 21.0.0; rustc 1.99.1.
+- Milestone and step: M0 steps 1–7 and M1 steps 1–6, macOS only.
+- Ledger rows changed: all `M1`-owned rows → done; `CMD_*` and `WHEN_*` → done (ported early in M1); option arrays → defaults ported in M1, still todo; new rows from the M0 symbol inventory: `fetchline` static `buf`, `prevfwdfn`/`prevrevfn`, plus notes correcting the owners of `width` (`v_overtype`) and the `redraw.c` statics (`idx2col`, `redraw`).
+- Files changed: `Cargo.toml` (pinned `terminfo-lean =0.1.2`, `rust-version`, release profile); `src/*.rs` (all modules; state structs only, except `os.rs`, `config.rs`, `vi_h.rs`, `vars.rs`, option defaults in `opts.rs`); `tests/tools/{active-source.sh,build-terminfo.sh,capprobe.c,ptyrun.py}`; `tests/fixtures/terminfo/*.ti`; `tests/fixtures/bin/kwfixture`; `tests/harness/run.py`; `tests/scenarios/*/*.json` (87 scenarios in 17 suites); `tests/golden/macos/**`; `tests/golden/c-behavior.md`.
+- Commands run and results:
+  - C reference builds (`-O2` with the macOS overrides, and `-O0 -g`) → pass.
+  - `tests/tools/active-source.sh` → pass; `nm -U` inventory compared with the ledger (differences above).
+  - No callers of the declared-but-undefined prototypes; every `blkdirty` argument is a cache buffer.
+  - `capprobe` on a pty at 1200 and 38400 baud for 8 fixtures plus an unknown name → reports in `tests/golden/macos/capprobe/`.
+  - `run.py --c target/c-ref/elvis --suite all --repeat 3` → 261 runs, 0 failures.
+  - `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo build --release` → pass; `cargo test` → 18 passed, run 3 times.
+  - Enforcement checks → no `unsafe`/`libc` outside `os.rs`, no `static mut`; one `todo!` (`main.c:main`, owned by M6). `cargo tree -e normal` → `libc`, `terminfo-lean` → `thiserror` (+ build-time `thiserror-impl`, `syn`, `quote`, `proc-macro2`, `unicode-ident`).
+- Commands not run, and why: everything on Linux (no Linux host in this session). Neither M0 nor M1 is complete until Linux is verified.
+- New Appendix B entries: B3 (`setopts` string overflow), B4 (startup "Screen too small" crash), B5 (key timeout never fires on macOS).
+- Open problems:
+  - The `Can't read /etc/termcap` path (`tgetent` = -1, exit 2) cannot be produced on macOS; ncurses always falls back to the system database. Decide the Rust mapping for `locate()` errors in M2.
+  - "Too many files on command line" is not covered by a scenario yet.
+  - `#![allow(dead_code)]` in `main.rs` is temporary; remove it in M9.
+  - The `CutBuf.fd` initial value: C statics start at fd 0, the port uses `None` (= `tmpfd`). Confirm in M4 that the field is never read before `cut()` sets it.
+- Next step: repeat M0 and M1 verification on Linux (build, inventory with `nm --defined-only`, `capprobe` with `-ltinfo`, `run.py --update-golden` into `tests/golden/linux/`, `--repeat 3`, key timeout and padding characterization, `cargo test`). Then start M2 step 1 (`starttcap`, `lacking`, `getsize` with `terminfo-lean`).

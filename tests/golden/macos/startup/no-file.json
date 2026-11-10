@@ -1,0 +1,14 @@
+{
+ "status": 0,
+ "files": {},
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"[NO FILE]\"  1 line, 1 char\\n",
+  "\\r\\e[24;1H:\\e[Ka\\e[K\\n",
+  "\\r\\e[24;1H\\e[Kx\\e[K\\n",
+  "\\r\\e[24;1H\\e[K.\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\n",
+  "\\r\\e[24;1H:\\e[Kq!\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

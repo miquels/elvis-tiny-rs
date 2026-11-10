@@ -1,0 +1,10 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "one\ntwo\nthree\n"
+ },
+ "stdin": "w g.txt\nw g.txt\n1,2w! g.txt\nw >> g.txt\nq\n"
+}

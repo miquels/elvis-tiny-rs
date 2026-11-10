@@ -1,0 +1,12 @@
+{
+ "args": [
+  "-e",
+  "-t",
+  "bar"
+ ],
+ "files": {
+  "src.c": "int foo;\nint bar(void)\n{\n\treturn foo;\n}\n",
+  "tags": "bar\tsrc.c\t/^int bar/\n"
+ },
+ "stdin": ".p\nq\n"
+}

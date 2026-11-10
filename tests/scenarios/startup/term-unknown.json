@@ -1,0 +1,8 @@
+{
+ "args": [
+  "f"
+ ],
+ "term": "nonexistent",
+ "stdin": "",
+ "description": "unknown terminal exits 3"
+}

@@ -1,0 +1,40 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "worldhhello \\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\\e[24;1H\\e[K\\e[24;1H\\e[7m \"f.txt\"  1 line, 12 chars \\e[m\\e[K\\e[1;1Hhello world\\e[K\\n",
+  "\\r\\e[1;1Hhello world\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r\\e[1;1H\\e[1;1Hworld\\e[K\\n",
+  "\\r\\e[1;1H\\e[1;1Hworldhello \\e[K\\n",
+  "\\r\\e[1;6H\\e[1;6H\\e[1;1Hworldhhello \\e[K\\n",
+  "\\r\\e[1;6H\\e[24;1H:\\e[Kwq\\e[K\\r\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

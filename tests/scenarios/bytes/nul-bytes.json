@@ -1,0 +1,10 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "a\u0000b\nc\n"
+ },
+ "stdin": "1l\nwq\n"
+}

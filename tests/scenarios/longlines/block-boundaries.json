@@ -1,0 +1,13 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": {
+   "repeat": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+   "count": 200
+  }
+ },
+ "stdin": "%s/f$/F/\n$p\n100,101d\n=\nwq\n"
+}

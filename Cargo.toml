@@ -2,7 +2,15 @@
 name = "elvis-tiny-rs"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.88"
 
 [dependencies]
 libc = "0.2.191"
-terminfo-lean = "0.1.2"
+terminfo-lean = "=0.1.2"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

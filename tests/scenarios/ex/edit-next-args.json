@@ -1,0 +1,12 @@
+{
+ "args": [
+  "-e",
+  "a.txt",
+  "b.txt"
+ ],
+ "files": {
+  "a.txt": "A\n",
+  "b.txt": "B\n"
+ },
+ "stdin": "args\nn\np\nrew\np\ne #\np\nq\n"
+}

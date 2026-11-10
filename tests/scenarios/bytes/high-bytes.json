@@ -1,0 +1,10 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "café ÿ\n"
+ },
+ "stdin": "1l\ns/é/E/\n1p\nwq\n"
+}

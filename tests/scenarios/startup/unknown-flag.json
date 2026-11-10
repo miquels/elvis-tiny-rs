@@ -1,0 +1,11 @@
+{
+ "args": [
+  "-z",
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "one\ntwo\nthree\n"
+ },
+ "stdin": "q\n"
+}

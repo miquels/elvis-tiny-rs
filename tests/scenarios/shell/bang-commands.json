@@ -1,0 +1,10 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "c\nb\na\n"
+ },
+ "stdin": "!echo hi\n%!sort\n%p\nr !echo read\n%p\nw !cat\nwq\n"
+}

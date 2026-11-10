@@ -1,0 +1,13 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": {
+   "repeat": "x\n",
+   "count": 10
+  }
+ },
+ "stdin": "1,8d\nu\nq!\n"
+}

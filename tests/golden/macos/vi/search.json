@@ -1,0 +1,42 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "he tw\\n",
+   "three\\n",
+   "four\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\\e[24;1H\\e[K\\e[24;1H\\e[7m \"f.txt\"  4 lines, 23 chars \\e[m\\e[K\\e[1;1Hone\\e[K\\n",
+  "\\r\\e[1;1Hone\\e[K\\n",
+  "\\rthe two\\e[K\\n",
+  "\\rthree\\e[K\\n",
+  "\\rfour\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r~\\e[K\\n",
+  "\\r\\e[1;1H\\e[24;1H/\\e[Kth\\e[K\\r\\e[2;1H\\e[2;1Hhe two\\e[K\\n",
+  "\\r\\e[2;1H\\e[3;1H\\e[24;1H?\\e[Ko\\e[K\\r\\e[2;6H\\e[2;1Hhe tw\\e[K\\n",
+  "\\r\\e[2;5H\\e[24;1H:\\e[Kwq\\e[K\\r\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

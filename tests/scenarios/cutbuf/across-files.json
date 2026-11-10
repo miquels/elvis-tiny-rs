@@ -1,0 +1,32 @@
+{
+ "mode": "pty",
+ "keys": [
+  [
+   0.5,
+   ""
+  ],
+  [
+   0.2,
+   "\"ayy"
+  ],
+  [
+   0.2,
+   ":e g.txt\r"
+  ],
+  [
+   0.2,
+   "\"ap"
+  ],
+  [
+   0.2,
+   ":wq\r"
+  ]
+ ],
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "one\ntwo\nthree\n",
+  "g.txt": "G\n"
+ }
+}
