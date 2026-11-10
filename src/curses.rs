@@ -16,12 +16,6 @@ use crate::vars::Editor;
 
 pub const KBSIZ: usize = 6 * 1024;
 
-pub const A_NORMAL: i32 = 0;
-pub const A_STANDOUT: i32 = 1;
-pub const A_BOLD: i32 = 2;
-pub const A_UNDERLINE: i32 = 3;
-pub const A_ALTCHARSET: i32 = 4;
-
 /// Capability strings: `None` is a C null pointer, `Some(vec![])` is "".
 pub type Cap = Option<Vec<u8>>;
 
@@ -91,7 +85,6 @@ const TINFO: [u8; NCAPS - 1] = [
 
 pub struct Curses {
     pub ospeed: i16,
-    pub pc: u8,
     /// `kbuf`; `stdscr` is `kbuf.len()`.
     pub kbuf: Vec<u8>,
     pub lines: i32,
@@ -118,7 +111,6 @@ impl Default for Curses {
     fn default() -> Curses {
         Curses {
             ospeed: 0,
-            pc: 0,
             kbuf: Vec::with_capacity(KBSIZ),
             lines: 0,
             cols: 0,
@@ -827,12 +819,6 @@ impl Curses {
         addch_into(&mut self.kbuf, ch);
     }
 
-    /// `faddch(ch)`, the output function passed to `tputs()`.
-    pub fn faddch(&mut self, ch: u8) -> i32 {
-        self.addch(ch);
-        0
-    }
-
     /// `qaddstr(str)`
     pub fn qaddstr(&mut self, s: &[u8]) {
         self.kbuf.extend_from_slice(s);
@@ -853,12 +839,6 @@ impl Curses {
         {
             tputs_into(&s, 1, &mut self.kbuf);
         }
-    }
-
-    /// `mvaddch(y, x, ch)`
-    pub fn mvaddch(&mut self, y: i32, x: i32, ch: u8) {
-        self.mv(y, x);
-        self.addch(ch);
     }
 
     /// `refresh()` / `wrefresh(stdscr)`
@@ -939,46 +919,11 @@ impl Curses {
         self.mv(self.lines - 1, 0);
         self.clrtoeol();
     }
-    pub fn clrtobot(&mut self) {
-        self.put(CD);
-    }
     pub fn insertln(&mut self) {
         self.put(AL);
     }
     pub fn deleteln(&mut self) {
         self.put(DL);
-    }
-    pub fn delch(&mut self) {
-        self.put(DC);
-    }
-
-    // C: curses.c:attrset
-    pub fn attrset(&mut self, a: i32) {
-        self.put(AEND);
-        if a == A_BOLD {
-            self.put(MD);
-            self.caps[AEND] = self.caps[ME].clone();
-        } else if a == A_UNDERLINE {
-            self.put(US);
-            self.caps[AEND] = self.caps[UE].clone();
-        } else if a == A_ALTCHARSET {
-            self.put(AS);
-            self.caps[AEND] = self.caps[AE].clone();
-        } else {
-            self.caps[AEND] = Some(Vec::new());
-        }
-    }
-
-    // C: curses.c:insch
-    pub fn insch(&mut self, ch: u8) {
-        if self.has(IM) {
-            self.put(IM);
-        }
-        self.put(IC);
-        self.qaddch(ch);
-        if self.has(EI) {
-            self.put(EI);
-        }
     }
 }
 
@@ -1107,28 +1052,33 @@ fn tgetent(term: &std::ffi::OsStr) -> Option<Terminfo> {
     parse_terminfo(&read_terminfo(term.as_bytes())?)
 }
 
-// The C `MUSTHAVE`, `MAYHAVE` and `PAIR` macros; `PAIR` also loads `slot + 1`.
-const MUST: u8 = 0;
-const MAY: u8 = 1;
-const PAIR: u8 = 2;
+/// The C `MUSTHAVE`, `MAYHAVE` and `PAIR` macros.
+#[derive(Clone, Copy)]
+enum Need {
+    Must,
+    May,
+    /// Both `slot` and `slot + 1`, or neither.
+    Pair,
+}
+use Need::{May, Must, Pair};
 
-fn load(ed: &mut Editor, ti: &Terminfo, steps: &[(u8, usize)]) {
+fn load(ed: &mut Editor, ti: &Terminfo, steps: &[(Need, usize)]) {
     let caps = &mut ed.curses.caps;
     for &(rule, s) in steps {
         let v = tgetstr(ti, s);
         match rule {
-            MUST => {
+            Must => {
                 if v.is_none() {
                     lacking(NAMES[s]);
                 }
                 caps[s] = v;
             }
-            MAY => {
+            May => {
                 if v.is_some() {
                     caps[s] = v;
                 }
             }
-            _ => {
+            Pair => {
                 let w = tgetstr(ti, s + 1);
                 if v.is_none() || w.is_none() {
                     caps[s] = Some(Vec::new());
@@ -1157,10 +1107,10 @@ fn starttcap(ed: &mut Editor) {
     load(
         ed,
         &ti,
-        &[(MUST, UP), (MAY, VB), (MUST, CM), (PAIR, SO), (PAIR, TI)],
+        &[(Must, UP), (May, VB), (Must, CM), (Pair, SO), (Pair, TI)],
     );
     if tgetnum(&ti, "ug") <= 0 {
-        load(ed, &ti, &[(PAIR, US), (PAIR, MD), (PAIR, AS)]);
+        load(ed, &ti, &[(Pair, US), (Pair, MD), (Pair, AS)]);
         let c = &mut ed.curses.caps;
         if first_byte(&c[AS]) == 0 {
             c[AS] = c[US].clone();
@@ -1169,7 +1119,7 @@ fn starttcap(ed: &mut Editor) {
     }
     #[rustfmt::skip]
     load(ed, &ti, &[
-        (MAY, AL), (MAY, DL), (MUST, CE), (MAY, CD), (MAY, SR), (PAIR, IM), (MAY, IC), (MAY, DC),
+        (May, AL), (May, DL), (Must, CE), (May, CD), (May, SR), (Pair, IM), (May, IC), (May, DC),
     ]);
 
     ed.curses.am = tgetflag(&ti, "am");
@@ -1178,8 +1128,8 @@ fn starttcap(ed: &mut Editor) {
 
     #[rustfmt::skip]
     load(ed, &ti, &[
-        (PAIR, KS), (MAY, KU), (MAY, KD), (MAY, KL), (MAY, KR), (MAY, PU), (MAY, PD), (MAY, HM),
-        (MAY, EN),
+        (Pair, KS), (May, KU), (May, KD), (May, KL), (May, KR), (May, PU), (May, PD), (May, HM),
+        (May, EN),
     ]);
 }
 

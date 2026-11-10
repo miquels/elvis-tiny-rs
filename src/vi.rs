@@ -34,13 +34,14 @@ pub struct Vi {
 /*------------------------------------------------------------------------*/
 /* struct keystru and vikeys[]                                             */
 
-const NO_FLAGS: u8 = 0x00;
+/// `adjmove()` and key-table flags.
+pub const NO_FLAGS: u8 = 0x00;
 const MVMT: u8 = 0x01;
 const PTMV: u8 = 0x02;
 const FRNT: u8 = 0x04;
 const INCL: u8 = 0x08;
 const LNMD: u8 = 0x10;
-const NCOL: u8 = 0x20;
+pub const NCOL: u8 = 0x20;
 const NREL: u8 = 0x40;
 const SDOT: u8 = 0x80;
 
@@ -484,9 +485,9 @@ pub fn vi(ed: &mut Editor) -> R<()> {
         let keyptr = VIKEYS[kp];
         let c = ed.vars.cursor;
         if matches!(keyptr.func, Func::CursorMoved(_)) {
-            tcurs = adjmove(ed, c, tcurs, 0);
+            tcurs = adjmove(ed, c, tcurs, NO_FLAGS);
         } else {
-            tcurs = adjmove(ed, c, tcurs, keyptr.flags as i32);
+            tcurs = adjmove(ed, c, tcurs, keyptr.flags);
         }
 
         if prevkey != 0 && (prevkey == key || (keyptr.flags & MVMT) != 0) && count == 0 {
@@ -526,9 +527,9 @@ pub fn vi(ed: &mut Editor) -> R<()> {
                 _ => MARK_UNSET,
             };
             let c = ed.vars.cursor;
-            let _ = adjmove(ed, c, c, 0);
+            let _ = adjmove(ed, c, c, NO_FLAGS);
             let c = ed.vars.cursor;
-            ed.vars.cursor = adjmove(ed, c, tcurs, pk.flags as i32);
+            ed.vars.cursor = adjmove(ed, c, tcurs, pk.flags);
 
             prevkey = 0;
         } else if prevkey == 0 {
@@ -539,9 +540,8 @@ pub fn vi(ed: &mut Editor) -> R<()> {
 }
 
 // C: vi.c:adjmove
-pub fn adjmove(ed: &mut Editor, old: Mark, new: Mark, flags: i32) -> Mark {
+pub fn adjmove(ed: &mut Editor, old: Mark, new: Mark, flags: u8) -> Mark {
     let mut new = new;
-    let flags = flags as u8;
 
     if new == MARK_UNSET {
         beep(ed);

@@ -57,7 +57,6 @@ pub struct Viflags {
     pub file: i16,
 }
 
-pub const NEWFILE: i16 = 0x0001;
 pub const READONLY: i16 = 0x0002;
 pub const HADNUL: i16 = 0x0004;
 pub const MODIFIED: i16 = 0x0008;
@@ -187,10 +186,6 @@ pub fn isdigit(c: i32) -> bool {
 pub fn isupper(c: i32) -> bool {
     ascii(c).is_some_and(|b| b.is_ascii_uppercase())
 }
-#[inline]
-pub fn islower(c: i32) -> bool {
-    ascii(c).is_some_and(|b| b.is_ascii_lowercase())
-}
 /// Part of a word or keyword: not ASCII, alphanumeric, or `_`.
 #[inline]
 pub fn isword(c: i32) -> bool {
@@ -204,10 +199,6 @@ pub fn isspace(c: i32) -> bool {
 #[inline]
 pub fn tolower(c: i32) -> i32 {
     if isupper(c) { c + 32 } else { c }
-}
-#[inline]
-pub fn toupper(c: i32) -> i32 {
-    if islower(c) { c - 32 } else { c }
 }
 
 /// C `atol()` (`strtol(s, NULL, 10)`), saturating on overflow.
@@ -418,13 +409,11 @@ mod tests {
             assert_eq!(isalpha(c), a && b.is_ascii_alphabetic());
             assert_eq!(isdigit(c), a && b.is_ascii_digit());
             assert_eq!(isupper(c), a && b.is_ascii_uppercase());
-            assert_eq!(islower(c), a && b.is_ascii_lowercase());
             assert_eq!(
                 isspace(c),
                 matches!(b, b' ' | b'\t' | b'\n' | 0x0b | 0x0c | b'\r')
             );
             assert_eq!(tolower(c), if b.is_ascii_uppercase() { c + 32 } else { c });
-            assert_eq!(toupper(c), if b.is_ascii_lowercase() { c - 32 } else { c });
         }
         assert!(!isascii(256));
         assert!(!isspace(-1));

@@ -14,7 +14,7 @@ use crate::redraw::{idx2col, redraw};
 use crate::tio::{beep, getkey};
 use crate::vars::Editor;
 use crate::vcmd::{v_xchar, v_xit};
-use crate::vi::adjmove;
+use crate::vi::{NCOL, NO_FLAGS, adjmove};
 use crate::vi_h::Cmd;
 use crate::vi_h::LINEMASK;
 use crate::vi_h::{BLKSIZE, MARK_UNSET, Mark, R, When, botline, ctrl, markidx, markline};
@@ -120,9 +120,9 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
                         c,
                         m,
                         if key[0] == b'j' || key[0] == b'k' {
-                            0x20
+                            NCOL
                         } else {
-                            0
+                            NO_FLAGS
                         },
                     );
                     if key[0] == b'$' || (key[0] == b'l' && m <= ed.vars.cursor) {

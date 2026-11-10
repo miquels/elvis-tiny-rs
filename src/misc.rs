@@ -3,12 +3,11 @@
 use crate::blk::{BufId, locate};
 use crate::tio::{Arg, msg};
 use crate::vars::Editor;
-use crate::vi_h::{BLKSIZE, Blk};
+use crate::vi_h::BLKSIZE;
 
 /// `fetchline()`'s function-local statics.
 #[derive(Default)]
 pub struct Misc {
-    pub fetchline_buf: Blk,
     pub fetchline_nextline: i64,
     pub fetchline_chglevel: i64,
     /// Offset into the cached block (C kept a pointer).

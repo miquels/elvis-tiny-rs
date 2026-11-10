@@ -16,11 +16,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 pub const O_RDONLY: i32 = libc::O_RDONLY;
 pub const O_WRONLY: i32 = libc::O_WRONLY;
-pub const O_RDWR: i32 = libc::O_RDWR;
 pub const O_CREAT: i32 = libc::O_CREAT;
 pub const O_TRUNC: i32 = libc::O_TRUNC;
 pub const O_APPEND: i32 = libc::O_APPEND;
-pub const O_EXCL: i32 = libc::O_EXCL;
 
 pub const S_IFMT: u32 = libc::S_IFMT as u32;
 pub const S_IFREG: u32 = libc::S_IFREG as u32;
@@ -275,14 +273,6 @@ pub fn unlink(path: &[u8]) -> io::Result<()> {
     std::fs::remove_file(std::ffi::OsStr::from_bytes(path))
 }
 
-pub fn rename(from: &[u8], to: &[u8]) -> io::Result<()> {
-    use std::os::unix::ffi::OsStrExt;
-    std::fs::rename(
-        std::ffi::OsStr::from_bytes(from),
-        std::ffi::OsStr::from_bytes(to),
-    )
-}
-
 pub fn chdir(path: &[u8]) -> io::Result<()> {
     use std::os::unix::ffi::OsStrExt;
     std::env::set_current_dir(std::ffi::OsStr::from_bytes(path))
@@ -438,10 +428,6 @@ fn set_disposition(sig: libc::c_int, handler: libc::sighandler_t) {
 
 pub fn ignore_sigint() {
     set_disposition(libc::SIGINT, libc::SIG_IGN);
-}
-
-pub fn default_sigint() {
-    set_disposition(libc::SIGINT, libc::SIG_DFL);
 }
 
 pub fn trap_sigint() {
@@ -664,10 +650,8 @@ mod tests {
         let mut s = String::new();
         f.read_to_string(&mut s).unwrap();
         assert_eq!(s, "hello");
-        let renamed = b(&d.join("renamed"));
-        rename(&name, &renamed).unwrap();
-        unlink(&renamed).unwrap();
-        assert!(stat(&renamed).is_err());
+        unlink(&name).unwrap();
+        assert!(stat(&name).is_err());
         std::fs::remove_dir_all(&d).unwrap();
     }
 

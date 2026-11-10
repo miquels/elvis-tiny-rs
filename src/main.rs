@@ -1,9 +1,6 @@
 //! elvis-tiny, ported from C.  See IMPLEMENTATION.md.
 
 #![deny(unsafe_code)]
-// Items are ported milestone by milestone and many are not referenced until
-// later milestones.  Remove this allowance in M9.
-#![allow(dead_code)]
 
 mod blk;
 mod cmd1;

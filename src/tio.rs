@@ -2,9 +2,8 @@
 
 use crate::opts::Opt;
 use crate::vi_h::Mode;
-use std::fs::File;
 
-use crate::config::{MAXMAPS, ttyread, ttywrite, twrite};
+use crate::config::{MAXMAPS, ttyread, ttywrite};
 use crate::curses;
 use crate::curses::{endwin, getsize};
 use crate::os::{self, ReadOutcome};
@@ -704,48 +703,6 @@ pub fn dumpkey(ed: &mut Editor, when: When) {
     }
 }
 
-// C: tio.c:savekeys
-pub fn savekeys(ed: &mut Editor, fd: &mut File) {
-    for i in 0..MAXMAPS {
-        let m = &ed.tio.mapped[i];
-        if m.name.is_some() {
-            continue;
-        }
-
-        if m.len <= 0 {
-            continue;
-        }
-
-        let raw = &m.rawin[..];
-        if m.when.any(When::INMV) {
-            let buf = sprintf(
-                b"map%s %.*s visual %s\n",
-                &[
-                    Arg::S(if m.when.any(When::VICMD) { b"" } else { b"!" }),
-                    Arg::D(m.len as i64),
-                    Arg::S(raw),
-                    Arg::S(&m.cooked),
-                ],
-            );
-            twrite(fd, &buf);
-        } else {
-            if m.when.any(When::VICMD) {
-                let buf = sprintf(
-                    b"map %.*s %s\n",
-                    &[Arg::D(m.len as i64), Arg::S(raw), Arg::S(&m.cooked)],
-                );
-                twrite(fd, &buf);
-            }
-            if m.when.any(When::INPUT) {
-                let buf = sprintf(
-                    b"map! %.*s %s\n",
-                    &[Arg::D(m.len as i64), Arg::S(raw), Arg::S(&m.cooked)],
-                );
-                twrite(fd, &buf);
-            }
-        }
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -833,7 +790,7 @@ mod tests {
     }
 
     #[test]
-    fn dumpkey_and_savekeys_format() {
+    fn dumpkey_format() {
         let mut ed = Editor::new();
         ed.vars.mode = Mode::Ex;
         ed.opts.set(Opt::Exrefresh, false);
@@ -857,14 +814,6 @@ mod tests {
             ed.curses.kbuf,
             b"<Up>     ^[[A    visual k\n\r         #       visual x\n\r".to_vec()
         );
-
-        let path = std::env::temp_dir().join(format!("elvis-savekeys-{}", std::process::id()));
-        let mut f = File::create(&path).unwrap();
-        savekeys(&mut ed, &mut f);
-        drop(f);
-        let out = std::fs::read(&path).unwrap();
-        let _ = std::fs::remove_file(&path);
-        assert_eq!(out, b"map q dd\x01\nmap! # visual x\n".to_vec());
     }
 
     #[test]

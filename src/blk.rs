@@ -61,14 +61,6 @@ impl BlkState {
             &self.blk[id].buf
         }
     }
-
-    pub fn buf_mut(&mut self, id: BufId) -> &mut Blk {
-        if id == HDR {
-            &mut self.hdr
-        } else {
-            &mut self.blk[id].buf
-        }
-    }
 }
 
 /// Index of a cache buffer (`ed.blk.blk[id].buf`).  Valid only until the

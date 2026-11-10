@@ -12,7 +12,6 @@ pub const EXINIT: &str = "EXINIT";
 pub const SHELL: &[u8] = b"/bin/sh";
 pub const KEYWORDPRG: &[u8] = b"ref";
 pub const TAGS: &[u8] = b"tags";
-pub const REDIRECT: &[u8] = b"2>";
 pub const SLASH: u8 = b'/';
 pub const NEEDSYNC: bool = false;
 pub const FILEPERMS: u32 = 0o666;
