@@ -451,7 +451,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
             Func::CursorText(f) => {
                 loop {
                     let mut buf = Vec::new();
-                    if vgets(ed, key as u8, &mut buf, 100 - 1)? >= 0 {
+                    if vgets(ed, key as u8, &mut buf, 100 - 1)? {
                         ed.curses.qaddch(b'\r');
                         ed.curses.refresh();
 

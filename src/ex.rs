@@ -259,12 +259,11 @@ pub fn ex(ed: &mut Editor) -> R<()> {
     ed.ex.ex_oldline = markline(ed.vars.cursor);
 
     while ed.vars.mode == Mode::Ex {
-        let cmdlen = vgets(ed, b':', &mut cmdbuf, 80)?;
-        if cmdlen < 0 {
+        if !vgets(ed, b':', &mut cmdbuf, 80)? {
             return Ok(());
         }
 
-        if cmdlen == 0 {
+        if cmdbuf.is_empty() {
             cmdbuf.clear();
             cmdbuf.extend_from_slice(b".+1");
             ed.curses.qaddch(b'\r');

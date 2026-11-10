@@ -24,7 +24,6 @@ pub const S_IFMT: u32 = libc::S_IFMT as u32;
 pub const S_IFREG: u32 = libc::S_IFREG as u32;
 
 pub const ENOENT: i32 = libc::ENOENT;
-pub const SIGWINCH: i32 = libc::SIGWINCH;
 
 static SIGINT_FLAG: AtomicBool = AtomicBool::new(false);
 static SIGWINCH_FLAG: AtomicBool = AtomicBool::new(false);

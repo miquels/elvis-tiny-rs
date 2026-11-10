@@ -252,20 +252,17 @@ pub fn sprintf(fmt: &[u8], args: &[Arg<'_>]) -> Vec<u8> {
 /* tio.c                                                                   */
 
 // C: tio.c:vgets
-/// Reads a line into `buf` (cleared first; no NUL).  Returns its length,
-/// or -1 if the user cancelled.
-pub fn vgets(ed: &mut Editor, prompt: u8, buf: &mut Vec<u8>, bsize: usize) -> R<i32> {
-    let mut len: usize;
-    let mut ch: i32;
-    let mut quoted: bool;
-    let mut tab: i32;
-    // C has `char widths[132]`; callers never pass a larger bsize.
-    let mut widths: Vec<i32> = vec![0; bsize.max(1)];
+/// Reads a line into `buf` (cleared first; no NUL).  False if the user
+/// cancelled.
+pub fn vgets(ed: &mut Editor, prompt: u8, buf: &mut Vec<u8>, bsize: usize) -> R<bool> {
+    // Screen width of each byte in `buf`.
+    let mut widths: Vec<i32> = Vec::new();
+    let mut tab = 0;
+    let mut quoted = false;
 
     buf.clear();
 
     ed.curses.mv(ed.curses.lines - 1, 0);
-    tab = 0;
     if prompt != 0 {
         ed.curses.addch(prompt);
         tab = 1;
@@ -273,82 +270,71 @@ pub fn vgets(ed: &mut Editor, prompt: u8, buf: &mut Vec<u8>, bsize: usize) -> R<
     ed.curses.clrtoeol();
     ed.curses.refresh();
 
-    quoted = false;
-    len = 0;
     loop {
-        ch = getkey(ed, if quoted { When::RAW } else { When::EX })?;
+        let mut ch = getkey(ed, if quoted { When::RAW } else { When::EX })?;
 
-        if ch == ctrl(b'D') as i32 && len == 0 {
+        if ch == ctrl(b'D') as i32 && buf.is_empty() {
             ch = ctrl(b'[') as i32;
         }
 
-        if quoted && ch != b'\n' as i32 {
-            ch |= 256;
-        }
-
-        if ch == ctrl(b'V') as i32 {
+        // The key after ^V is taken literally.  C tests bit 256 of the
+        // key, which is also set for negative (non-ASCII) keys.
+        if quoted && ch != b'\n' as i32 || ch < 0 {
+            quoted = false;
+            ed.curses.qaddch(b' ');
+            ed.curses.qaddch(b'\x08');
+        } else if ch == ctrl(b'V') as i32 {
             ed.curses.qaddch(b'^');
             ed.curses.qaddch(b'\x08');
             quoted = true;
+            continue;
         } else if ch == ctrl(b'[') as i32 {
-            return Ok(-1);
+            return Ok(false);
         } else if ch == b'\n' as i32 || ch == b'\r' as i32 {
             ed.curses.clrtoeol();
             break;
         } else if ch == b'\x08' as i32 {
-            if len > 0 {
-                len -= 1;
-                buf.truncate(len);
-                let mut c = widths[len];
-                while c > 0 {
-                    ed.curses.addch(b'\x08');
-                    c -= 1;
-                }
-                if ed.vars.mode == Mode::Ex {
-                    ed.curses.clrtoeol();
-                }
-                tab -= widths[len];
-            } else {
-                return Ok(-1);
+            let Some(w) = widths.pop() else {
+                return Ok(false);
+            };
+            buf.pop();
+            for _ in 0..w {
+                ed.curses.addch(b'\x08');
             }
-        } else {
-            if ch & 256 != 0 {
-                ch &= !256;
-                quoted = false;
-                ed.curses.qaddch(b' ');
-                ed.curses.qaddch(b'\x08');
+            if ed.vars.mode == Mode::Ex {
+                ed.curses.clrtoeol();
             }
-            if len + 1 < bsize {
-                let tabstop = ed.opts.num(Opt::Tabstop);
-                if ch == b'\t' as i32 {
-                    widths[len] = tabstop - (tab % tabstop);
-                    let spaces = vec![b' '; widths[len].max(0) as usize];
-                    ed.curses.addstr(&spaces);
-                    tab += widths[len];
-                } else if ch > 0 && ch < b' ' as i32 {
-                    ed.curses.addch(b'^');
-                    ed.curses.addch((ch + b'@' as i32) as u8);
-                    widths[len] = 2;
-                    tab += 2;
-                } else if ch == 0o177 {
-                    ed.curses.addch(b'^');
-                    ed.curses.addch(b'?');
-                    widths[len] = 2;
-                    tab += 2;
-                } else {
-                    ed.curses.addch(ch as u8);
-                    widths[len] = 1;
-                    tab += 1;
-                }
-                buf.push(ch as u8);
-                len += 1;
-            } else {
-                beep(ed);
-            }
+            tab -= w;
+            continue;
         }
+
+        if buf.len() + 1 >= bsize {
+            beep(ed);
+            continue;
+        }
+        let tabstop = ed.opts.num(Opt::Tabstop);
+        let w = if ch == b'\t' as i32 {
+            let w = tabstop - (tab % tabstop);
+            ed.curses.addstr(&vec![b' '; w.max(0) as usize]);
+            w
+        } else if ch > 0 && ch < b' ' as i32 {
+            ed.curses.addch(b'^');
+            ed.curses.addch((ch + b'@' as i32) as u8);
+            2
+        } else if ch == 0o177 {
+            ed.curses.addch(b'^');
+            ed.curses.addch(b'?');
+            2
+        } else {
+            ed.curses.addch(ch as u8);
+            1
+        };
+        tab += w;
+        widths.push(w);
+        buf.push(ch as u8);
     }
     ed.curses.refresh();
-    Ok(len as i32)
+    Ok(true)
 }
 
 // C: tio.c:beep
@@ -496,7 +482,7 @@ pub fn getkey(ed: &mut Editor, when: When) -> R<i32> {
 
         // A resize that arrived outside a read: C's handler would have run already.
         if os::take_sigwinch() {
-            getsize(ed, os::SIGWINCH);
+            getsize(ed, false);
         }
 
         ed.curses.refresh();
@@ -515,7 +501,7 @@ pub fn getkey(ed: &mut Editor, when: When) -> R<i32> {
                         return Err(Interrupted);
                     }
                     if os::take_sigwinch() {
-                        getsize(ed, os::SIGWINCH);
+                        getsize(ed, false);
                     }
                 }
                 ReadOutcome::Timeout | ReadOutcome::Error(_) => {}
@@ -554,7 +540,7 @@ pub fn getkey(ed: &mut Editor, when: When) -> R<i32> {
                     return Err(Interrupted);
                 }
                 if os::take_sigwinch() {
-                    getsize(ed, os::SIGWINCH);
+                    getsize(ed, false);
                 }
             }
             ReadOutcome::Eof | ReadOutcome::Timeout | ReadOutcome::Error(_) => {}
@@ -822,16 +808,16 @@ mod tests {
         ed.vars.mode = Mode::Ex;
         feed(&mut ed, b"ab\tc\x08\x16\x1bd\r");
         let mut buf = Vec::new();
-        assert_eq!(vgets(&mut ed, b':', &mut buf, 80).unwrap(), 5);
+        assert!(vgets(&mut ed, b':', &mut buf, 80).unwrap());
         assert_eq!(buf, b"ab\t\x1bd");
         assert!(ed.curses.kbuf.is_empty());
 
         feed(&mut ed, b"x\x1b");
-        assert_eq!(vgets(&mut ed, 0, &mut buf, 80).unwrap(), -1);
+        assert!(!vgets(&mut ed, 0, &mut buf, 80).unwrap());
         feed(&mut ed, b"\x04");
-        assert_eq!(vgets(&mut ed, 0, &mut buf, 80).unwrap(), -1);
+        assert!(!vgets(&mut ed, 0, &mut buf, 80).unwrap());
         feed(&mut ed, b"abc\r");
-        assert_eq!(vgets(&mut ed, 0, &mut buf, 3).unwrap(), 2);
+        assert!(vgets(&mut ed, 0, &mut buf, 3).unwrap());
         assert_eq!(buf, b"ab");
     }
 

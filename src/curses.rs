@@ -1124,7 +1124,7 @@ fn starttcap(ed: &mut Editor) {
 
     ed.curses.am = tgetflag(&ti, "am");
     ed.curses.pt = tgetflag(&ti, "pt");
-    getsize(ed, 0);
+    getsize(ed, true);
 
     #[rustfmt::skip]
     load(ed, &ti, &[
@@ -1134,9 +1134,9 @@ fn starttcap(ed: &mut Editor) {
 }
 
 // C: curses.c:getsize
-/// `signo` is 0 at startup and `os::SIGWINCH` after a resize.
-pub fn getsize(ed: &mut Editor, signo: i32) {
-    if signo == 0 {
+/// `startup` is C's `signo == 0`; otherwise the window was resized.
+pub fn getsize(ed: &mut Editor, startup: bool) {
+    if startup {
         os::trap_sigwinch();
     }
 
@@ -1147,7 +1147,7 @@ pub fn getsize(ed: &mut Editor, signo: i32) {
         cols = c as i32;
     }
     let c = &mut ed.curses;
-    if (lines == 0 || cols == 0) && signo == 0 {
+    if (lines == 0 || cols == 0) && startup {
         c.lines = c.tc_lines;
         c.cols = c.tc_cols;
     }

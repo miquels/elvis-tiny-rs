@@ -406,7 +406,7 @@ pub fn v_filter(ed: &mut Editor, m: Mark, n: Mark) -> R<Mark> {
     // adjust for inclusive endmarks in ex
     let n = n - BLKSIZE as Mark;
 
-    if vgets(ed, b'!', &mut cmdln, 100)? > 0 {
+    if vgets(ed, b'!', &mut cmdln, 100)? && !cmdln.is_empty() {
         filter(ed, m, n, cstr(&cmdln))?;
     }
 

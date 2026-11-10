@@ -263,7 +263,7 @@ pub fn cmd_append(
     }
 
     let mut buf = Vec::new();
-    while vgets(ed, 0, &mut buf, BLKSIZE)? >= 0 {
+    while vgets(ed, 0, &mut buf, BLKSIZE)? {
         ed.curses.addch(b'\n');
         if buf == b"." {
             break;
