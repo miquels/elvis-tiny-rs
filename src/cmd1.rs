@@ -18,7 +18,7 @@ use crate::vi_h::{
     BLKSIZE, CMD_BANG, CMD_FILE, CMD_GLOBAL, CMD_NEXT, CMD_PREVIOUS, CMD_QUIT, CMD_REWIND,
     CMD_SHELL, CMD_VGLOBAL, CMD_WQUIT, COPYING, Cmd, Interrupted, MARK_FIRST, MARK_UNSET,
     MODE_COLON, MODE_EX, MODE_QUIT, MODE_VI, MODIFIED, Mark, R, READONLY, VERSION, WHEN_VICMD,
-    WHEN_VIINP, WHEN_VIREP, ch, cstr, isascii, isspace, mark_at_line, markline, schar,
+    WHEN_VIINP, WHEN_VIREP, ch, cstr, isspace, mark_at_line, markline, schar,
 };
 
 /// Capacity of `prevextra[80]`.
@@ -38,7 +38,7 @@ pub struct Cmd1 {
 }
 
 fn is_ascii_space(b: u8) -> bool {
-    isascii(schar(b)) && isspace(schar(b))
+    isspace(schar(b))
 }
 
 // C: cmd1.c:cmd_mark

@@ -20,8 +20,8 @@ use crate::vcmd::{
 };
 use crate::vi_h::LINEMASK;
 use crate::vi_h::{
-    BLKSIZE, MARK_FIRST, MARK_UNSET, MODE_COLON, MODE_VI, Mark, R, WHEN_VICMD, isalnum, isascii,
-    isupper, mark_at_line, mark_last, markidx, markline, schar,
+    BLKSIZE, MARK_FIRST, MARK_UNSET, MODE_COLON, MODE_VI, Mark, R, WHEN_VICMD, isupper, isword,
+    mark_at_line, mark_last, markidx, markline, schar,
 };
 
 #[derive(Default)]
@@ -207,10 +207,8 @@ static VIKEYS: [Keystru; 128] = [
 /* DEL not defined      */ NO_FUNC,
 ];
 
-/// `isascii(c) && !isalnum(c) && c != '_'` negated: part of a keyword.
 fn kwchar(b: u8) -> bool {
-    let c = schar(b);
-    !isascii(c) || isalnum(c) || b == b'_'
+    isword(schar(b))
 }
 
 // C: vi.c:vi
@@ -413,7 +411,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
             }
 
             Func::CursorMoved(_) => {
-                if key == b'&' as i32 || (isascii(key) && isupper(key)) {
+                if key == b'&' as i32 || isupper(key) {
                     prevkey = key;
                 }
 

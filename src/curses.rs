@@ -928,6 +928,11 @@ impl Curses {
     pub fn clrtoeol(&mut self) {
         self.put(CE);
     }
+    /// Queues a control character as `^X`.
+    pub fn qaddctl(&mut self, c: u8) {
+        self.qaddch(b'^');
+        self.qaddch(c ^ b'@');
+    }
     /// Moves to the start of the bottom line and clears it.
     pub fn clear_last_line(&mut self) {
         self.mv(self.lines - 1, 0);

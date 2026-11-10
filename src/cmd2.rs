@@ -586,8 +586,7 @@ pub fn cmd_print(
                     }
                 }
             } else if (0..b' ' as i32).contains(&c) || b == 0o177 {
-                ed.curses.qaddch(b'^');
-                ed.curses.qaddch(b ^ 0x40);
+                ed.curses.qaddctl(b);
                 col += 2;
             } else if b & 0x80 != 0 && cmd == CMD_LIST {
                 ed.curses.qaddstr(&octal_escape(b));

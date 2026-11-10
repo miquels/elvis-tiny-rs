@@ -3,8 +3,8 @@
 use crate::misc::pfetch;
 use crate::vars::Editor;
 use crate::vi_h::{
-    MARK_UNSET, Mark, R, buildmark, ch, default, isalnum, isascii, isspace, markidx, markline,
-    schar,
+    MARK_UNSET, Mark, R, buildmark, ch, default, isalnum, isascii, isspace, isword, markidx,
+    markline, schar,
 };
 
 /// `*text` as a signed C `char`, where `text` indexes `ptext`.  Bytes past
@@ -31,12 +31,12 @@ pub fn m_fword(ed: &mut Editor, m: Mark, cnt: i64, cmd: i32) -> R<Mark> {
         text += 1;
 
         if cmd == b'W' as i32 {
-            while i != 0 && (!isascii(i) || !isspace(i)) {
+            while i != 0 && !isspace(i) {
                 i = at(ed, text);
                 text += 1;
             }
-        } else if !isascii(i) || isalnum(i) || i == b'_' as i32 {
-            while i != 0 && (!isascii(i) || isalnum(i) || i == b'_' as i32) {
+        } else if isword(i) {
+            while i != 0 && isword(i) {
                 i = at(ed, text);
                 text += 1;
             }
@@ -48,7 +48,7 @@ pub fn m_fword(ed: &mut Editor, m: Mark, cnt: i64, cmd: i32) -> R<Mark> {
         }
 
         // include trailing whitespace
-        while i == 0 || (isascii(i) && isspace(i)) {
+        while i == 0 || isspace(i) {
             if i == 0 {
                 l += 1;
                 if l > ed.vars.nlines {
@@ -80,7 +80,7 @@ pub fn m_bword(ed: &mut Editor, m: Mark, cnt: i64, cmd: i32) -> R<Mark> {
         text -= 1;
 
         // include preceding whitespace
-        while text < 0 || (isascii(at(ed, text)) && isspace(at(ed, text))) {
+        while text < 0 || isspace(at(ed, text)) {
             if text < 0 {
                 l -= 1;
                 if l <= 0 {
@@ -94,13 +94,11 @@ pub fn m_bword(ed: &mut Editor, m: Mark, cnt: i64, cmd: i32) -> R<Mark> {
         }
 
         if cmd == b'B' as i32 {
-            while text >= 0 && (!isascii(at(ed, text)) || !isspace(at(ed, text))) {
+            while text >= 0 && !isspace(at(ed, text)) {
                 text -= 1;
             }
-        } else if !isascii(at(ed, text)) || isalnum(at(ed, text)) || at(ed, text) == b'_' as i32 {
-            while text >= 0
-                && (!isascii(at(ed, text)) || isalnum(at(ed, text)) || at(ed, text) == b'_' as i32)
-            {
+        } else if isword(at(ed, text)) {
+            while text >= 0 && isword(at(ed, text)) {
                 text -= 1;
             }
         } else {
@@ -133,7 +131,7 @@ pub fn m_eword(ed: &mut Editor, m: Mark, cnt: i64, cmd: i32) -> R<Mark> {
         text += 1;
 
         // include preceding whitespace
-        while i == 0 || (isascii(i) && isspace(i)) {
+        while i == 0 || isspace(i) {
             if i == 0 {
                 l += 1;
                 if l > ed.vars.nlines {
@@ -148,12 +146,12 @@ pub fn m_eword(ed: &mut Editor, m: Mark, cnt: i64, cmd: i32) -> R<Mark> {
         }
 
         if cmd == b'E' as i32 {
-            while i != 0 && (!isascii(i) || !isspace(i)) {
+            while i != 0 && !isspace(i) {
                 i = at(ed, text);
                 text += 1;
             }
-        } else if !isascii(i) || isalnum(i) || i == b'_' as i32 {
-            while i != 0 && (!isascii(i) || isalnum(i) || i == b'_' as i32) {
+        } else if isword(i) {
+            while i != 0 && isword(i) {
                 i = at(ed, text);
                 text += 1;
             }

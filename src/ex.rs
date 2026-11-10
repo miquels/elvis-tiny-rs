@@ -174,7 +174,7 @@ pub fn linespec(ed: &mut Editor, s: &[u8], markptr: &mut Mark) -> R<usize> {
             s += 1;
         }
 
-        while isascii(sc(&buf, s)) && isspace(sc(&buf, s)) {
+        while isspace(sc(&buf, s)) {
             s += 1;
         }
 
@@ -184,9 +184,9 @@ pub fn linespec(ed: &mut Editor, s: &[u8], markptr: &mut Mark) -> R<usize> {
         } else if buf[s] == b'$' {
             s += 1;
             *markptr = mark_last(ed.vars.nlines);
-        } else if isascii(sc(&buf, s)) && isdigit(sc(&buf, s)) {
+        } else if isdigit(sc(&buf, s)) {
             let mut num: i64 = 0;
-            while isascii(sc(&buf, s)) && isdigit(sc(&buf, s)) {
+            while isdigit(sc(&buf, s)) {
                 num = num.wrapping_mul(10).wrapping_add((buf[s] - b'0') as i64);
                 s += 1;
             }
@@ -343,7 +343,7 @@ pub fn doexcmd(ed: &mut Editor, cmdbuf: &[u8]) -> R<()> {
     }
     let isdfl = scan == 0;
 
-    while isascii(sc(cmdbuf, scan)) && isspace(sc(cmdbuf, scan)) {
+    while isspace(sc(cmdbuf, scan)) {
         scan += 1;
     }
 
@@ -384,7 +384,7 @@ pub fn doexcmd(ed: &mut Editor, cmdbuf: &[u8]) -> R<()> {
         false
     };
 
-    while isascii(sc(cmdbuf, scan)) && isspace(sc(cmdbuf, scan)) {
+    while isspace(sc(cmdbuf, scan)) {
         scan += 1;
     }
 

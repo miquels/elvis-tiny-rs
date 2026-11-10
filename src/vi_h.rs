@@ -191,6 +191,11 @@ pub fn isupper(c: i32) -> bool {
 pub fn islower(c: i32) -> bool {
     ascii(c).is_some_and(|b| b.is_ascii_lowercase())
 }
+/// Part of a word or keyword: not ASCII, alphanumeric, or `_`.
+#[inline]
+pub fn isword(c: i32) -> bool {
+    !isascii(c) || isalnum(c) || c == b'_' as i32
+}
 /// C `isspace`: space, `\t`, `\n`, `\v`, `\f`, `\r`.
 #[inline]
 pub fn isspace(c: i32) -> bool {

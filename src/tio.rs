@@ -677,8 +677,7 @@ pub fn dumpkey(ed: &mut Editor, when: i32) {
         len = 0;
         for &c in &m.rawin[..m.len as usize] {
             if c < b' ' || c == 0o177 {
-                ed.curses.qaddch(b'^');
-                ed.curses.qaddch(c ^ b'@');
+                ed.curses.qaddctl(c);
                 len += 2;
             } else {
                 ed.curses.qaddch(c);
@@ -698,8 +697,7 @@ pub fn dumpkey(ed: &mut Editor, when: i32) {
         }
         for &c in cstr(&m.cooked) {
             if c < b' ' || c == 0o177 {
-                ed.curses.qaddch(b'^');
-                ed.curses.qaddch(c ^ b'@');
+                ed.curses.qaddctl(c);
             } else {
                 ed.curses.qaddch(c);
             }
