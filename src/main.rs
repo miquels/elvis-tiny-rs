@@ -45,7 +45,8 @@ fn main() {
     let mut editor = vars::Editor::new();
     let ed = &mut editor;
 
-    let argv: Vec<Vec<u8>> = std::env::args_os().map(|a| a.as_bytes().to_vec()).collect();
+    let args: Vec<std::ffi::OsString> = std::env::args_os().collect();
+    let argv: Vec<&[u8]> = args.iter().map(|a| a.as_bytes()).collect();
     let argc = argv.len();
     let mut cmd: Option<Vec<u8>> = None;
     let mut tag: Option<Vec<u8>> = None;
@@ -76,19 +77,18 @@ fn main() {
 
     opts::initopts(ed);
 
-    type KeyCap = (Option<Vec<u8>>, &'static [u8], &'static [u8]);
-    let arrows: [KeyCap; 8] = [
-        (ed.curses.ku.clone(), b"k", b"<Up>"),
-        (ed.curses.kd.clone(), b"j", b"<Down>"),
-        (ed.curses.kl.clone(), b"h", b"<Left>"),
-        (ed.curses.kr.clone(), b"l", b"<Right>"),
-        (ed.curses.hm.clone(), b"^", b"<Home>"),
-        (ed.curses.en.clone(), b"$", b"<End>"),
-        (ed.curses.pu.clone(), b"\x02", b"<PgUp>"),
-        (ed.curses.pd.clone(), b"\x06", b"<PgDn>"),
+    const ARROWS: [(usize, &[u8], &[u8]); 8] = [
+        (curses::KU, b"k", b"<Up>"),
+        (curses::KD, b"j", b"<Down>"),
+        (curses::KL, b"h", b"<Left>"),
+        (curses::KR, b"l", b"<Right>"),
+        (curses::HM, b"^", b"<Home>"),
+        (curses::EN, b"$", b"<End>"),
+        (curses::PU, b"\x02", b"<PgUp>"),
+        (curses::PD, b"\x06", b"<PgDn>"),
     ];
-    for (cap, cooked, name) in arrows {
-        if let Some(cap) = cap {
+    for (slot, cooked, name) in ARROWS {
+        if let Some(cap) = ed.curses.caps[slot].clone() {
             tio::mapkey(
                 ed,
                 &cap,
@@ -110,7 +110,7 @@ fn main() {
 
     let mut i = 1;
     while i < argc && argv[i].first() == Some(&b'-') {
-        match ch(&argv[i], 1) {
+        match ch(argv[i], 1) {
             b'R' => {
                 ed.opts.o_readonly[0] = 1;
             }
@@ -125,11 +125,11 @@ fn main() {
             }
 
             b't' => {
-                if ch(&argv[i], 2) != 0 {
+                if ch(argv[i], 2) != 0 {
                     tag = Some(argv[i][2..].to_vec());
                 } else {
                     i += 1;
-                    tag = argv.get(i).cloned();
+                    tag = argv.get(i).map(|a| a.to_vec());
                 }
             }
 
@@ -144,18 +144,14 @@ fn main() {
                 ed.opts.o_inputmode[0] = 1;
             }
             _ => {
-                tio::msg(
-                    ed,
-                    b"Ignoring unknown flag \"%s\"",
-                    &[tio::Arg::S(&argv[i])],
-                );
+                tio::msg(ed, b"Ignoring unknown flag \"%s\"", &[tio::Arg::S(argv[i])]);
             }
         }
         i += 1;
     }
 
     if i < argc && argv[i].first() == Some(&b'+') {
-        if ch(&argv[i], 1) != 0 {
+        if ch(argv[i], 1) != 0 {
             cmd = Some(argv[i][1..].to_vec());
             i += 1;
         } else {
@@ -166,7 +162,7 @@ fn main() {
 
     ed.vars.nargs = argc as i32 - i as i32;
     if ed.vars.nargs > 0 {
-        firstarg = argv[i].clone();
+        firstarg = argv[i].to_vec();
         ed.vars.args.clear();
         while i < argc {
             if argv[i].len() > 128 {
@@ -188,7 +184,7 @@ fn main() {
             if !ed.vars.args.is_empty() {
                 ed.vars.args.push(b' ');
             }
-            ed.vars.args.extend_from_slice(&argv[i]);
+            ed.vars.args.extend_from_slice(argv[i]);
             i += 1;
         }
     } else {
@@ -198,7 +194,7 @@ fn main() {
 
     // SIGINT is still ignored here, so these cannot be interrupted unless an
     // .exrc command resumed curses; C would then jump through an unset jmpenv.
-    if let Some(home) = std::env::var_os("HOME") {
+    if let Some(home) = crate::os::getenv("HOME") {
         let mut path = home.as_bytes().to_vec();
         path.push(config::SLASH);
         path.extend_from_slice(config::HMEXRC);
@@ -206,7 +202,7 @@ fn main() {
         let _ = ex::doexrc(ed, &path);
     }
     let _ = ex::doexrc(ed, config::EXRC);
-    if let Some(s) = std::env::var_os(config::EXINIT) {
+    if let Some(s) = crate::os::getenv(config::EXINIT) {
         let _ = ex::exstring(ed, s.as_bytes());
     }
 
@@ -257,4 +253,5 @@ fn main() {
     ed.curses.clrtoeol();
     ed.curses.refresh();
     curses::endwin(ed);
+    os::exit(0);
 }

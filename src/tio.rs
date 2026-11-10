@@ -3,6 +3,7 @@
 use std::fs::File;
 
 use crate::config::{MAXMAPS, ttyread, ttywrite, twrite};
+use crate::curses;
 use crate::curses::{endwin, getsize};
 use crate::os::{self, ReadOutcome};
 use crate::redraw::redraw;
@@ -102,6 +103,37 @@ pub fn utoa(mut v: u64, radix: u64, upper: bool) -> Vec<u8> {
     s.reverse();
     s
 }
+/// Outputs one printf conversion: `prec` zero-extends `digits`, then
+/// `width` pads with spaces, or with zeros after `prefix` when `zero` is
+/// set and there is no precision.
+pub fn put_num(
+    out: &mut Vec<u8>,
+    prefix: &[u8],
+    mut digits: Vec<u8>,
+    prec: Option<usize>,
+    width: usize,
+    left: bool,
+    zero: bool,
+) {
+    if let Some(p) = prec
+        && digits.len() < p
+    {
+        digits.splice(0..0, std::iter::repeat_n(b'0', p - digits.len()));
+    }
+    let pad = width.saturating_sub(prefix.len() + digits.len());
+    if !left && !(zero && prec.is_none()) {
+        out.extend(std::iter::repeat_n(b' ', pad));
+    }
+    out.extend_from_slice(prefix);
+    if !left && zero && prec.is_none() {
+        out.extend(std::iter::repeat_n(b'0', pad));
+    }
+    out.extend_from_slice(&digits);
+    if left {
+        out.extend(std::iter::repeat_n(b' ', pad));
+    }
+}
+
 /// `sprintf(fmt, ...)` for the conversions elvis uses: `%s %c %d %ld %u
 /// %x %lx %o %%`, with the `-` and `0` flags, a width (digits or `*`) and
 /// a precision (digits or `*`).
@@ -170,6 +202,7 @@ pub fn sprintf(fmt: &[u8], args: &[Arg<'_>]) -> Vec<u8> {
         }
         let Some(&conv) = fmt.get(i) else { break };
         i += 1;
+        let width = width as usize;
         let body: Vec<u8> = match conv {
             b'%' => {
                 out.push(b'%');
@@ -196,27 +229,23 @@ pub fn sprintf(fmt: &[u8], args: &[Arg<'_>]) -> Vec<u8> {
                 };
                 let v = if long { v } else { v as i32 as i64 };
                 let u = if long { v as u64 } else { v as u32 as u64 };
-                let mut s = match conv {
-                    b'd' | b'i' if v < 0 => {
-                        let mut s = utoa(v.unsigned_abs(), 10, false);
-                        s.insert(0, b'-');
-                        s
-                    }
-                    b'd' | b'i' | b'u' => utoa(u, 10, false),
-                    b'x' => utoa(u, 16, false),
-                    b'X' => utoa(u, 16, true),
-                    _ => utoa(u, 8, false),
+                let (prefix, digits): (&[u8], _) = match conv {
+                    b'd' | b'i' if v < 0 => (b"-", utoa(v.unsigned_abs(), 10, false)),
+                    b'd' | b'i' | b'u' => (b"", utoa(u, 10, false)),
+                    b'x' => (b"", utoa(u, 16, false)),
+                    b'X' => (b"", utoa(u, 16, true)),
+                    _ => (b"", utoa(u, 8, false)),
                 };
-                if let Some(p) = prec {
-                    let neg = s.first() == Some(&b'-');
-                    let digits = s.len() - neg as usize;
-                    if (p as usize) > digits {
-                        let at = neg as usize;
-                        s.splice(at..at, std::iter::repeat_n(b'0', p as usize - digits));
-                    }
-                    zero = false;
-                }
-                s
+                put_num(
+                    &mut out,
+                    prefix,
+                    digits,
+                    prec.map(|p| p as usize),
+                    width,
+                    left,
+                    zero,
+                );
+                continue;
             }
             other => {
                 out.push(b'%');
@@ -224,21 +253,7 @@ pub fn sprintf(fmt: &[u8], args: &[Arg<'_>]) -> Vec<u8> {
                 continue;
             }
         };
-        let pad = (width as usize).saturating_sub(body.len());
-        if left {
-            out.extend_from_slice(&body);
-            out.extend(std::iter::repeat_n(b' ', pad));
-        } else if zero && conv != b's' && conv != b'c' {
-            let neg = body.first() == Some(&b'-');
-            if neg {
-                out.push(b'-');
-            }
-            out.extend(std::iter::repeat_n(b'0', pad));
-            out.extend_from_slice(&body[neg as usize..]);
-        } else {
-            out.extend(std::iter::repeat_n(b' ', pad));
-            out.extend_from_slice(&body);
-        }
+        put_num(&mut out, b"", body, None, width, left, false);
     }
     out
 }
@@ -349,7 +364,7 @@ pub fn vgets(ed: &mut Editor, prompt: u8, buf: &mut Vec<u8>, bsize: usize) -> R<
 // C: tio.c:beep
 pub fn beep(ed: &mut Editor) {
     if ed.opts.o_vbell[0] != 0 {
-        ed.curses.do_vb();
+        ed.curses.put(curses::VB);
         ed.curses.refresh();
     } else if ed.opts.o_errorbells[0] != 0 {
         let _ = ttywrite(b"\x07");

@@ -13,7 +13,6 @@ use std::os::fd::{AsFd, AsRawFd, FromRawFd};
 use std::os::unix::fs::MetadataExt;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
 
 pub const O_RDONLY: i32 = libc::O_RDONLY;
 pub const O_WRONLY: i32 = libc::O_WRONLY;
@@ -78,12 +77,29 @@ fn restore_terminal() {
     }
 }
 
+pub fn getenv(name: &str) -> Option<std::ffi::OsString> {
+    use std::os::unix::ffi::OsStringExt;
+    let c = CString::new(name).ok()?;
+    // SAFETY: `c` is NUL-terminated; getenv returns null or a C string.
+    unsafe {
+        let p = libc::getenv(c.as_ptr());
+        if p.is_null() {
+            None
+        } else {
+            Some(std::ffi::OsString::from_vec(
+                std::ffi::CStr::from_ptr(p).to_bytes().to_vec(),
+            ))
+        }
+    }
+}
+
 pub fn exit(code: i32) -> ! {
     std::process::exit(code)
 }
 
 pub fn sleep_secs(n: u64) {
-    std::thread::sleep(Duration::from_secs(n));
+    // SAFETY: sleep has no preconditions.
+    unsafe { libc::sleep(n as u32) };
 }
 
 /*------------------------------------------------------------------------*/
@@ -502,17 +518,6 @@ pub fn spawn_shell(shell: &[u8], run: ShellRun<'_>, opts: &SpawnOpts<'_>) -> io:
         argv.push(c.as_ptr());
     }
     argv.push(std::ptr::null());
-    let env: Vec<CString> = std::env::vars_os()
-        .filter_map(|(k, v)| {
-            use std::os::unix::ffi::OsStrExt;
-            let mut kv = k.as_bytes().to_vec();
-            kv.push(b'=');
-            kv.extend_from_slice(v.as_bytes());
-            CString::new(kv).ok()
-        })
-        .collect();
-    let mut envp: Vec<*const libc::c_char> = env.iter().map(|e| e.as_ptr()).collect();
-    envp.push(std::ptr::null());
 
     let output = opts.output.map(|f| f.as_raw_fd());
     let close_first = opts.close_first.map(|f| f.as_raw_fd());
@@ -552,7 +557,7 @@ pub fn spawn_shell(shell: &[u8], run: ShellRun<'_>, opts: &SpawnOpts<'_>) -> io:
             let mut sa: libc::sigaction = std::mem::zeroed();
             sa.sa_sigaction = libc::SIG_DFL;
             libc::sigaction(libc::SIGINT, &sa, std::ptr::null_mut());
-            libc::execve(prog.as_ptr(), argv.as_ptr(), envp.as_ptr());
+            libc::execv(prog.as_ptr(), argv.as_ptr());
             if !fail.is_empty() {
                 libc::write(1, fail.as_ptr().cast(), fail.len());
             }
@@ -738,7 +743,7 @@ mod tests {
             read_fd_timeout(r.as_raw_fd(), &mut buf, 1),
             ReadOutcome::Timeout
         );
-        assert!(t.elapsed() >= Duration::from_millis(900));
+        assert!(t.elapsed() >= std::time::Duration::from_millis(900));
         w.write_all(b"ab").unwrap();
         assert_eq!(
             read_fd_timeout(r.as_raw_fd(), &mut buf, 1),

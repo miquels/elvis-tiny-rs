@@ -57,10 +57,8 @@ fn newpattern(ed: &mut Editor, ptrn: &[u8]) -> Option<Vec<u8>> {
     buf.push(0);
     let line = parseptrn(&mut buf);
     let rest = cstr(buf.get(line..).unwrap_or(&[])).to_vec();
-    let pat = cstr(&buf[1..]).to_vec();
-
     ed.move2.re = None;
-    ed.move2.re = regcomp(ed, &pat);
+    ed.move2.re = regcomp(ed, cstr(&buf[1..]));
     ed.move2.re.as_ref()?;
     Some(rest)
 }

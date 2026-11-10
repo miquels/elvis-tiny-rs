@@ -802,11 +802,11 @@ and treat overflow as a rejected operation (D7).
 | Terminal | opaque `Termios` snapshot, `tcgetattr(fd)`, `tcsetattr_now(fd, &Termios)`, `elvis_mode(&Termios) -> Termios` (performs exactly the C flag edits in `resume_curses`), `erase_char(&Termios) -> u8`, `output_speed(&Termios) -> u32`, `window_size(fd) -> Option<(u16, u16)>`, `save_restore_state(...)` for the panic hook |
 | Signals | `ignore_sigint()`, `default_sigint()`, `trap_sigint()`, `ignore_sigquit()`, `trap_sigwinch()`, `take_sigint() -> bool`, `take_sigwinch() -> bool` |
 | Processes | `spawn_shell(shell, ShellRun, stdin: Option<RawFd>, capture: bool) -> io::Result<Child>`, `wait_child(&Child) -> i32` |
-| Misc | `sleep_secs(n)`, `exit(code) -> !`, `getenv` (or use `std::env::var_os`) |
+| Misc | `sleep_secs(n)`, `exit(code) -> !`, `getenv(name)` (`libc::getenv`; `std::env::var_os` costs about 2K of code) |
 | Tests only | `#[cfg(test)]` helpers such as `openpty()` and `raise(sig)` |
 
-Prefer `std` where its behavior is identical (for example `std::env::var_os`,
-`std::thread::sleep`, `std::process::id`, and `std::fs::hard_link`). Every
+Prefer `std` where its behavior is identical and it does not grow the
+binary (for example `std::process::id` and `std::fs::hard_link`). Every
 `unsafe` block gets a `// SAFETY:` comment. Errors return `io::Result` from
 `os.rs`; callers ignore errors exactly where C ignored them.
 
@@ -850,8 +850,11 @@ The port originally used the `terminfo-lean` 0.1.2 crate. It was replaced on
   parameters (`%s`, `%l`) are not supported. A malformed string or a stack
   underflow returns `None`, and that move outputs nothing.
 
-`tgetstr`, `tgetflag` and `tgetnum` map the two-letter termcap names in
-section 4.2 directly to capability indexes. `pt` is the obsolete `OTpt`
+`tgetflag` and `tgetnum` map the two-letter termcap names in section 4.2
+directly to capability indexes. `tgetstr` takes a slot of `Curses::caps`;
+the `NAMES` and `TINFO` tables give each slot's termcap name and terminfo
+index, and `starttcap` loads the slots from a list of `MUST`, `MAY` and
+`PAIR` steps in the C order. `pt` is the obsolete `OTpt`
 boolean, and `ug` is the `UTug` number.
 
 The limitations listed below were those of `terminfo-lean`; they are kept for
@@ -1484,8 +1487,13 @@ Implications:
   | Build | File | `__TEXT` | `__text` |
   |---|---|---|---|
   | C reference (`target/c-ref/elvis`) | 132904 | 81920 | 65864 |
-  | `cargo build --release` | 420592 | 360448 | 292876 |
-  | `scripts/build-tiny.sh` | 170544 | 131072 | 104804 |
+  | `cargo build --release` | 420544 | 360448 | 286732 |
+  | `scripts/build-tiny.sh` | 153936 | 114688 | 97512 |
+
+  On arm64 macOS the `__TEXT` segment, and so the file size, grows in 16K
+  pages; compare the `__text` section. `opt-level = "s"`,
+  `-Zfmt-debug=none`, `-Zlocation-detail=none` and a zero inline threshold
+  were tried on the tiny build and did not help (`s` adds about 25K).
 
   Before `terminfo-lean` was replaced by the reader in `curses.rs`, the
   two Rust builds were 376832 and 147456 bytes of `__TEXT`.
@@ -1505,7 +1513,12 @@ Implications:
   `tio::sprintf`, whose integer conversions avoid `core::fmt`); `os::strerror`
   instead of `io::Error`'s `Display`. `vi`, `initscr`, `initopts` and
   `cutend` are `#[inline(never)]` because inlining them into `main` grew the
-  binary.
+  binary. Read the environment with `os::getenv` (not `std::env`, whose
+  lock and thread bookkeeping cost about 2K), and let `execv` pass the
+  environment on. Prefer tables over `match` on strings and over one
+  function or macro expansion per capability (`curses::Curses::caps`,
+  `has(slot)`, `put(slot)`). `main` ends with `os::exit(0)`, as C's
+  `return(0)`, so the editor state is never dropped.
 
 ### 7.3 Definition of done
 
@@ -1646,3 +1659,11 @@ Add entries as they are found. Candidate entries to evaluate: line length over
 - Commands and results: `cargo fmt`, `cargo clippy --release --all-targets -- -D warnings` → pass; `cargo test --release` → 75 passed (`os::tests::child_closes_descriptors_3_to_59` failed once out of four runs, a pre-existing race with parallel tests); capprobe goldens pass for all 8 fixtures; `tests/harness/run.py --suite all` on the stable and the tiny binary → 87 runs each, only `startup/small-screen` (B4) differs.
 - Sizes: section 7.2.
 - Next step: user review of B1–B18; Linux verification; M9.
+
+### Checkpoint 2026-11-10 (4) — binary size, code changes
+
+- Host: macOS 27.2, arm64, rustc 1.99.1.
+- Changes: `os::getenv` (`libc::getenv`) replaces `std::env::var_os`; `spawn_shell` uses `execv`; `os::sleep_secs` uses `libc::sleep`; `getenv_num` parses bytes; capabilities live in `Curses::caps` with `has(slot)`/`put(slot)` and a table-driven `starttcap`; `read_terminfo` tries directories without building a list; `tio::put_num` is shared by `sprintf` and `tparm`; fewer copies of local buffers in `cmd_global`, `cmd_substitute`, `newpattern`, `linespec` and `setopts`; `main` ends with `os::exit(0)`. Not done yet: dropping `std::fs`/`io::Error` from `os.rs`, and the `RESTORE` mutex and `std::process::exit`.
+- Commands and results: `cargo fmt`, `cargo clippy --release --all-targets -- -D warnings` → pass; `cargo test --release` → 75 passed (capprobe goldens and exit paths ran against the compiled fixtures); `tests/harness/run.py --suite all` on the stable and the tiny binary → 87 runs each, only `startup/small-screen` (B4) differs.
+- Sizes: section 7.2 (tiny `__text` 104804 → 97512).
+- Next step: as before.

@@ -64,8 +64,7 @@ pub fn cmd_substitute(
 
         sidx = parseptrn(&mut buf);
         subst = cstr(buf.get(sidx..).unwrap_or(&[])).to_vec();
-        let pat = cstr(&buf[1..]).to_vec();
-        regcomp(ed, &pat)
+        regcomp(ed, cstr(&buf[1..]))
     };
 
     let Some(mut re) = re else {

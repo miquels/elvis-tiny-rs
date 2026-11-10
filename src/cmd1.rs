@@ -202,11 +202,10 @@ pub fn cmd_global(
         );
         return Ok(());
     }
-    let pat = cstr(&buf[1..]).to_vec();
-    let Some(mut re) = regcomp(ed, &pat) else {
+    let Some(mut re) = regcomp(ed, cstr(&buf[1..])) else {
         return Ok(());
     };
-    let cmdln = cstr(buf.get(cmdptr..).unwrap_or(&[])).to_vec();
+    let cmdln = cstr(buf.get(cmdptr..).unwrap_or(&[]));
     if cmdln.len() >= CMDLN_SIZE {
         msg(ed, b"Global command too long", &[]);
         return Ok(());
@@ -227,7 +226,7 @@ pub fn cmd_global(
         if regexec(ed, &mut re, &line, true) == (cmd == CMD_GLOBAL) {
             ed.vars.cursor = mark_at_line(ed.vars.nlines - l);
             ed.vars.rptlines = 0;
-            if let Err(e) = doexcmd(ed, &cmdln) {
+            if let Err(e) = doexcmd(ed, cmdln) {
                 ed.vars.doingglobal = false;
                 return Err(e);
             }
@@ -530,7 +529,7 @@ pub fn cmd_cd(
 
     let mut dir = extra.to_vec();
     if dir.is_empty() {
-        match std::env::var_os("HOME") {
+        match crate::os::getenv("HOME") {
             Some(h) => dir = h.as_bytes().to_vec(),
             None => {
                 msg(ed, b"environment variable $HOME not set", &[]);

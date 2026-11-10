@@ -2,6 +2,7 @@
 //! storage: numbers and booleans are `i8` (so a maximum of 255 is stored
 //! as -1), strings are NUL-terminated byte arrays of the C size.
 
+use crate::curses;
 use crate::vars::Editor;
 
 use std::os::unix::ffi::OsStrExt;
@@ -326,17 +327,17 @@ fn atoi(s: &[u8]) -> i32 {
 // Out of line: inlining this into `main` makes the binary larger.
 #[inline(never)]
 pub fn initopts(ed: &mut Editor) {
-    if let Some(val) = std::env::var_os("SHELL") {
+    if let Some(val) = crate::os::getenv("SHELL") {
         setstr(&mut ed.opts.o_shell, val.as_bytes());
     }
 
-    if let Some(val) = std::env::var_os("TERM") {
+    if let Some(val) = crate::os::getenv("TERM") {
         setstr(&mut ed.opts.o_term, val.as_bytes());
     }
 
     ed.opts.o_scroll[0] = (ed.curses.lines / 2 - 1) as i8;
 
-    if !ed.curses.has_vb() {
+    if !ed.curses.has(curses::VB) {
         let mut i = 0;
         while OPTS[i].value != V::Vbell {
             i += 1;
@@ -457,57 +458,57 @@ pub fn setopts(ed: &mut Editor, assignments: &[u8]) {
             }
         }
 
-        let nm = cstr(&a[name..]).to_vec();
+        let nm = cstr(&a[name..]);
         let mut i = 0;
-        while i < NOPTS && OPTS[i].name != &nm[..] && OPTS[i].nm != &nm[..] {
+        while i < NOPTS && OPTS[i].name != nm && OPTS[i].nm != nm {
             i += 1;
         }
 
         if i >= NOPTS {
-            msg(ed, b"invalid option name \"%s\"", &[Arg::S(&nm)]);
+            msg(ed, b"invalid option name \"%s\"", &[Arg::S(nm)]);
         } else if ed.opts.flags[i] & CANSET != CANSET {
-            msg(ed, b"option \"%s\" can't be altered", &[Arg::S(&nm)]);
+            msg(ed, b"option \"%s\" can't be altered", &[Arg::S(nm)]);
         } else if ed.opts.flags[i] & RCSET != CANSET && ed.vars.nlines >= 1 {
             msg(
                 ed,
                 b"option \"%s\" can only be set in a %s file",
-                &[Arg::S(&nm), Arg::S(EXRC)],
+                &[Arg::S(nm), Arg::S(EXRC)],
             );
         } else if let Some(v) = value {
-            let val = cstr(&a[v..]).to_vec();
+            let val = cstr(&a[v..]);
             let d = &OPTS[i];
             match d.typ {
                 BOOL => {
-                    msg(ed, b"option \"[no]%s\" is boolean", &[Arg::S(&nm)]);
+                    msg(ed, b"option \"[no]%s\" is boolean", &[Arg::S(nm)]);
                 }
                 NUM => {
-                    let j = atoi(&val);
+                    let j = atoi(val);
                     let (lo, hi) = {
                         let n = ed.opts.num(d.value);
                         (n[1] as i32, n[2] as i32 & 0xff)
                     };
-                    if j == 0 && ch(&val, 0) != b'0' {
+                    if j == 0 && ch(val, 0) != b'0' {
                         msg(
                             ed,
                             b"option \"%s\" must have a numeric value",
-                            &[Arg::S(&nm)],
+                            &[Arg::S(nm)],
                         );
                     } else if j < lo || j > hi {
                         msg(
                             ed,
                             b"option \"%s\" must have a value between %d and %d",
-                            &[Arg::S(&nm), Arg::D(lo as i64), Arg::D(hi as i64)],
+                            &[Arg::S(nm), Arg::D(lo as i64), Arg::D(hi as i64)],
                         );
                     } else {
-                        ed.opts.num(d.value)[0] = atoi(&val) as i8;
+                        ed.opts.num(d.value)[0] = atoi(val) as i8;
                         ed.opts.flags[i] |= SET;
                     }
                 }
                 _ => {
-                    if setstr(ed.opts.string(d.value), &val) {
+                    if setstr(ed.opts.string(d.value), val) {
                         ed.opts.flags[i] |= SET;
                     } else {
-                        msg(ed, b"option \"%s\" is too long", &[Arg::S(&nm)]);
+                        msg(ed, b"option \"%s\" is too long", &[Arg::S(nm)]);
                     }
                 }
             }
@@ -524,7 +525,7 @@ pub fn setopts(ed: &mut Editor, assignments: &[u8]) {
                 ed.vars.mustredraw = true;
             }
         } else {
-            msg(ed, b"option \"%s\" must be given a value", &[Arg::S(&nm)]);
+            msg(ed, b"option \"%s\" must be given a value", &[Arg::S(nm)]);
         }
 
         name = scan;

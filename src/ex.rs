@@ -202,7 +202,7 @@ pub fn linespec(ed: &mut Editor, s: &[u8], markptr: &mut Mark) -> R<usize> {
             }
         } else if buf[s] == b'/' || buf[s] == b'?' {
             let t = s + parseptrn(&mut buf[s..]);
-            let pat = cstr(&buf[s..]).to_vec();
+            let pat = cstr(&buf[s..]);
 
             *markptr &= !(BLKSIZE as Mark - 1);
             if buf[s] == b'/' {
@@ -210,9 +210,9 @@ pub fn linespec(ed: &mut Editor, s: &[u8], markptr: &mut Mark) -> R<usize> {
                 if ed.vars.plen > 0 {
                     *markptr += ed.vars.plen as Mark - 1;
                 }
-                *markptr = m_fsrch(ed, *markptr, &pat)?;
+                *markptr = m_fsrch(ed, *markptr, pat)?;
             } else {
-                *markptr = m_bsrch(ed, *markptr, &pat)?;
+                *markptr = m_bsrch(ed, *markptr, pat)?;
             }
 
             s = t;

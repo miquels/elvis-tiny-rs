@@ -8,7 +8,7 @@
 use std::io::{self, IsTerminal};
 use std::os::unix::ffi::OsStrExt;
 
-use crate::tio::utoa;
+use crate::tio::{put_num, utoa};
 
 use crate::os::{self, Termios};
 use crate::vars::Editor;
@@ -24,6 +24,70 @@ pub const A_ALTCHARSET: i32 = 4;
 /// Capability strings: `None` is a C null pointer, `Some(vec![])` is "".
 pub type Cap = Option<Vec<u8>>;
 
+/// Capability slots in `Curses::caps`, in `starttcap()` order.  The two
+/// halves of a `PAIR` are adjacent.
+pub const UP: usize = 0;
+pub const VB: usize = 1;
+pub const CM: usize = 2;
+pub const SO: usize = 3;
+pub const SE: usize = 4;
+pub const TI: usize = 5;
+pub const TE: usize = 6;
+pub const US: usize = 7;
+pub const UE: usize = 8;
+pub const MD: usize = 9;
+pub const ME: usize = 10;
+pub const AS: usize = 11;
+pub const AE: usize = 12;
+pub const AL: usize = 13;
+pub const DL: usize = 14;
+pub const CE: usize = 15;
+pub const CD: usize = 16;
+pub const SR: usize = 17;
+pub const IM: usize = 18;
+pub const EI: usize = 19;
+pub const IC: usize = 20;
+pub const DC: usize = 21;
+pub const KS: usize = 22;
+pub const KE: usize = 23;
+pub const KU: usize = 24;
+pub const KD: usize = 25;
+pub const KL: usize = 26;
+pub const KR: usize = 27;
+pub const PU: usize = 28;
+pub const PD: usize = 29;
+pub const HM: usize = 30;
+pub const EN: usize = 31;
+pub const AEND: usize = 32;
+pub const NCAPS: usize = 33;
+
+const fn mask(slots: &[usize]) -> u64 {
+    let mut m = 0;
+    let mut i = 0;
+    while i < slots.len() {
+        m |= 1 << slots[i];
+        i += 1;
+    }
+    m
+}
+
+/// Slots whose `has_*` macro tests the first byte rather than the pointer.
+const STR_TEST: u64 = mask(&[SO, SE, TI, TE, US, UE, MD, ME, AS, AE, IM, EI, IC, KS, KE]);
+/// Slots that start as `""` instead of null.
+const START_EMPTY: u64 = mask(&[US, UE, MD, ME, IC, AEND]);
+
+/// The termcap name of each slot except `AEND`.
+const NAMES: [&[u8; 2]; NCAPS - 1] = [
+    b"up", b"vb", b"cm", b"so", b"se", b"ti", b"te", b"us", b"ue", b"md", b"me", b"as", b"ae",
+    b"al", b"dl", b"ce", b"cd", b"sr", b"im", b"ei", b"ic", b"dc", b"ks", b"ke", b"ku", b"kd",
+    b"kl", b"kr", b"kP", b"kN", b"kh", b"kH",
+];
+/// The terminfo string index ncurses reads for each termcap name.
+const TINFO: [u8; NCAPS - 1] = [
+    19, 45, 10, 35, 43, 28, 40, 36, 44, 27, 39, 25, 38, 53, 22, 6, 7, 130, 31, 42, 52, 21, 89, 88,
+    87, 61, 79, 83, 82, 81, 76, 80,
+];
+
 pub struct Curses {
     pub ospeed: i16,
     pub pc: u8,
@@ -33,39 +97,8 @@ pub struct Curses {
     pub cols: i32,
     pub am: bool,
     pub pt: bool,
-    pub vb: Cap,
-    pub up: Cap,
-    pub so: Cap,
-    pub se: Cap,
-    pub us: Cap,
-    pub ue: Cap,
-    pub md: Cap,
-    pub me: Cap,
-    pub as_: Cap,
-    pub ae: Cap,
-    pub cm: Cap,
-    pub ce: Cap,
-    pub cd: Cap,
-    pub al: Cap,
-    pub dl: Cap,
-    pub sr: Cap,
-    pub ks: Cap,
-    pub ke: Cap,
-    pub ku: Cap,
-    pub kd: Cap,
-    pub kl: Cap,
-    pub kr: Cap,
-    pub hm: Cap,
-    pub en: Cap,
-    pub pu: Cap,
-    pub pd: Cap,
-    pub im: Cap,
-    pub ic: Cap,
-    pub ei: Cap,
-    pub dc: Cap,
-    pub ti: Cap,
-    pub te: Cap,
-    pub aend: Cap,
+    /// Capability strings, indexed by the slot constants above.
+    pub caps: [Cap; NCAPS],
     pub erasekey: u8,
     pub oldtermio: Termios,
     /// Whether `initscr()` has filled `oldtermio` (B4).
@@ -82,7 +115,6 @@ pub struct Curses {
 
 impl Default for Curses {
     fn default() -> Curses {
-        let empty = || Some(Vec::new());
         Curses {
             ospeed: 0,
             pc: 0,
@@ -91,39 +123,7 @@ impl Default for Curses {
             cols: 0,
             am: false,
             pt: false,
-            vb: None,
-            up: None,
-            so: None,
-            se: None,
-            us: empty(),
-            ue: empty(),
-            md: empty(),
-            me: empty(),
-            as_: None,
-            ae: None,
-            cm: None,
-            ce: None,
-            cd: None,
-            al: None,
-            dl: None,
-            sr: None,
-            ks: None,
-            ke: None,
-            ku: None,
-            kd: None,
-            kl: None,
-            kr: None,
-            hm: None,
-            en: None,
-            pu: None,
-            pd: None,
-            im: None,
-            ic: empty(),
-            ei: None,
-            dc: None,
-            ti: None,
-            te: None,
-            aend: empty(),
+            caps: std::array::from_fn(|i| (START_EMPTY & (1 << i) != 0).then(Vec::new)),
             erasekey: 0,
             oldtermio: Termios::zeroed(),
             have_oldtermio: false,
@@ -139,46 +139,11 @@ impl Default for Curses {
 /*------------------------------------------------------------------------*/
 /* The termcap emulation: termcap names, tputs, tgoto                      */
 
-/// `tgetstr(id)`: termcap names map to the terminfo string capabilities
-/// ncurses uses for them.
-fn tgetstr(ti: &Terminfo, id: &str) -> Cap {
-    let i = match id {
-        "up" => 19,  // cuu1
-        "vb" => 45,  // flash
-        "cm" => 10,  // cup
-        "so" => 35,  // smso
-        "se" => 43,  // rmso
-        "ti" => 28,  // smcup
-        "te" => 40,  // rmcup
-        "us" => 36,  // smul
-        "ue" => 44,  // rmul
-        "md" => 27,  // bold
-        "me" => 39,  // sgr0
-        "as" => 25,  // smacs
-        "ae" => 38,  // rmacs
-        "al" => 53,  // il1
-        "dl" => 22,  // dl1
-        "ce" => 6,   // el
-        "cd" => 7,   // ed
-        "sr" => 130, // ri
-        "im" => 31,  // smir
-        "ei" => 42,  // rmir
-        "ic" => 52,  // ich1
-        "dc" => 21,  // dch1
-        "ks" => 89,  // smkx
-        "ke" => 88,  // rmkx
-        "ku" => 87,  // kcuu1
-        "kd" => 61,  // kcud1
-        "kl" => 79,  // kcub1
-        "kr" => 83,  // kcuf1
-        "kP" => 82,  // kpp
-        "kN" => 81,  // knp
-        "kh" => 76,  // khome
-        "kH" => 80,  // kll
-        _ => return None,
-    };
-    let s = ti.str(i)?;
-    if id == "me" {
+/// `tgetstr(id)` for the termcap name of `slot`, read from the terminfo
+/// string capability ncurses uses for it.
+fn tgetstr(ti: &Terminfo, slot: usize) -> Cap {
+    let s = ti.str(TINFO[slot] as usize)?;
+    if slot == ME {
         return Some(trim_sgr0(ti, s));
     }
     Some(s.to_vec())
@@ -374,21 +339,31 @@ fn tgetnum(ti: &Terminfo, id: &str) -> i32 {
 
 /// `_nc_getenv_num()`: a whole `strtol(s, &end, 0)` number, else -1.
 fn getenv_num(name: &str) -> i32 {
-    let Some(v) = std::env::var_os(name) else {
+    let Some(v) = crate::os::getenv(name) else {
         return -1;
     };
-    let s = v.to_string_lossy();
-    let (digits, radix) = if let Some(h) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
-        (h, 16)
-    } else if s.len() > 1 && s.starts_with('0') {
+    let s = v.as_bytes();
+    let (d, radix): (&[u8], u32) = if s.len() > 1 && s[0] == b'0' && (s[1] | 0x20) == b'x' {
+        (&s[2..], 16)
+    } else if s.len() > 1 && s[0] == b'0' {
         (&s[1..], 8)
     } else {
-        (&s[..], 10)
+        (s, 10)
     };
-    match i64::from_str_radix(digits, radix) {
-        Ok(n) if (0..=i32::MAX as i64).contains(&n) && !digits.starts_with(['+', '-']) => n as i32,
-        _ => -1,
+    if d.is_empty() {
+        return -1;
     }
+    let mut n: i64 = 0;
+    for &c in d {
+        let Some(x) = (c as char).to_digit(radix) else {
+            return -1;
+        };
+        n = n * radix as i64 + x as i64;
+        if n > i32::MAX as i64 {
+            return -1;
+        }
+    }
+    n as i32
 }
 
 /// The screen size ncurses `tgetent()` stores for `li`/`co`: `LINES` and
@@ -568,34 +543,12 @@ fn read_terminfo(term: &[u8]) -> Option<Vec<u8>> {
         b"/boot/system/data/terminfo",
     ];
     let first = *term.first()?;
-    let env = |name: &str| std::env::var_os(name).map(|v| v.as_bytes().to_vec());
-    let mut dirs: Vec<Vec<u8>> = Vec::new();
-    if let Some(d) = env("TERMINFO") {
-        dirs.push(d);
-    }
-    if let Some(mut d) = env("HOME") {
-        d.extend_from_slice(b"/.terminfo");
-        dirs.push(d);
-    }
-    let mut sys_added = false;
-    if let Some(list) = env("TERMINFO_DIRS") {
-        for d in list.split(|&c| c == b':') {
-            if !d.is_empty() {
-                dirs.push(d.to_vec());
-            } else if !sys_added {
-                dirs.extend(SYSDIRS.iter().map(|d| d.to_vec()));
-                sys_added = true;
-            }
-        }
-    }
-    if !sys_added {
-        dirs.extend(SYSDIRS.iter().map(|d| d.to_vec()));
-    }
     const HEX: &[u8; 16] = b"0123456789abcdef";
     let hex = [HEX[(first >> 4) as usize], HEX[(first & 15) as usize]];
-    for dir in &dirs {
+    let try_dir = |dir: &[u8], suffix: &[u8]| {
         for sub in [&[first][..], &hex[..]] {
-            let mut path = dir.clone();
+            let mut path = dir.to_vec();
+            path.extend_from_slice(suffix);
             path.push(b'/');
             path.extend_from_slice(sub);
             path.push(b'/');
@@ -604,8 +557,36 @@ fn read_terminfo(term: &[u8]) -> Option<Vec<u8>> {
                 return Some(buf);
             }
         }
+        None
+    };
+    let try_sys = || SYSDIRS.iter().find_map(|d| try_dir(d, b""));
+    if let Some(d) = os::getenv("TERMINFO")
+        && let Some(buf) = try_dir(d.as_bytes(), b"")
+    {
+        return Some(buf);
     }
-    None
+    if let Some(d) = os::getenv("HOME")
+        && let Some(buf) = try_dir(d.as_bytes(), b"/.terminfo")
+    {
+        return Some(buf);
+    }
+    let mut sys_tried = false;
+    if let Some(list) = os::getenv("TERMINFO_DIRS") {
+        for d in list.as_bytes().split(|&c| c == b':') {
+            let found = if !d.is_empty() {
+                try_dir(d, b"")
+            } else if !sys_tried {
+                sys_tried = true;
+                try_sys()
+            } else {
+                None
+            };
+            if found.is_some() {
+                return found;
+            }
+        }
+    }
+    if sys_tried { None } else { try_sys() }
 }
 
 /// `tparm(cap, p1, ..., p9)` with numeric parameters, expanded the way
@@ -809,29 +790,11 @@ fn tparm_format(cap: &[u8], mut i: usize, v: i32, out: &mut Vec<u8>) -> Option<u
         b'X' => (if alt && v != 0 { b"0X" } else { b"" }, utoa(u, 16, true)),
         _ => return None,
     };
-    if let Some(p) = prec
-        && digits.len() < p
-    {
-        digits.splice(0..0, std::iter::repeat_n(b'0', p - digits.len()));
-    }
+    // Before the precision padding, which gives the same result as after.
     if conv == b'o' && alt && digits[0] != b'0' {
         digits.insert(0, b'0');
     }
-    let len = prefix.len() + digits.len();
-    let pad = width.saturating_sub(len);
-    if left {
-        out.extend_from_slice(prefix);
-        out.extend_from_slice(&digits);
-        out.extend(std::iter::repeat_n(b' ', pad));
-    } else if zero && prec.is_none() {
-        out.extend_from_slice(prefix);
-        out.extend(std::iter::repeat_n(b'0', pad));
-        out.extend_from_slice(&digits);
-    } else {
-        out.extend(std::iter::repeat_n(b' ', pad));
-        out.extend_from_slice(prefix);
-        out.extend_from_slice(&digits);
-    }
+    put_num(out, prefix, digits, prec, width, left, zero);
     Some(i + 1)
 }
 /*------------------------------------------------------------------------*/
@@ -847,17 +810,6 @@ fn addch_into(out: &mut Vec<u8>, ch: u8) {
 
 fn first_byte(c: &Cap) -> u8 {
     c.as_ref().and_then(|s| s.first().copied()).unwrap_or(0)
-}
-
-macro_rules! do_cap {
-    ($name:ident, $field:ident, $aff:expr) => {
-        pub fn $name(&mut self) {
-            let aff = $aff(&*self);
-            if let Some(s) = &self.$field {
-                tputs_into(s, aff, &mut self.kbuf);
-            }
-        }
-    };
 }
 
 impl Curses {
@@ -895,7 +847,7 @@ impl Curses {
 
     /// `move(y, x)`: `tputs(tgoto(CM, x, y), 1, faddch)`.
     pub fn mv(&mut self, y: i32, x: i32) {
-        if let Some(cm) = &self.cm
+        if let Some(cm) = &self.caps[CM]
             && let Some(s) = tgoto(&mut self.tvars, cm, x, y)
         {
             tputs_into(&s, 1, &mut self.kbuf);
@@ -924,39 +876,37 @@ impl Curses {
         }
     }
 
-    do_cap!(do_vb, vb, |_: &Curses| 1);
-    do_cap!(do_up, up, |_: &Curses| 1);
-    do_cap!(do_so, so, |_: &Curses| 1);
-    do_cap!(do_se, se, |_: &Curses| 1);
-    do_cap!(do_us, us, |_: &Curses| 1);
-    do_cap!(do_ue, ue, |_: &Curses| 1);
-    do_cap!(do_md, md, |_: &Curses| 1);
-    do_cap!(do_me, me, |_: &Curses| 1);
-    do_cap!(do_as, as_, |_: &Curses| 1);
-    do_cap!(do_ae, ae, |_: &Curses| 1);
-    do_cap!(do_ce, ce, |_: &Curses| 1);
-    do_cap!(do_cd, cd, |_: &Curses| 1);
-    do_cap!(do_al, al, |c: &Curses| c.lines);
-    do_cap!(do_dl, dl, |c: &Curses| c.lines);
-    do_cap!(do_sr, sr, |_: &Curses| 1);
-    do_cap!(do_ks, ks, |_: &Curses| 1);
-    do_cap!(do_ke, ke, |_: &Curses| 1);
-    do_cap!(do_im, im, |_: &Curses| 1);
-    do_cap!(do_ic, ic, |_: &Curses| 1);
-    do_cap!(do_ei, ei, |_: &Curses| 1);
-    do_cap!(do_dc, dc, |c: &Curses| c.cols);
-    do_cap!(do_aend, aend, |_: &Curses| 1);
+    /// The `do_*` macros: output a capability through `tputs()`.
+    pub fn put(&mut self, slot: usize) {
+        let aff = match slot {
+            AL | DL => self.lines,
+            DC => self.cols,
+            _ => 1,
+        };
+        if let Some(s) = &self.caps[slot] {
+            tputs_into(s, aff, &mut self.kbuf);
+        }
+    }
+
+    /// The `has_*` macros.
+    pub fn has(&self, slot: usize) -> bool {
+        if STR_TEST & (1 << slot) != 0 {
+            first_byte(&self.caps[slot]) != 0
+        } else {
+            self.caps[slot].is_some()
+        }
+    }
 
     /// `do_TI()`: written raw, so delays are output literally.
     pub fn do_ti(&mut self) {
-        if let Some(s) = &self.ti {
+        if let Some(s) = &self.caps[TI] {
             let _ = os::tty_write(s);
         }
     }
 
     /// `do_TE()`
     pub fn do_te(&mut self) {
-        if let Some(s) = &self.te {
+        if let Some(s) = &self.caps[TE] {
             let _ = os::tty_write(s);
         }
     }
@@ -967,155 +917,56 @@ impl Curses {
     pub fn has_pt(&self) -> bool {
         self.pt
     }
-    pub fn has_vb(&self) -> bool {
-        self.vb.is_some()
-    }
-    pub fn has_up(&self) -> bool {
-        self.up.is_some()
-    }
-    pub fn has_so(&self) -> bool {
-        first_byte(&self.so) != 0
-    }
-    pub fn has_se(&self) -> bool {
-        first_byte(&self.se) != 0
-    }
-    pub fn has_us(&self) -> bool {
-        first_byte(&self.us) != 0
-    }
-    pub fn has_ue(&self) -> bool {
-        first_byte(&self.ue) != 0
-    }
-    pub fn has_md(&self) -> bool {
-        first_byte(&self.md) != 0
-    }
-    pub fn has_me(&self) -> bool {
-        first_byte(&self.me) != 0
-    }
-    pub fn has_as(&self) -> bool {
-        first_byte(&self.as_) != 0
-    }
-    pub fn has_ae(&self) -> bool {
-        first_byte(&self.ae) != 0
-    }
-    pub fn has_cb(&self) -> bool {
-        false
-    }
-    pub fn has_cs(&self) -> bool {
-        false
-    }
-    pub fn has_ce(&self) -> bool {
-        self.ce.is_some()
-    }
-    pub fn has_cd(&self) -> bool {
-        self.cd.is_some()
-    }
-    pub fn has_al(&self) -> bool {
-        self.al.is_some()
-    }
-    pub fn has_dl(&self) -> bool {
-        self.dl.is_some()
-    }
-    pub fn has_sr(&self) -> bool {
-        self.sr.is_some()
-    }
-    pub fn has_ks(&self) -> bool {
-        first_byte(&self.ks) != 0
-    }
-    pub fn has_ke(&self) -> bool {
-        first_byte(&self.ke) != 0
-    }
-    pub fn has_ku(&self) -> bool {
-        self.ku.is_some()
-    }
-    pub fn has_kd(&self) -> bool {
-        self.kd.is_some()
-    }
-    pub fn has_kl(&self) -> bool {
-        self.kl.is_some()
-    }
-    pub fn has_kr(&self) -> bool {
-        self.kr.is_some()
-    }
-    pub fn has_hm(&self) -> bool {
-        self.hm.is_some()
-    }
-    pub fn has_en(&self) -> bool {
-        self.en.is_some()
-    }
-    pub fn has_pu(&self) -> bool {
-        self.pu.is_some()
-    }
-    pub fn has_pd(&self) -> bool {
-        self.pd.is_some()
-    }
-    pub fn has_im(&self) -> bool {
-        first_byte(&self.im) != 0
-    }
-    pub fn has_ic(&self) -> bool {
-        first_byte(&self.ic) != 0
-    }
-    pub fn has_ei(&self) -> bool {
-        first_byte(&self.ei) != 0
-    }
-    pub fn has_dc(&self) -> bool {
-        self.dc.is_some()
-    }
-    pub fn has_ti(&self) -> bool {
-        first_byte(&self.ti) != 0
-    }
-    pub fn has_te(&self) -> bool {
-        first_byte(&self.te) != 0
-    }
 
     /// `standout()` and friends.
     pub fn standout(&mut self) {
-        self.do_so();
+        self.put(SO);
     }
     pub fn standend(&mut self) {
-        self.do_se();
+        self.put(SE);
     }
     pub fn clrtoeol(&mut self) {
-        self.do_ce();
+        self.put(CE);
     }
     pub fn clrtobot(&mut self) {
-        self.do_cd();
+        self.put(CD);
     }
     pub fn insertln(&mut self) {
-        self.do_al();
+        self.put(AL);
     }
     pub fn deleteln(&mut self) {
-        self.do_dl();
+        self.put(DL);
     }
     pub fn delch(&mut self) {
-        self.do_dc();
+        self.put(DC);
     }
 
     // C: curses.c:attrset
     pub fn attrset(&mut self, a: i32) {
-        self.do_aend();
+        self.put(AEND);
         if a == A_BOLD {
-            self.do_md();
-            self.aend = self.me.clone();
+            self.put(MD);
+            self.caps[AEND] = self.caps[ME].clone();
         } else if a == A_UNDERLINE {
-            self.do_us();
-            self.aend = self.ue.clone();
+            self.put(US);
+            self.caps[AEND] = self.caps[UE].clone();
         } else if a == A_ALTCHARSET {
-            self.do_as();
-            self.aend = self.ae.clone();
+            self.put(AS);
+            self.caps[AEND] = self.caps[AE].clone();
         } else {
-            self.aend = Some(Vec::new());
+            self.caps[AEND] = Some(Vec::new());
         }
     }
 
     // C: curses.c:insch
     pub fn insch(&mut self, ch: u8) {
-        if self.has_im() {
-            self.do_im();
+        if self.has(IM) {
+            self.put(IM);
         }
-        self.do_ic();
+        self.put(IC);
         self.qaddch(ch);
-        if self.has_ei() {
-            self.do_ei();
+        if self.has(EI) {
+            self.put(EI);
         }
     }
 }
@@ -1127,7 +978,7 @@ impl Curses {
 // Out of line: inlining this into `main` makes the binary larger.
 #[inline(never)]
 pub fn initscr(ed: &mut Editor) {
-    if std::env::var_os("TERM").is_none() {
+    if crate::os::getenv("TERM").is_none() {
         let _ = os::err_write(b"Environment variable TERM must be set\n");
         os::exit(1);
     } else {
@@ -1153,11 +1004,11 @@ pub fn endwin(ed: &mut Editor) {
 // C: curses.c:suspend_curses
 pub fn suspend_curses(ed: &mut Editor) {
     let c = &mut ed.curses;
-    if c.has_te() {
+    if c.has(TE) {
         c.do_te();
     }
-    if c.has_ke() {
-        c.do_ke();
+    if c.has(KE) {
+        c.put(KE);
     }
     c.refresh();
 
@@ -1178,19 +1029,19 @@ pub fn resume_curses(ed: &mut Editor, quietly: bool) {
         c.newtermio = os::elvis_mode(&c.oldtermio);
         let _ = os::tcsetattr_now(io::stderr(), &c.newtermio);
 
-        if c.has_ti() {
+        if c.has(TI) {
             c.do_ti();
         }
-        if c.has_ks() {
-            c.do_ks();
+        if c.has(KS) {
+            c.put(KS);
         }
 
         let mut restore = Vec::new();
-        if c.has_te() {
-            restore.extend_from_slice(c.te.as_deref().unwrap_or_default());
+        if c.has(TE) {
+            restore.extend_from_slice(c.caps[TE].as_deref().unwrap_or_default());
         }
-        if c.has_ke() {
-            tputs_into(c.ke.as_deref().unwrap_or_default(), 1, &mut restore);
+        if c.has(KE) {
+            tputs_into(c.caps[KE].as_deref().unwrap_or_default(), 1, &mut restore);
         }
         os::save_restore_state(&c.oldtermio, &restore);
 
@@ -1210,9 +1061,9 @@ fn resume_curses_prompt(ed: &mut Editor) {
 
     let c = &mut ed.curses;
     c.mv(c.lines - 1, 0);
-    c.do_so();
+    c.put(SO);
     c.qaddstr(b"[Press <RETURN> to continue]");
-    c.do_se();
+    c.put(SE);
     c.refresh();
     // C reads into kbuf, which refresh() has just emptied.
     let mut buf = [0u8; 20];
@@ -1231,9 +1082,9 @@ fn resume_curses_prompt(ed: &mut Editor) {
 }
 
 // C: curses.c:lacking
-fn lacking(s: &str) -> ! {
+fn lacking(s: &[u8; 2]) -> ! {
     let _ = os::err_write(b"This termcap entry lacks the :");
-    let _ = os::err_write(&s.as_bytes()[..2]);
+    let _ = os::err_write(s);
     let _ = os::err_write(b"=: capability\n");
     os::exit(1);
 }
@@ -1245,81 +1096,80 @@ fn tgetent(term: &std::ffi::OsStr) -> Option<Terminfo> {
     parse_terminfo(&read_terminfo(term.as_bytes())?)
 }
 
+// The C `MUSTHAVE`, `MAYHAVE` and `PAIR` macros; `PAIR` also loads `slot + 1`.
+const MUST: u8 = 0;
+const MAY: u8 = 1;
+const PAIR: u8 = 2;
+
+fn load(ed: &mut Editor, ti: &Terminfo, steps: &[(u8, usize)]) {
+    let caps = &mut ed.curses.caps;
+    for &(rule, s) in steps {
+        let v = tgetstr(ti, s);
+        match rule {
+            MUST => {
+                if v.is_none() {
+                    lacking(NAMES[s]);
+                }
+                caps[s] = v;
+            }
+            MAY => {
+                if v.is_some() {
+                    caps[s] = v;
+                }
+            }
+            _ => {
+                let w = tgetstr(ti, s + 1);
+                if v.is_none() || w.is_none() {
+                    caps[s] = Some(Vec::new());
+                    caps[s + 1] = Some(Vec::new());
+                } else {
+                    caps[s] = v;
+                    caps[s + 1] = w;
+                }
+            }
+        }
+    }
+}
+
 // C: curses.c:starttcap
 fn starttcap(ed: &mut Editor) {
-    let term = std::env::var_os("TERM").unwrap_or_default();
+    let term = crate::os::getenv("TERM").unwrap_or_default();
     let Some(ti) = tgetent(&term) else {
         let _ = os::err_write(b"Unrecognized TERM type\n");
         os::exit(3);
     };
 
-    macro_rules! musthave {
-        ($t:ident, $s:expr) => {
-            ed.curses.$t = tgetstr(&ti, $s);
-            if ed.curses.$t.is_none() {
-                lacking($s);
-            }
-        };
-    }
-    macro_rules! mayhave {
-        ($t:ident, $s:expr) => {
-            if let Some(str) = tgetstr(&ti, $s) {
-                ed.curses.$t = Some(str);
-            }
-        };
-    }
-    macro_rules! pair {
-        ($t:ident, $u:ident, $st:expr, $su:expr) => {
-            ed.curses.$t = tgetstr(&ti, $st);
-            ed.curses.$u = tgetstr(&ti, $su);
-            if ed.curses.$t.is_none() || ed.curses.$u.is_none() {
-                ed.curses.$t = Some(Vec::new());
-                ed.curses.$u = Some(Vec::new());
-            }
-        };
-    }
-
     let (li, co) = tc_screensize(&ti);
     ed.curses.tc_lines = li;
     ed.curses.tc_cols = co;
 
-    musthave!(up, "up");
-    mayhave!(vb, "vb");
-    musthave!(cm, "cm");
-    pair!(so, se, "so", "se");
-    pair!(ti, te, "ti", "te");
+    load(
+        ed,
+        &ti,
+        &[(MUST, UP), (MAY, VB), (MUST, CM), (PAIR, SO), (PAIR, TI)],
+    );
     if tgetnum(&ti, "ug") <= 0 {
-        pair!(us, ue, "us", "ue");
-        pair!(md, me, "md", "me");
-
-        pair!(as_, ae, "as", "ae");
-        if first_byte(&ed.curses.as_) == 0 {
-            ed.curses.as_ = ed.curses.us.clone();
-            ed.curses.ae = ed.curses.ue.clone();
+        load(ed, &ti, &[(PAIR, US), (PAIR, MD), (PAIR, AS)]);
+        let c = &mut ed.curses.caps;
+        if first_byte(&c[AS]) == 0 {
+            c[AS] = c[US].clone();
+            c[AE] = c[UE].clone();
         }
     }
-    mayhave!(al, "al");
-    mayhave!(dl, "dl");
-    musthave!(ce, "ce");
-    mayhave!(cd, "cd");
-    mayhave!(sr, "sr");
-    pair!(im, ei, "im", "ei");
-    mayhave!(ic, "ic");
-    mayhave!(dc, "dc");
+    #[rustfmt::skip]
+    load(ed, &ti, &[
+        (MAY, AL), (MAY, DL), (MUST, CE), (MAY, CD), (MAY, SR), (PAIR, IM), (MAY, IC), (MAY, DC),
+    ]);
 
     ed.curses.am = tgetflag(&ti, "am");
     ed.curses.pt = tgetflag(&ti, "pt");
     getsize(ed, 0);
 
-    pair!(ks, ke, "ks", "ke");
-    mayhave!(ku, "ku");
-    mayhave!(kd, "kd");
-    mayhave!(kl, "kl");
-    mayhave!(kr, "kr");
-    mayhave!(pu, "kP");
-    mayhave!(pd, "kN");
-    mayhave!(hm, "kh");
-    mayhave!(en, "kH");
+    #[rustfmt::skip]
+    load(ed, &ti, &[
+        (PAIR, KS), (MAY, KU), (MAY, KD), (MAY, KL), (MAY, KR), (MAY, PU), (MAY, PD), (MAY, HM),
+        (MAY, EN),
+    ]);
 }
 
 // C: curses.c:getsize
@@ -1453,6 +1303,13 @@ mod tests {
         assert_eq!(getenv_num("ELVIS_TEST_UNSET_VARIABLE"), -1);
     }
 
+    fn slot(name: &str) -> usize {
+        NAMES
+            .iter()
+            .position(|n| &n[..] == name.as_bytes())
+            .unwrap()
+    }
+
     /// The `capprobe.c` report, produced from the Rust side.
     fn report(file: &[u8]) -> String {
         fn esc(out: &mut String, s: &[u8]) {
@@ -1473,7 +1330,7 @@ mod tests {
         let mut o = String::from("tgetent=1\nospeed=0 PC=0\n");
         for s in STRS {
             o.push_str(&format!("str {s}="));
-            match tgetstr(&ti, s) {
+            match tgetstr(&ti, slot(s)) {
                 None => o.push_str("(null)"),
                 Some(v) => {
                     o.push('"');
@@ -1495,7 +1352,7 @@ mod tests {
             };
             o.push_str(&format!("num {n}={v}\n"));
         }
-        if let Some(cm) = tgetstr(&ti, "cm") {
+        if let Some(cm) = tgetstr(&ti, CM) {
             let mut e = [0; 26];
             for r in [0, 1, 9, 10, 23, 99] {
                 for c in [0, 1, 7, 79, 132] {
@@ -1510,7 +1367,9 @@ mod tests {
             }
         }
         for s in STRS {
-            let Some(v) = tgetstr(&ti, s) else { continue };
+            let Some(v) = tgetstr(&ti, slot(s)) else {
+                continue;
+            };
             for aff in [1, 24] {
                 o.push_str(&format!("tputs {s} aff={aff} \""));
                 esc(&mut o, &tp(&v, aff));
@@ -1581,7 +1440,7 @@ mod tests {
     /// Child half of `exit_paths`: runs `initscr()` in a subprocess.
     #[test]
     fn exit_path_child() {
-        if std::env::var_os("ELVIS_EXIT_PATH_CHILD").is_none() {
+        if crate::os::getenv("ELVIS_EXIT_PATH_CHILD").is_none() {
             return;
         }
         let mut ed = Editor::new();

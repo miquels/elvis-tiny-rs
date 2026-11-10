@@ -1,5 +1,6 @@
 //! `redraw.c`: screen updates.
 
+use crate::curses;
 use crate::misc::{fetchline, pfetch};
 use crate::vars::Editor;
 use crate::vi_h::{
@@ -258,21 +259,21 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
         }
     } else if l < ed.vars.topline
         && l > ed.vars.topline - lines as i64
-        && (ed.curses.has_sr() || ed.curses.has_al())
+        && (ed.curses.has(curses::SR) || ed.curses.has(curses::AL))
     {
         if !ed.vars.mustredraw {
             ed.curses.mv(0, 0);
             while l < ed.vars.topline {
                 ed.vars.topline -= 1;
-                if ed.curses.has_sr() {
-                    ed.curses.do_sr();
+                if ed.curses.has(curses::SR) {
+                    ed.curses.put(curses::SR);
                 } else {
                     ed.curses.insertln();
                 }
                 let top = ed.vars.topline;
                 text = fetchline(ed, top);
                 drawtext(ed, &text, false);
-                ed.curses.do_up();
+                ed.curses.put(curses::UP);
             }
 
             ed.curses.mv(lines - 1, 0);
@@ -339,7 +340,9 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
                 l = ed.redraw.preredraw;
             }
 
-            if l + ed.redraw.postredraw - ed.redraw.preredraw > bot(ed) || !ed.curses.has_al() {
+            if l + ed.redraw.postredraw - ed.redraw.preredraw > bot(ed)
+                || !ed.curses.has(curses::AL)
+            {
                 ed.redraw.preredraw = INFINITY;
                 ed.redraw.postredraw = INFINITY;
             } else {
@@ -356,7 +359,7 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
         }
 
         if ed.redraw.preredraw > ed.redraw.postredraw && ed.redraw.postredraw <= bot(ed) {
-            if ed.redraw.preredraw > bot(ed) || !ed.curses.has_dl() {
+            if ed.redraw.preredraw > bot(ed) || !ed.curses.has(curses::DL) {
                 ed.redraw.postredraw = INFINITY;
                 ed.redraw.preredraw = INFINITY;
             } else {
