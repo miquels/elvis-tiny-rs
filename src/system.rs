@@ -17,10 +17,9 @@ use crate::vi_h::LINEMASK;
 use crate::vi_h::{BLKSIZE, MODIFIED, Mark, R, cstr};
 
 // C: system.c:elvis_system
-/// `None` is `cmd == o_shell` (run an interactive shell).
-pub fn elvis_system(ed: &mut Editor, cmd: Option<&[u8]>) -> i32 {
-    let status;
-
+/// `None` is `cmd == o_shell` (run an interactive shell).  True if the
+/// shell exited with status 0.
+pub fn elvis_system(ed: &mut Editor, cmd: Option<&[u8]>) -> bool {
     if ed.opts.on(Opt::Warn) && ed.vars.viflags.tstflag(MODIFIED) {
         if ed.vars.mode == Mode::Vi {
             ed.vars.mode = Mode::Colon;
@@ -56,15 +55,14 @@ pub fn elvis_system(ed: &mut Editor, cmd: Option<&[u8]>) -> i32 {
     match os::spawn_shell(&shell, run, &opts) {
         Err(_) => {
             msg(ed, b"fork() failed", &[]);
-            status = -1;
+            false
         }
         Ok(child) => {
-            status = os::wait_child(&child);
+            let status = os::wait_child(&child);
             os::trap_sigint();
+            status == 0
         }
     }
-
-    status
 }
 
 /// The read end of an `rpipe()` and the child writing into it.
@@ -93,11 +91,12 @@ fn rpipe(ed: &mut Editor, cmd: &[u8], input: Option<&File>) -> Option<Rpipe> {
 }
 
 // C: system.c:rpclose
-fn rpclose(p: Rpipe) -> i32 {
+/// True if the command exited with status 0.
+fn rpclose(p: Rpipe) -> bool {
     drop(p.fd);
     let status = os::wait_child(&p.child);
     os::trap_sigint();
-    status
+    status == 0
 }
 
 const PROG: &[u8] = b"echo ";
@@ -127,7 +126,7 @@ pub fn wildcard(ed: &mut Editor, names: &[u8]) -> Vec<u8> {
         }
     }
 
-    if rpclose(p) == 0 && j == 0 && i < BLKSIZE as isize && i > 0 {
+    if rpclose(p) && j == 0 && i < BLKSIZE as isize && i > 0 {
         ed.vars.tmpblk.c[i as usize - 1] = 0;
         cstr(&ed.vars.tmpblk.c).to_vec()
     } else {
@@ -136,7 +135,7 @@ pub fn wildcard(ed: &mut Editor, names: &[u8]) -> Vec<u8> {
 }
 
 // C: system.c:filter
-pub fn filter(ed: &mut Editor, mut from: Mark, mut to: Mark, cmd: &[u8]) -> R<i32> {
+pub fn filter(ed: &mut Editor, mut from: Mark, mut to: Mark, cmd: &[u8]) -> R<()> {
     let mut scratch: Option<File> = None;
     let mut scrout: Vec<u8> = Vec::new();
     let mut new: Mark;
@@ -144,7 +143,7 @@ pub fn filter(ed: &mut Editor, mut from: Mark, mut to: Mark, cmd: &[u8]) -> R<i3
     if to != 0 {
         scrout = scratchout_fmt(ed.opts.directory());
         let Ok(mut f) = os::mkstemp(&mut scrout) else {
-            return Ok(-1);
+            return Ok(());
         };
         if let Err(e) = cmd_write2(ed, from, to, &mut f) {
             drop(f);
@@ -160,7 +159,7 @@ pub fn filter(ed: &mut Editor, mut from: Mark, mut to: Mark, cmd: &[u8]) -> R<i3
             drop(scratch);
             let _ = os::unlink(&scrout);
         }
-        return Ok(-1);
+        return Ok(());
     };
 
     beforedo(ed, false);
@@ -208,7 +207,7 @@ pub fn filter(ed: &mut Editor, mut from: Mark, mut to: Mark, cmd: &[u8]) -> R<i3
         drop(scratch);
         let _ = os::unlink(&scrout);
     }
-    Ok(0)
+    Ok(())
 }
 
 #[cfg(test)]

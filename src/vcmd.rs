@@ -464,7 +464,7 @@ pub fn v_keyword(ed: &mut Editor, keyword: &[u8], m: Mark, _cnt: i64) -> R<Mark>
     let waswarn = ed.opts.on(Opt::Warn);
     ed.opts.set(Opt::Warn, false);
     suspend_curses(ed);
-    if elvis_system(ed, Some(&cmdline)) != 0 {
+    if !elvis_system(ed, Some(&cmdline)) {
         ed.curses.addstr(b"<<< failed >>>\n");
     }
     resume_curses(ed, false);
