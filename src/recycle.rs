@@ -2,7 +2,7 @@
 
 use std::io::{Seek, SeekFrom};
 
-use crate::blk::lseek_read;
+use crate::config::lseek_read;
 use crate::cut::cutneeds;
 use crate::tio::msg;
 use crate::vars::Editor;

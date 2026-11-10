@@ -178,19 +178,17 @@ fn read_fd_timeout(fd: i32, buf: &mut [u8], secs: u32) -> ReadOutcome {
 
 /// One `write(1, bytes, len)`, like the C `ttywrite` macro.
 pub fn tty_write(bytes: &[u8]) -> io::Result<usize> {
-    // SAFETY: `bytes` is a valid readable region of `bytes.len()` bytes.
-    let n = unsafe { libc::write(1, bytes.as_ptr().cast(), bytes.len()) };
-    if n < 0 {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok(n as usize)
-    }
+    write_fd(1, bytes)
 }
 
 /// One `write(2, bytes, len)`, used for fatal startup messages.
 pub fn err_write(bytes: &[u8]) -> io::Result<usize> {
+    write_fd(2, bytes)
+}
+
+fn write_fd(fd: i32, bytes: &[u8]) -> io::Result<usize> {
     // SAFETY: `bytes` is a valid readable region of `bytes.len()` bytes.
-    let n = unsafe { libc::write(2, bytes.as_ptr().cast(), bytes.len()) };
+    let n = unsafe { libc::write(fd, bytes.as_ptr().cast(), bytes.len()) };
     if n < 0 {
         Err(io::Error::last_os_error())
     } else {

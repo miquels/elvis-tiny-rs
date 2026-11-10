@@ -2,6 +2,8 @@
 
 use crate::fmt::{Arg, sprintf};
 use crate::os;
+use std::fs::File;
+use std::io::{Seek, SeekFrom};
 
 pub const TMPDIR: &[u8] = b"/tmp";
 /// `TMPNAME` is `"%s/elv%x%04llx%03llx"`; see `tmpname_fmt`.
@@ -71,6 +73,23 @@ pub fn twrite(fd: &mut impl std::io::Write, buf: &[u8]) -> isize {
         Ok(n) => n as isize,
         Err(_) => -1,
     }
+}
+
+/// `lseek(fd, off, 0); read(fd, buf, len) == len`.
+pub fn lseek_read(fd: Option<&File>, off: u64, buf: &mut [u8]) -> bool {
+    let Some(mut f) = fd else { return false };
+    let _ = f.seek(SeekFrom::Start(off));
+    tread(&mut f, buf) == buf.len() as isize
+}
+
+/// `lseek(fd, off, 0); write(fd, buf, len) == len`; with no `off` (C's
+/// failed `lseek`) it writes at the current position.
+pub fn lseek_write(fd: Option<&File>, off: Option<u64>, buf: &[u8]) -> bool {
+    let Some(mut f) = fd else { return false };
+    if let Some(off) = off {
+        let _ = f.seek(SeekFrom::Start(off));
+    }
+    twrite(&mut f, buf) == buf.len() as isize
 }
 
 #[cfg(test)]

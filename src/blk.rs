@@ -2,9 +2,8 @@
 
 use crate::opts::Opt;
 use crate::vi_h::Mode;
-use std::fs::File;
-use std::io::{Seek, SeekFrom};
 
+use crate::config::{lseek_read, lseek_write};
 use crate::recycle::{allocate, garbage};
 use crate::redraw::redraw;
 use crate::tio::msg;
@@ -84,23 +83,6 @@ pub type BufId = usize;
 
 /// What `blkget(0)` returns: C returned `&hdr`, which is not a cache buffer.
 pub const HDR: BufId = NBUFS;
-
-/// `lseek(fd, off, 0); read(fd, buf, len) == len`.
-pub(crate) fn lseek_read(fd: Option<&File>, off: u64, buf: &mut [u8]) -> bool {
-    let Some(mut f) = fd else { return false };
-    let _ = f.seek(SeekFrom::Start(off));
-    crate::config::tread(&mut f, buf) == buf.len() as isize
-}
-
-/// `lseek(fd, off, 0); write(fd, buf, len) == len`; with no `off` (C's
-/// failed `lseek`) it writes at the current position.
-pub(crate) fn lseek_write(fd: Option<&File>, off: Option<u64>, buf: &[u8]) -> bool {
-    let Some(mut f) = fd else { return false };
-    if let Some(off) = off {
-        let _ = f.seek(SeekFrom::Start(off));
-    }
-    crate::config::twrite(&mut f, buf) == buf.len() as isize
-}
 
 /// `while (*scan++ != '\n') {}`, stopping at the end of the block.
 pub(crate) fn skipline(c: &[u8], mut i: usize) -> usize {
