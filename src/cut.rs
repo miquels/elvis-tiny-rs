@@ -50,7 +50,8 @@ impl Default for Cut {
 const ANNON: usize = 27;
 
 // C: cut.c:cutneeds
-pub fn cutneeds(ed: &mut Editor, need: &mut Blk) -> i32 {
+/// Stores the blocks the cut buffers use in `need`; returns how many.
+pub fn cutneeds(ed: &mut Editor, need: &mut Blk) -> usize {
     let mut n: usize = 0;
 
     for cb in &ed.cut.bufs {
@@ -66,7 +67,7 @@ pub fn cutneeds(ed: &mut Editor, need: &mut Blk) -> i32 {
         }
     }
 
-    n.min(MAXBLKS) as i32
+    n.min(MAXBLKS)
 }
 
 // C: cut.c:cutfree

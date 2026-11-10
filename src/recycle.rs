@@ -8,9 +8,10 @@ use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::{Blk, MAXBLKS};
 
+/// Bitmap of free blocks in the first `MAXBIT` blocks of the tmp file.
+/// Blocks past the end of the map always look free.
 pub struct Recycle {
-    /// Bitmap of free blocks in the first 4096 blocks of the tmp file.
-    pub bitmap: [u8; 512],
+    bitmap: [u8; 512],
 }
 
 impl Default for Recycle {
@@ -21,53 +22,49 @@ impl Default for Recycle {
 
 const MAXBIT: usize = 512 << 3;
 
-#[inline]
-fn btst(bitno: usize, byte: u8) -> bool {
-    byte & (1 << bitno) != 0
-}
-
-#[inline]
-fn tst(bitmap: &[u8; 512], blkno: usize) -> bool {
-    if blkno < MAXBIT {
-        btst(blkno & 7, bitmap[blkno >> 3])
-    } else {
-        true
+impl Recycle {
+    #[cfg(test)]
+    fn is_free(&self, blk: usize) -> bool {
+        blk >= MAXBIT || self.bitmap[blk >> 3] & (1 << (blk & 7)) != 0
     }
-}
 
-#[inline]
-fn clr(bitmap: &mut [u8; 512], blkno: usize) {
-    if blkno < MAXBIT {
-        bitmap[blkno >> 3] &= !(1 << (blkno & 7));
+    fn mark_used(&mut self, blk: usize) {
+        if blk < MAXBIT {
+            self.bitmap[blk >> 3] &= !(1 << (blk & 7));
+        }
+    }
+
+    /// The lowest free block, now marked used.
+    fn take_free(&mut self) -> Option<usize> {
+        let byte = self.bitmap.iter().position(|&b| b != 0)?;
+        let blk = (byte << 3) + self.bitmap[byte].trailing_zeros() as usize;
+        self.mark_used(blk);
+        Some(blk)
     }
 }
 
 // C: recycle.c:garbage
 pub fn garbage(ed: &mut Editor) {
     let mut oldhdr = Blk::default();
+    let rc = &mut ed.recycle;
 
-    ed.recycle.bitmap = [255; 512];
-
-    clr(&mut ed.recycle.bitmap, 0);
-
+    rc.bitmap.fill(0xff);
+    rc.mark_used(0);
     for i in 1..MAXBLKS {
-        let n = ed.blk.hdr.n(i) as usize;
-        clr(&mut ed.recycle.bitmap, n);
+        rc.mark_used(ed.blk.hdr.n(i) as usize);
     }
 
     if !lseek_read(ed.vars.tmpfd.as_ref(), 0, &mut oldhdr.c) {
         msg(ed, b"garbage() failed to read oldhdr??", &[]);
-        ed.recycle.bitmap = [0; 512];
+        ed.recycle.bitmap.fill(0);
         return;
     }
     for i in 1..MAXBLKS {
-        clr(&mut ed.recycle.bitmap, oldhdr.n(i) as usize);
+        ed.recycle.mark_used(oldhdr.n(i) as usize);
     }
 
-    let mut i = cutneeds(ed, &mut oldhdr) - 1;
-    while i >= 0 {
-        clr(&mut ed.recycle.bitmap, oldhdr.n(i as usize) as usize);
-        i -= 1;
+    for i in 0..cutneeds(ed, &mut oldhdr) {
+        ed.recycle.mark_used(oldhdr.n(i) as usize);
     }
 }
 
@@ -75,28 +72,15 @@ pub fn garbage(ed: &mut Editor) {
 /// The tmp file offset for a new block, or -1 if the file can't be
 /// extended.  (An `Option<u64>` costs more code here.)
 pub fn allocate(ed: &mut Editor) -> i64 {
-    let bitmap = &mut ed.recycle.bitmap;
-    let mut i = 0;
-    while i < bitmap.len() && bitmap[i] == 0 {
-        i += 1;
-    }
-
-    if i == bitmap.len() {
-        match ed.vars.tmpfd.as_ref() {
+    match ed.recycle.take_free() {
+        Some(blk) => blk as i64 * crate::vi_h::BLKSIZE as i64,
+        None => match ed.vars.tmpfd.as_ref() {
             Some(mut f) => match f.seek(SeekFrom::End(0)) {
                 Ok(p) => p as i64,
                 Err(_) => -1,
             },
             None => -1,
-        }
-    } else {
-        i <<= 3;
-        while !tst(bitmap, i) {
-            i += 1;
-        }
-        let offset = i as i64 * crate::vi_h::BLKSIZE as i64;
-        clr(bitmap, i);
-        offset
+        },
     }
 }
 
@@ -106,13 +90,13 @@ mod tests {
 
     #[test]
     fn bitmap_ops() {
-        let mut bm = [255u8; 512];
-        clr(&mut bm, 0);
-        clr(&mut bm, 9);
-        assert!(!tst(&bm, 0) && tst(&bm, 1) && !tst(&bm, 9));
-        // out-of-range blocks always look free and are never cleared
-        clr(&mut bm, MAXBIT + 3);
-        assert!(tst(&bm, MAXBIT + 3));
+        let mut rc = Recycle { bitmap: [255; 512] };
+        rc.mark_used(0);
+        rc.mark_used(9);
+        assert!(!rc.is_free(0) && rc.is_free(1) && !rc.is_free(9));
+        // out-of-range blocks always look free and are never marked
+        rc.mark_used(MAXBIT + 3);
+        assert!(rc.is_free(MAXBIT + 3));
     }
 
     #[test]
