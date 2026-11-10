@@ -512,9 +512,7 @@ pub fn v_xit(ed: &mut Editor, m: Mark, _cnt: i64, key: i32) -> R<Mark> {
         return Ok(MARK_UNSET);
     }
 
-    let lines = ed.curses.lines;
-    ed.curses.mv(lines - 1, 0);
-    ed.curses.clrtoeol();
+    ed.curses.clear_last_line();
 
     cmd_xit(ed, m, m, CMD_XIT, false, b"")?;
 

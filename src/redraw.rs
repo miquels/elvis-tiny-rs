@@ -18,33 +18,49 @@ pub struct Redraw {
     pub redraw_chgs: i64,
 }
 
-// C: redraw.c:redrawrange
-pub fn redrawrange(ed: &mut Editor, after: i64, pre: i64, post: i64) {
-    let r = &mut ed.redraw;
-    if after == r.redrawafter {
-        r.preredraw -= post - pre;
-        if r.postredraw < post {
-            r.preredraw += post - r.postredraw;
+impl Redraw {
+    /// Nothing left to redraw.
+    pub fn clear(&mut self) {
+        self.redrawafter = INFINITY;
+        self.preredraw = 0;
+        self.postredraw = 0;
+    }
+
+    /// Redraw every line.
+    pub fn all(&mut self) {
+        self.redrawafter = 0;
+        self.preredraw = INFINITY;
+        self.postredraw = INFINITY;
+    }
+
+    // C: redraw.c:redrawrange
+    pub fn range(&mut self, after: i64, pre: i64, post: i64) {
+        let r = self;
+        if after == r.redrawafter {
+            r.preredraw -= post - pre;
+            if r.postredraw < post {
+                r.preredraw += post - r.postredraw;
+                r.postredraw = post;
+            }
+            if r.redrawafter > r.preredraw {
+                r.redrawafter = r.preredraw;
+            }
+            if r.redrawafter < 1 {
+                r.redrawafter = 0;
+                r.preredraw = INFINITY;
+                r.postredraw = INFINITY;
+            }
+        } else if r.postredraw > 0 {
+            r.postredraw = INFINITY;
+            r.preredraw = INFINITY;
+            if after < r.redrawafter {
+                r.redrawafter = after;
+            }
+        } else {
+            r.redrawafter = after;
+            r.preredraw = pre;
             r.postredraw = post;
         }
-        if r.redrawafter > r.preredraw {
-            r.redrawafter = r.preredraw;
-        }
-        if r.redrawafter < 1 {
-            r.redrawafter = 0;
-            r.preredraw = INFINITY;
-            r.postredraw = INFINITY;
-        }
-    } else if r.postredraw > 0 {
-        r.postredraw = INFINITY;
-        r.preredraw = INFINITY;
-        if after < r.redrawafter {
-            r.redrawafter = after;
-        }
-    } else {
-        r.redrawafter = after;
-        r.preredraw = pre;
-        r.postredraw = post;
     }
 }
 
@@ -109,13 +125,13 @@ fn mark2phys(ed: &mut Editor, m: Mark, text: &[u8], inputting: bool) -> i32 {
     while i < ed.vars.leftcol {
         ed.vars.leftcol -= ed.opts.o_sidescroll[0] as i32;
         ed.vars.mustredraw = true;
-        redrawrange(ed, 1, INFINITY, INFINITY);
+        ed.redraw.range(1, INFINITY, INFINITY);
         ed.curses.qaddch(b'\r');
     }
     while i > rightcol(ed.vars.leftcol, ed.curses.cols) {
         ed.vars.leftcol += ed.opts.o_sidescroll[0] as i32;
         ed.vars.mustredraw = true;
-        redrawrange(ed, 1, INFINITY, INFINITY);
+        ed.redraw.range(1, INFINITY, INFINITY);
         ed.curses.qaddch(b'\r');
     }
     ed.vars.physcol = i - ed.vars.leftcol;
@@ -231,14 +247,11 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
         if ed.vars.topline < 1 || ed.vars.topline > ed.vars.nlines {
             ed.vars.topline = 1;
         } else {
-            ed.curses.mv(lines - 1, 0);
-            ed.curses.clrtoeol();
+            ed.curses.clear_last_line();
         }
         ed.vars.leftcol = 0;
         ed.vars.mustredraw = true;
-        ed.redraw.redrawafter = INFINITY;
-        ed.redraw.preredraw = 0;
-        ed.redraw.postredraw = 0;
+        ed.redraw.clear();
         ed.redraw.redraw_chgs = 0;
         ed.redraw.smartlno = 0;
         return;
@@ -273,21 +286,17 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
                 ed.curses.put(curses::UP);
             }
 
-            ed.curses.mv(lines - 1, 0);
-            ed.curses.clrtoeol();
+            ed.curses.clear_last_line();
         } else {
             ed.vars.topline = l;
-            ed.redraw.redrawafter = INFINITY;
-            ed.redraw.preredraw = 0;
-            ed.redraw.postredraw = 0;
+            ed.redraw.clear();
         }
     } else if l > ed.vars.topline && l < bot(ed) + lines as i64 {
         let r = &ed.redraw;
         if !ed.vars.mustredraw
             || (r.redrawafter == r.preredraw && r.preredraw == bot(ed) && r.postredraw == l)
         {
-            ed.curses.mv(lines - 1, 0);
-            ed.curses.clrtoeol();
+            ed.curses.clear_last_line();
             while l > bot(ed) {
                 ed.vars.topline += 1;
                 let b = bot(ed);
@@ -297,9 +306,7 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
             ed.vars.mustredraw = false;
         } else {
             ed.vars.topline = l - (lines as i64 - 2);
-            ed.redraw.redrawafter = INFINITY;
-            ed.redraw.preredraw = 0;
-            ed.redraw.postredraw = 0;
+            ed.redraw.clear();
         }
     } else {
         ed.vars.topline = l - (lines as i64 / 2) - 1;
@@ -307,16 +314,12 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
             ed.vars.topline = 1;
         }
         ed.vars.mustredraw = true;
-        ed.redraw.redrawafter = INFINITY;
-        ed.redraw.preredraw = 0;
-        ed.redraw.postredraw = 0;
+        ed.redraw.clear();
     }
 
     if ed.vars.mustredraw {
         if ed.redraw.redrawafter == INFINITY {
-            ed.redraw.redrawafter = 0;
-            ed.redraw.preredraw = INFINITY;
-            ed.redraw.postredraw = INFINITY;
+            ed.redraw.all();
         }
 
         {
@@ -350,8 +353,7 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
                     i -= 1;
                 }
 
-                ed.curses.mv(lines - 1, 0);
-                ed.curses.clrtoeol();
+                ed.curses.clear_last_line();
             }
         }
 
@@ -360,8 +362,7 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
                 ed.redraw.postredraw = INFINITY;
                 ed.redraw.preredraw = INFINITY;
             } else {
-                ed.curses.mv(lines - 1, 0);
-                ed.curses.clrtoeol();
+                ed.curses.clear_last_line();
 
                 ed.curses
                     .mv((ed.redraw.postredraw - ed.vars.topline) as i32, 0);
@@ -421,9 +422,7 @@ pub fn redraw(ed: &mut Editor, curs: Mark, inputting: bool) {
         ed.vars.mustredraw = false;
     }
 
-    ed.redraw.redrawafter = INFINITY;
-    ed.redraw.preredraw = 0;
-    ed.redraw.postredraw = 0;
+    ed.redraw.clear();
 
     ed.curses
         .mv((markline(curs) - ed.vars.topline) as i32, ed.vars.physcol);
@@ -439,7 +438,7 @@ mod tests {
     #[test]
     fn redrawrange_combines_like_c() {
         let mut ed = Editor::new();
-        redrawrange(&mut ed, 5, 6, 7);
+        ed.redraw.range(5, 6, 7);
         assert_eq!(
             (
                 ed.redraw.redrawafter,
@@ -448,7 +447,7 @@ mod tests {
             ),
             (5, 6, 7)
         );
-        redrawrange(&mut ed, 5, 6, 8);
+        ed.redraw.range(5, 6, 8);
         assert_eq!(
             (
                 ed.redraw.redrawafter,
@@ -457,7 +456,7 @@ mod tests {
             ),
             (5, 5, 8)
         );
-        redrawrange(&mut ed, 3, 4, 4);
+        ed.redraw.range(3, 4, 4);
         assert_eq!(
             (
                 ed.redraw.redrawafter,

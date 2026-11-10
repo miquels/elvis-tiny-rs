@@ -249,8 +249,7 @@ fn main() {
     cut::cutend(ed);
 
     tio::endmsgs(ed);
-    ed.curses.mv(ed.curses.lines - 1, 0);
-    ed.curses.clrtoeol();
+    ed.curses.clear_last_line();
     ed.curses.refresh();
     curses::endwin(ed);
     os::exit(0);

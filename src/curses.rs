@@ -928,6 +928,11 @@ impl Curses {
     pub fn clrtoeol(&mut self) {
         self.put(CE);
     }
+    /// Moves to the start of the bottom line and clears it.
+    pub fn clear_last_line(&mut self) {
+        self.mv(self.lines - 1, 0);
+        self.clrtoeol();
+    }
     pub fn clrtobot(&mut self) {
         self.put(CD);
     }

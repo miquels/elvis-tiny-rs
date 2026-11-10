@@ -2,7 +2,6 @@
 
 use crate::blk::{afterdo, beforedo, blkadd, blkdirty, blkget, skipline};
 use crate::misc::fetchline;
-use crate::redraw::redrawrange;
 use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::{
@@ -22,7 +21,8 @@ pub fn delete(ed: &mut Editor, frommark: Mark, tomark: Mark) {
 
     if markline(frommark) != markline(tomark) {
         ed.vars.mustredraw = true;
-        redrawrange(ed, markline(frommark), markline(tomark), markline(frommark));
+        ed.redraw
+            .range(markline(frommark), markline(tomark), markline(frommark));
     }
 
     let l = markline(tomark);
@@ -178,10 +178,10 @@ pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
     if addlines > 0 {
         ed.vars.mustredraw = true;
         if markidx(atmark) == 0 && lastpart == 0 {
-            redrawrange(ed, l, l, l + addlines);
+            ed.redraw.range(l, l, l + addlines);
         } else {
             // The last line was split, so it must be redrawn too.
-            redrawrange(ed, l, l + 1, l + addlines + 1);
+            ed.redraw.range(l, l + 1, l + addlines + 1);
         }
     }
 

@@ -7,7 +7,7 @@ use crate::ex::{doexrc, linespec, parseptrn};
 use crate::misc::fetchline;
 use crate::modify::{add, change, delete};
 use crate::os;
-use crate::redraw::{redraw, redrawrange};
+use crate::redraw::redraw;
 use crate::regexp::{regcomp, regexec};
 use crate::regsub::regsub;
 use crate::system::filter;
@@ -140,7 +140,7 @@ pub fn cmd_substitute(
                 }
                 chsub += 1;
 
-                redrawrange(ed, l, l + 1, l + 1);
+                ed.redraw.range(l, l + 1, l + 1);
 
                 let sp = base + re.startp[0].unwrap_or(0);
                 if s < sp {
@@ -379,8 +379,7 @@ pub fn cmd_shift(
 ) -> R<()> {
     if markline(frommark) != markline(tomark) {
         ed.vars.mustredraw = true;
-        redrawrange(
-            ed,
+        ed.redraw.range(
             markline(frommark),
             markline(tomark) + 1,
             markline(tomark) + 1,

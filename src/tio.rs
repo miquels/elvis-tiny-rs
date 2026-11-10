@@ -536,8 +536,7 @@ pub fn getkey(ed: &mut Editor, when: i32) -> R<i32> {
 
         if ed.tio.nkeys == 0 {
             tmpabort(ed, true);
-            ed.curses.mv(ed.curses.lines - 1, 0);
-            ed.curses.clrtoeol();
+            ed.curses.clear_last_line();
             ed.curses.refresh();
             endwin(ed);
             os::exit(1);
