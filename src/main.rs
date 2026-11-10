@@ -199,11 +199,13 @@ fn main() {
         let _ = cmd1::cmd_tag(ed, MARK_FIRST, MARK_FIRST, Cmd::Tag, false, tag);
     }
 
-    if ed.vars.tmpfd.is_none() && tmp::tmpstart(ed, &firstarg) == 0 && ch(&ed.vars.origname, 0) != 0
-    {
-        blk::beforedo(ed, false);
-        blk::afterdo(ed);
-        ed.vars.viflags.clrflag(vi_h::MODIFIED);
+    if ed.vars.tmpfd.is_none() {
+        tmp::tmpstart(ed, &firstarg);
+        if !ed.vars.origname.is_empty() {
+            blk::beforedo(ed, false);
+            blk::afterdo(ed);
+            ed.vars.viflags.clrflag(vi_h::MODIFIED);
+        }
     }
 
     if let Some(cmd) = &cmd {

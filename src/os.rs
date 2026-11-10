@@ -253,11 +253,10 @@ pub fn geteuid() -> u32 {
     unsafe { libc::geteuid() }
 }
 
-/// `access(2)`; returns 0 on success and -1 on failure, like C.
-pub fn access(path: &[u8], mode: i32) -> i32 {
-    let Ok(p) = cpath(path) else { return -1 };
-    // SAFETY: `p` is a valid NUL-terminated string.
-    unsafe { libc::access(p.as_ptr(), mode) }
+// C: tmp.c:elvis_access
+/// `access(path, 0) == 0`
+pub fn exists(path: &[u8]) -> bool {
+    stat(path).is_ok()
 }
 
 pub fn link(from: &[u8], to: &[u8]) -> io::Result<()> {
@@ -640,8 +639,8 @@ mod tests {
         let name = b(&d.join("elvtmp"));
         link(&t, &name).unwrap();
         unlink(&t).unwrap();
-        assert_eq!(access(&t, 0), -1);
-        assert_eq!(access(&name, 0), 0);
+        assert!(!exists(&t));
+        assert!(exists(&name));
         let st = stat(&name).unwrap();
         assert_eq!(st.mode & S_IFMT, S_IFREG);
         assert_eq!(st.mode & 0o777, 0o600);

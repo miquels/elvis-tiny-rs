@@ -14,7 +14,7 @@ use crate::os;
 use crate::regexp::{regcomp, regexec};
 use crate::system::{elvis_system, filter};
 use crate::tio::{Arg, dumpkey, exrefresh, mapkey, msg};
-use crate::tmp::{elvis_access, tmpabort, tmpend, tmpsave, tmpstart};
+use crate::tmp::{tmpabort, tmpend, tmpsave, tmpstart};
 use crate::vars::{ARGS_SIZE, Editor, NAME_SIZE};
 use crate::vi_h::{
     BLKSIZE, COPYING, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, MODIFIED, Mark, R, READONLY,
@@ -82,7 +82,7 @@ pub fn cmd_write(
         append = true;
     }
 
-    if elvis_access(extra, 0) == 0 && !bang && !append {
+    if os::exists(extra) && !bang && !append {
         msg(ed, b"File already exists - Use :w! to overwrite", &[]);
         return Ok(());
     }

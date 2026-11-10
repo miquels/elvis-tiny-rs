@@ -70,22 +70,21 @@ pub type BufId = usize;
 /// What `blkget(0)` returns: C returned `&hdr`, which is not a cache buffer.
 pub const HDR: BufId = NBUFS;
 
-/// `lseek(fd, off, 0); read(fd, buf, len)`; -1 when `fd` is C's -1.
-pub(crate) fn lseek_read(fd: Option<&File>, off: i64, buf: &mut [u8]) -> isize {
-    let Some(mut f) = fd else { return -1 };
-    if off >= 0 {
-        let _ = f.seek(SeekFrom::Start(off as u64));
-    }
-    crate::config::tread(&mut f, buf)
+/// `lseek(fd, off, 0); read(fd, buf, len) == len`.
+pub(crate) fn lseek_read(fd: Option<&File>, off: u64, buf: &mut [u8]) -> bool {
+    let Some(mut f) = fd else { return false };
+    let _ = f.seek(SeekFrom::Start(off));
+    crate::config::tread(&mut f, buf) == buf.len() as isize
 }
 
-/// `lseek(fd, off, 0); write(fd, buf, len)`; -1 when `fd` is C's -1.
-pub(crate) fn lseek_write(fd: Option<&File>, off: i64, buf: &[u8]) -> isize {
-    let Some(mut f) = fd else { return -1 };
-    if off >= 0 {
-        let _ = f.seek(SeekFrom::Start(off as u64));
+/// `lseek(fd, off, 0); write(fd, buf, len) == len`; with no `off` (C's
+/// failed `lseek`) it writes at the current position.
+pub(crate) fn lseek_write(fd: Option<&File>, off: Option<u64>, buf: &[u8]) -> bool {
+    let Some(mut f) = fd else { return false };
+    if let Some(off) = off {
+        let _ = f.seek(SeekFrom::Start(off));
     }
-    crate::config::twrite(&mut f, buf)
+    crate::config::twrite(&mut f, buf) == buf.len() as isize
 }
 
 /// `while (*scan++ != '\n') {}`, stopping at the end of the block.
@@ -169,12 +168,11 @@ pub fn blkget(ed: &mut Editor, logical: i32) -> BufId {
     ed.blk.blk[this].logical = logical as u16;
     let phys = ed.blk.hdr.n(logical as usize);
     if phys != 0 {
-        if lseek_read(
+        if !lseek_read(
             ed.vars.tmpfd.as_ref(),
-            phys as i64 * BLKSIZE as i64,
+            phys as u64 * BLKSIZE as u64,
             &mut ed.blk.blk[this].buf.c,
-        ) != BLKSIZE as isize
-        {
+        ) {
             msg(ed, b"Error reading back from tmp file!", &[]);
         }
     } else {
@@ -205,8 +203,9 @@ fn blkflush(ed: &mut Editor, this: usize) {
 
     let seekpos = allocate(ed);
     let physical = (seekpos / BLKSIZE as i64) as u16;
+    let seekpos = (seekpos >= 0).then_some(seekpos as u64);
 
-    if lseek_write(ed.vars.tmpfd.as_ref(), seekpos, &ed.blk.blk[this].buf.c) != BLKSIZE as isize {
+    if !lseek_write(ed.vars.tmpfd.as_ref(), seekpos, &ed.blk.blk[this].buf.c) {
         msg(ed, b"Trouble writing to tmp file", &[]);
     }
     ed.blk.blk[this].dirty = false;
@@ -316,7 +315,7 @@ pub fn beforedo(ed: &mut Editor, forundo: bool) {
 
     garbage(ed);
 
-    if lseek_write(ed.vars.tmpfd.as_ref(), 0, &ed.blk.hdr.c) != BLKSIZE as isize {
+    if !lseek_write(ed.vars.tmpfd.as_ref(), Some(0), &ed.blk.hdr.c) {
         msg(ed, b"Trouble writing header to tmp file ", &[]);
     }
 
@@ -375,7 +374,7 @@ pub fn undo(ed: &mut Editor) -> bool {
         return false;
     }
 
-    if lseek_read(ed.vars.tmpfd.as_ref(), 0, &mut oldhdr.c) != BLKSIZE as isize {
+    if !lseek_read(ed.vars.tmpfd.as_ref(), 0, &mut oldhdr.c) {
         msg(ed, b"Trouble rereading the old header from tmp file", &[]);
     }
 

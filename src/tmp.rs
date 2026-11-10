@@ -46,7 +46,7 @@ fn leak(f: Option<File>) {
 }
 
 // C: tmp.c:tmpstart
-pub fn tmpstart(ed: &mut Editor, filename: &[u8]) -> i32 {
+pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
     ed.vars.changes += 1;
     redraw(ed, MARK_UNSET, false);
 
@@ -135,7 +135,7 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) -> i32 {
     tmpname.truncate(TMPNAME_SIZE - 1);
     ed.tmp.tmpname = tmpname.clone();
 
-    if elvis_access(&tmpname, 0) == 0 {
+    if os::exists(&tmpname) {
         if !ed.vars.origname.is_empty() {
             msg(ed, b"\"%s\" is busy", &[Arg::S(filename)]);
             leak(origfd);
@@ -336,8 +336,6 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) -> i32 {
             &[],
         );
     }
-
-    0
 }
 
 // C: tmp.c:tmpsave
@@ -371,7 +369,7 @@ pub fn tmpsave(ed: &mut Editor, filename: Option<&[u8]>, bang: bool) -> bool {
         os::open(&filename, os::O_WRONLY | os::O_APPEND, 0)
     } else {
         // The file must not exist, or be the original, or we need a bang.
-        if filename != ed.vars.origname && elvis_access(&filename, 0) == 0 && !bang {
+        if filename != ed.vars.origname && os::exists(&filename) && !bang {
             msg(ed, b"File already exists - Use :w! to overwrite", &[]);
             return false;
         }
@@ -459,11 +457,6 @@ pub fn tmpend(ed: &mut Editor, bang: bool) -> bool {
     true
 }
 
-// C: tmp.c:elvis_access
-pub fn elvis_access(file: &[u8], mode: i32) -> i32 {
-    os::access(file, mode)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -518,7 +511,7 @@ mod tests {
     fn start(ed: &mut Editor, dir: &[u8], content: &[u8]) -> Vec<u8> {
         let f = path(dir, "orig.txt");
         std::fs::write(std::str::from_utf8(&f).unwrap(), content).unwrap();
-        assert_eq!(tmpstart(ed, &f), 0);
+        tmpstart(ed, &f);
         f
     }
 
@@ -556,9 +549,9 @@ mod tests {
         );
         assert_eq!(fetchline(&mut ed, 1), b"line 0 ".to_vec());
         let tmpname = ed.tmp.tmpname.clone();
-        assert_eq!(elvis_access(&tmpname, 0), 0);
+        assert!(os::exists(&tmpname));
         tmpabort(&mut ed, true);
-        assert_eq!(elvis_access(&tmpname, 0), -1);
+        assert!(!os::exists(&tmpname));
         assert!(ed.vars.tmpfd.is_none());
         assert_eq!(ed.vars.prevorig, path(&dir, "orig.txt"));
         cleanup(&mut ed, &dir);
@@ -765,7 +758,7 @@ mod tests {
         let f2 = path(&dir, "second.txt");
         std::fs::write(std::str::from_utf8(&f2).unwrap(), b"one\ntwo\n").unwrap();
         ed.tio.manymsgs = false;
-        assert_eq!(tmpstart(&mut ed, &f2), 0);
+        tmpstart(&mut ed, &f2);
         cutname(&mut ed, b'b' as i32);
         paste(&mut ed, mark_at_line(1), false, false);
         let lines: Vec<&[u8]> = content.split_inclusive(|&b| b == b'\n').collect();

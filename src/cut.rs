@@ -240,7 +240,7 @@ pub fn cut(ed: &mut Editor, from: Mark, to: Mark) {
 // C: cut.c:readcutblk
 fn readcutblk(ed: &mut Editor, k: usize, blkno: usize) {
     let cb = cbref(&ed.cut, k);
-    let off = cb.phys.as_ref().map_or(0, |p| p[blkno]) as i64 * BLKSIZE as i64;
+    let off = cb.phys.as_ref().map_or(0, |p| p[blkno]) as u64 * BLKSIZE as u64;
 
     let fd = if cb.fd >= 0 {
         ed.cut.files.iter().find(|f| f.as_raw_fd() == cb.fd)
@@ -248,7 +248,7 @@ fn readcutblk(ed: &mut Editor, k: usize, blkno: usize) {
         ed.vars.tmpfd.as_ref()
     };
 
-    if lseek_read(fd, off, &mut ed.vars.tmpblk.c) != BLKSIZE as isize {
+    if !lseek_read(fd, off, &mut ed.vars.tmpblk.c) {
         msg(ed, b"Error reading back from tmp file for pasting!", &[]);
     }
 }

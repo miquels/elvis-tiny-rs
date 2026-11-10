@@ -55,7 +55,7 @@ pub fn garbage(ed: &mut Editor) {
         clr(&mut ed.recycle.bitmap, n);
     }
 
-    if lseek_read(ed.vars.tmpfd.as_ref(), 0, &mut oldhdr.c) != oldhdr.c.len() as isize {
+    if !lseek_read(ed.vars.tmpfd.as_ref(), 0, &mut oldhdr.c) {
         msg(ed, b"garbage() failed to read oldhdr??", &[]);
         ed.recycle.bitmap = [0; 512];
         return;
@@ -72,6 +72,8 @@ pub fn garbage(ed: &mut Editor) {
 }
 
 // C: recycle.c:allocate
+/// The tmp file offset for a new block, or -1 if the file can't be
+/// extended.  (An `Option<u64>` costs more code here.)
 pub fn allocate(ed: &mut Editor) -> i64 {
     let bitmap = &mut ed.recycle.bitmap;
     let mut i = 0;
