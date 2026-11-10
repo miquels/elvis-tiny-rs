@@ -28,15 +28,6 @@ const PREVTAG_SIZE: usize = 30;
 /// Capacity of `cmdln[100]` in `cmd_global`.
 const CMDLN_SIZE: usize = 100;
 
-#[derive(Default)]
-pub struct Cmd1 {
-    /// `static char prevextra[80]` in `cmd_shell`.
-    pub cmd_shell_prevextra: Vec<u8>,
-    pub cmd_xit_whenwarned: i64,
-    /// `static char prevtag[30]` in `cmd_tag`.
-    pub cmd_tag_prevtag: Vec<u8>,
-}
-
 fn is_ascii_space(b: u8) -> bool {
     isspace(schar(b))
 }
@@ -142,14 +133,14 @@ pub fn cmd_shell(
     }
 
     if ch(&extra, 0) == b'!' {
-        if ed.cmd1.cmd_shell_prevextra.is_empty() {
+        if ed.ex.prev_shell_cmd.is_empty() {
             msg(ed, b"No previous shell command to substitute for '!'", &[]);
             return Ok(());
         }
-        extra = ed.cmd1.cmd_shell_prevextra.clone();
+        extra = ed.ex.prev_shell_cmd.clone();
         interactive = false;
     } else if cmd == Cmd::Bang && extra.len() < PREVEXTRA_SIZE - 1 {
-        ed.cmd1.cmd_shell_prevextra = extra.clone();
+        ed.ex.prev_shell_cmd = extra.clone();
     }
 
     suspend_curses(ed);
@@ -398,7 +389,7 @@ pub fn cmd_xit(
     _extra: &[u8],
 ) -> R<()> {
     if ed.vars.argno + 1 < ed.vars.nargs
-        && ed.cmd1.cmd_xit_whenwarned != ed.vars.changes
+        && ed.ex.xit_warned != ed.vars.changes
         && (!bang || cmd != Cmd::Quit)
     {
         msg(
@@ -406,7 +397,7 @@ pub fn cmd_xit(
             b"More files to edit -- Use \":n\" to go to next file",
             &[],
         );
-        ed.cmd1.cmd_xit_whenwarned = ed.vars.changes;
+        ed.ex.xit_warned = ed.vars.changes;
         return Ok(());
     }
 
@@ -606,13 +597,13 @@ pub fn cmd_tag(
     extra: &[u8],
 ) -> R<()> {
     let extra: Vec<u8> = if extra.is_empty() {
-        if ed.cmd1.cmd_tag_prevtag.is_empty() {
+        if ed.ex.prev_tag.is_empty() {
             msg(ed, b"No previous tag", &[]);
             return Ok(());
         }
-        ed.cmd1.cmd_tag_prevtag.clone()
+        ed.ex.prev_tag.clone()
     } else {
-        ed.cmd1.cmd_tag_prevtag = extra[..extra.len().min(PREVTAG_SIZE)].to_vec();
+        ed.ex.prev_tag = extra[..extra.len().min(PREVTAG_SIZE)].to_vec();
         extra.to_vec()
     };
 

@@ -22,13 +22,6 @@ use crate::vi_h::{
 
 const BLK: Mark = BLKSIZE as Mark;
 
-#[derive(Default)]
-pub struct Cmd2 {
-    pub cmd_substitute_optp: bool,
-    pub cmd_substitute_optg: bool,
-    pub cmd_substitute_optc: bool,
-}
-
 // C: cmd2.c:cmd_substitute
 pub fn cmd_substitute(
     ed: &mut Editor,
@@ -53,8 +46,8 @@ pub fn cmd_substitute(
         let re = regcomp(ed, b"");
 
         if bang {
-            ed.cmd2.cmd_substitute_optp = false;
-            ed.cmd2.cmd_substitute_optc = false;
+            ed.ex.subst_print = false;
+            ed.ex.subst_confirm = false;
         }
         re
     } else {
@@ -87,17 +80,17 @@ pub fn cmd_substitute(
         }
 
         if !ed.opts.on(Opt::Edcompatible) {
-            ed.cmd2.cmd_substitute_optp = false;
-            ed.cmd2.cmd_substitute_optg = false;
-            ed.cmd2.cmd_substitute_optc = false;
+            ed.ex.subst_print = false;
+            ed.ex.subst_global = false;
+            ed.ex.subst_confirm = false;
         }
         while ch(&buf, opt) != 0 {
             let o = buf[opt];
             opt += 1;
             match o {
-                b'p' => ed.cmd2.cmd_substitute_optp = !ed.cmd2.cmd_substitute_optp,
-                b'g' => ed.cmd2.cmd_substitute_optg = !ed.cmd2.cmd_substitute_optg,
-                b'c' => ed.cmd2.cmd_substitute_optc = !ed.cmd2.cmd_substitute_optc,
+                b'p' => ed.ex.subst_print = !ed.ex.subst_print,
+                b'g' => ed.ex.subst_global = !ed.ex.subst_global,
+                b'c' => ed.ex.subst_confirm = !ed.ex.subst_confirm,
                 b' ' | b'\t' => {}
                 _ => {
                     msg(ed, b"Subst options are p, c, and g -- not %c", &[Arg::C(o)]);
@@ -106,9 +99,9 @@ pub fn cmd_substitute(
             }
         }
     }
-    let optp = ed.cmd2.cmd_substitute_optp;
-    let optg = ed.cmd2.cmd_substitute_optg;
-    let optc = ed.cmd2.cmd_substitute_optc;
+    let optp = ed.ex.subst_print;
+    let optg = ed.ex.subst_global;
+    let optc = ed.ex.subst_confirm;
 
     if (optc || optp) && ed.vars.mode == Mode::Vi {
         ed.curses.addch(b'\n');

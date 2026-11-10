@@ -5,8 +5,7 @@ use std::fs::File;
 
 use crate::vi_h::{Blk, MAXBLKS, Mark, Mode, NMARKS, Viflags};
 use crate::{
-    blk, cmd1, cmd2, curses, cut, ex, motion, opts, recycle, redraw, regexp, regsub, tio, tmp,
-    vcmd, vi,
+    blk, curses, cut, ex, motion, opts, recycle, redraw, regexp, regsub, tio, tmp, vcmd, vi,
 };
 
 /// Capacity of `args[BLKSIZE]`.
@@ -107,11 +106,9 @@ pub struct Editor {
     pub regexp: regexp::RegexpState,
     pub regsub: regsub::Regsub,
     pub opts: opts::Opts,
-    pub ex: ex::Ex,
-    pub cmd1: cmd1::Cmd1,
-    pub cmd2: cmd2::Cmd2,
     pub curses: curses::Curses,
     pub tio: tio::Tio,
+    pub ex: ex::ExState,
     pub motion: motion::Motion,
     pub vcmd: vcmd::Vcmd,
     pub vi: vi::Vi,

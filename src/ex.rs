@@ -20,9 +20,22 @@ use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
 use crate::vi_h::*;
 
+/// Function-local statics of the ex commands.
 #[derive(Default)]
-pub struct Ex {
-    pub ex_oldline: i64,
+pub struct ExState {
+    /// `ex()`'s `oldline`: the cursor line after the previous command.
+    pub oldline: i64,
+    /// `cmd_shell()`'s `prevextra[80]`, for `:!!`.
+    pub prev_shell_cmd: Vec<u8>,
+    /// `cmd_xit()`'s `whenwarned`: `changes` when "More files to edit"
+    /// was shown.
+    pub xit_warned: i64,
+    /// `cmd_tag()`'s `prevtag[30]`.
+    pub prev_tag: Vec<u8>,
+    /// `cmd_substitute()`'s `optp`, `optg` and `optc`, for `:&`.
+    pub subst_print: bool,
+    pub subst_global: bool,
+    pub subst_confirm: bool,
 }
 
 type Argt = u16;
@@ -256,7 +269,7 @@ pub fn ex(ed: &mut Editor) -> R<()> {
     let mut cmdbuf: Vec<u8> = Vec::with_capacity(80);
 
     ed.vars.significant = false;
-    ed.ex.ex_oldline = markline(ed.vars.cursor);
+    ed.ex.oldline = markline(ed.vars.cursor);
 
     while ed.vars.mode == Mode::Ex {
         if !vgets(ed, b':', &mut cmdbuf, 80)? {
@@ -275,9 +288,9 @@ pub fn ex(ed: &mut Editor) -> R<()> {
 
         doexcmd(ed, &cmdbuf)?;
 
-        if ed.vars.significant || markline(ed.vars.cursor) != ed.ex.ex_oldline {
+        if ed.vars.significant || markline(ed.vars.cursor) != ed.ex.oldline {
             ed.vars.significant = false;
-            ed.ex.ex_oldline = markline(ed.vars.cursor);
+            ed.ex.oldline = markline(ed.vars.cursor);
             if ed.opts.on(Opt::Autoprint) && ed.vars.mode == Mode::Ex {
                 let cur = ed.vars.cursor;
                 cmd_print(ed, cur, cur, Cmd::Print, false, b"")?;
