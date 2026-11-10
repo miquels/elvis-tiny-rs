@@ -2,7 +2,7 @@
 
 use crate::blk::{fetchline, pfetch};
 use crate::curses;
-use crate::opts::Opt;
+use crate::opts::{Opt, Opts};
 use crate::types::LINEMASK;
 use crate::types::{INFINITY, MARK_UNSET, Mark, botline, ch, markidx, markline, rightcol, schar};
 use crate::vars::Editor;
@@ -65,64 +65,75 @@ impl Redraw {
     }
 }
 
-// C: redraw.c:idx2col
-/// `text` is the line (no NUL).
-pub fn idx2col(ed: &mut Editor, curs: Mark, text: &[u8], inputting: bool) -> i32 {
-    let tabstop = ed.opts.num(Opt::Tabstop);
-    let list = ed.opts.on(Opt::List);
-    let r = &mut ed.redraw;
-    let mut col: i32 = 0;
-    let mut idx: i32 = markidx(curs) as i32;
-    let mut t: usize = 0;
+impl Redraw {
+    // C: redraw.c:idx2col
+    /// `text` is the line (no NUL); `changes` is `Vars::changes`.
+    pub fn idx2col(
+        &mut self,
+        opts: &Opts,
+        changes: i64,
+        curs: Mark,
+        text: &[u8],
+        inputting: bool,
+    ) -> i32 {
+        let tabstop = opts.num(Opt::Tabstop);
+        let list = opts.on(Opt::List);
+        let r = self;
+        let mut col: i32 = 0;
+        let mut idx: i32 = markidx(curs) as i32;
+        let mut t: usize = 0;
 
-    if r.idx2col_chgs == ed.vars.changes && ((curs ^ r.idx2col_pcursor) & LINEMASK) == 0 {
-        if curs == r.idx2col_pcursor {
-            let pcol = r.idx2col_pcol;
-            if ch(text, idx as usize) == b'\t' && !inputting && !list {
-                return (pcol + tabstop as i64 - (pcol % tabstop as i64) - 1) as i32;
-            } else {
-                return pcol as i32;
+        if r.idx2col_chgs == changes && ((curs ^ r.idx2col_pcursor) & LINEMASK) == 0 {
+            if curs == r.idx2col_pcursor {
+                let pcol = r.idx2col_pcol;
+                if ch(text, idx as usize) == b'\t' && !inputting && !list {
+                    return (pcol + tabstop as i64 - (pcol % tabstop as i64) - 1) as i32;
+                } else {
+                    return pcol as i32;
+                }
+            }
+
+            if curs > r.idx2col_pcursor {
+                col = r.idx2col_pcol as i32;
+                idx = markidx(curs) as i32 - markidx(r.idx2col_pcursor) as i32;
+                t = markidx(r.idx2col_pcursor);
             }
         }
 
-        if curs > r.idx2col_pcursor {
-            col = r.idx2col_pcol as i32;
-            idx = markidx(curs) as i32 - markidx(r.idx2col_pcursor) as i32;
-            t = markidx(r.idx2col_pcursor);
+        while idx > 0 {
+            let i = schar(ch(text, t));
+            if i == 0 {
+                break;
+            }
+            if i == b'\t' as i32 && !list {
+                col += tabstop;
+                col -= col % tabstop;
+            } else if (0..b' ' as i32).contains(&i) || i == 0o177 {
+                col += 2;
+            } else {
+                col += 1;
+            }
+            t += 1;
+            idx -= 1;
         }
-    }
 
-    while idx > 0 {
-        let i = schar(ch(text, t));
-        if i == 0 {
-            break;
-        }
-        if i == b'\t' as i32 && !list {
-            col += tabstop;
-            col -= col % tabstop;
-        } else if (0..b' ' as i32).contains(&i) || i == 0o177 {
-            col += 2;
+        r.idx2col_pcursor = curs;
+        r.idx2col_pcol = col as Mark;
+        r.idx2col_chgs = changes;
+
+        if ch(text, t) == b'\t' && !inputting && !list {
+            col + tabstop - (col % tabstop) - 1
         } else {
-            col += 1;
+            col
         }
-        t += 1;
-        idx -= 1;
-    }
-
-    r.idx2col_pcursor = curs;
-    r.idx2col_pcol = col as Mark;
-    r.idx2col_chgs = ed.vars.changes;
-
-    if ch(text, t) == b'\t' && !inputting && !list {
-        col + tabstop - (col % tabstop) - 1
-    } else {
-        col
     }
 }
 
 // C: redraw.c:mark2phys
 fn mark2phys(ed: &mut Editor, m: Mark, text: &[u8], inputting: bool) -> i32 {
-    let i = idx2col(ed, m, text, inputting);
+    let i = ed
+        .redraw
+        .idx2col(&ed.opts, ed.vars.changes, m, text, inputting);
     while i < ed.vars.leftcol {
         ed.vars.leftcol -= ed.opts.num(Opt::Sidescroll);
         ed.vars.mustredraw = true;
@@ -472,18 +483,21 @@ mod tests {
     fn idx2col_tabs_and_controls() {
         let mut ed = Editor::new();
         let line = b"\tab\x01c\xe9d";
-        let m = |i: i64| 1024 + i;
-        assert_eq!(idx2col(&mut ed, m(0), line, false), 7);
-        assert_eq!(idx2col(&mut ed, m(0), line, true), 0);
-        assert_eq!(idx2col(&mut ed, m(1), line, false), 8);
-        assert_eq!(idx2col(&mut ed, m(4), line, false), 12);
-        assert_eq!(idx2col(&mut ed, m(6), line, false), 14);
+        let col = |ed: &mut Editor, i: i64, inputting: bool| {
+            ed.redraw
+                .idx2col(&ed.opts, ed.vars.changes, 1024 + i, line, inputting)
+        };
+        assert_eq!(col(&mut ed, 0, false), 7);
+        assert_eq!(col(&mut ed, 0, true), 0);
+        assert_eq!(col(&mut ed, 1, false), 8);
+        assert_eq!(col(&mut ed, 4, false), 12);
+        assert_eq!(col(&mut ed, 6, false), 14);
         // shortcut path agrees with a fresh count
         ed.vars.changes += 1;
-        assert_eq!(idx2col(&mut ed, m(6), line, false), 14);
+        assert_eq!(col(&mut ed, 6, false), 14);
         ed.opts.set(Opt::List, true);
         ed.vars.changes += 1;
-        assert_eq!(idx2col(&mut ed, m(1), line, false), 2);
+        assert_eq!(col(&mut ed, 1, false), 2);
     }
 
     #[test]

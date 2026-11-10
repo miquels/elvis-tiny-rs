@@ -459,8 +459,7 @@ pub fn doexcmd(ed: &mut Editor, cmdbuf: &[u8]) -> R<()> {
             }
         } else if argt & NODFL == 0 {
             let mut build = 0;
-            let o = ed.vars.origname.clone();
-            put_tmpblk(&mut ed.vars.tmpblk.c, &mut build, cstr(&o));
+            put_tmpblk(&mut ed.vars.tmpblk.c, &mut build, cstr(&ed.vars.origname));
             ed.vars.tmpblk.c[build] = 0;
         } else {
             ed.vars.tmpblk.c[0] = 0;

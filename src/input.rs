@@ -7,7 +7,7 @@ use crate::modify::{add, change, delete};
 use crate::motion::{m_bword, m_front, m_fword, m_left, m_match, m_rear, m_scroll, m_updnto};
 use crate::opts::Opt;
 use crate::os;
-use crate::redraw::{idx2col, redraw};
+use crate::redraw::redraw;
 use crate::tio::{beep, getkey};
 use crate::types::Cmd;
 use crate::types::LINEMASK;
@@ -84,9 +84,14 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
 
             if (key == b' ' || key == b'\t') && ed.opts.num(Opt::Wrapmargin) != 0 {
                 pfetch(ed, markline(ed.vars.cursor));
-                let ptext = ed.vars.ptext.clone();
-                let c = ed.vars.cursor;
-                if idx2col(ed, c, &ptext, true) > ed.curses.cols - ed.opts.num(Opt::Wrapmargin) {
+                let col = ed.redraw.idx2col(
+                    &ed.opts,
+                    ed.vars.changes,
+                    ed.vars.cursor,
+                    &ed.vars.ptext,
+                    true,
+                );
+                if col > ed.curses.cols - ed.opts.num(Opt::Wrapmargin) {
                     key = b'\n';
                 }
             }

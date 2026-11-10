@@ -171,9 +171,7 @@ fn showmsg(ed: &mut Editor) -> bool {
     if !ed.tio.pmsg.is_empty() {
         ed.curses.standout();
         ed.curses.qaddch(b' ');
-        let pmsg = std::mem::take(&mut ed.tio.pmsg);
-        ed.curses.qaddstr(&pmsg);
-        ed.tio.pmsg = pmsg;
+        ed.curses.qaddstr(&ed.tio.pmsg);
         ed.curses.qaddch(b' ');
         ed.curses.standend();
     }
@@ -208,9 +206,7 @@ fn format_pmsg(fmt: &[u8], args: &[Arg<'_>]) -> Vec<u8> {
 pub fn msg(ed: &mut Editor, fmt: &[u8], args: &[Arg<'_>]) {
     if ed.vars.mode != Mode::Vi {
         ed.tio.pmsg = format_pmsg(fmt, args);
-        let pmsg = std::mem::take(&mut ed.tio.pmsg);
-        ed.curses.qaddstr(&pmsg);
-        ed.tio.pmsg = pmsg;
+        ed.curses.qaddstr(&ed.tio.pmsg);
         ed.curses.addch(b'\n');
         exrefresh(ed);
     } else {

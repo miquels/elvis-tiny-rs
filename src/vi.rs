@@ -9,7 +9,7 @@ use crate::motion::{
 };
 use crate::opts::Opt;
 use crate::os;
-use crate::redraw::{idx2col, redraw};
+use crate::redraw::redraw;
 use crate::tio::{beep, getkey, msg, vgets};
 use crate::types::LINEMASK;
 use crate::types::Mode;
@@ -582,8 +582,9 @@ pub fn adjmove(ed: &mut Editor, old: Mark, new: Mark, flags: u8) -> Mark {
             if i as Mark >= plen {
                 new = (new & LINEMASK) + plen - 1;
             }
-            let ptext = ed.vars.ptext.clone();
-            ed.vi.adjmove_colno = idx2col(ed, new, &ptext, false);
+            ed.vi.adjmove_colno =
+                ed.redraw
+                    .idx2col(&ed.opts, ed.vars.changes, new, &ed.vars.ptext, false);
         } else {
             new &= LINEMASK;
             ed.vi.adjmove_colno = 0;

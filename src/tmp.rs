@@ -64,22 +64,21 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
     ed.vars.origname.clear();
     if !filename.is_empty() {
         ed.vars.origname = filename.to_vec();
-        let origname = ed.vars.origname.clone();
-        match os::open(&origname, os::O_RDONLY, 0) {
+        match os::open(filename, os::O_RDONLY, 0) {
             Ok(f) => origfd = Some(f),
             Err(e) if e.raw_os_error() != Some(os::ENOENT) => {
-                msg(ed, b"Can't open \"%s\"", &[Arg::S(&origname)]);
+                msg(ed, b"Can't open \"%s\"", &[Arg::S(filename)]);
                 return tmpstart(ed, b"");
             }
             Err(_) => {}
         }
         if origfd.is_some() {
-            statb = match os::stat(&origname) {
+            statb = match os::stat(filename) {
                 Ok(s) => s,
-                Err(_) => fail(ed, b"Can't stat \"%s\"", Arg::S(&origname)),
+                Err(_) => fail(ed, b"Can't stat \"%s\"", Arg::S(filename)),
             };
             if statb.mode & os::S_IFMT != os::S_IFREG {
-                msg(ed, b"\"%s\" is not a regular file", &[Arg::S(&origname)]);
+                msg(ed, b"\"%s\" is not a regular file", &[Arg::S(filename)]);
                 leak(origfd);
                 return tmpstart(ed, b"");
             }
@@ -87,7 +86,7 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
                 msg(
                     ed,
                     b"\"%s\" is too big (>500000 bytes)",
-                    &[Arg::S(&origname)],
+                    &[Arg::S(filename)],
                 );
                 leak(origfd);
                 return tmpstart(ed, b"");
@@ -136,7 +135,7 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
     ed.tmp.tmpname = tmpname.clone();
 
     if os::exists(&tmpname) {
-        if !ed.vars.origname.is_empty() {
+        if !filename.is_empty() {
             msg(ed, b"\"%s\" is busy", &[Arg::S(filename)]);
             leak(origfd);
             return tmpstart(ed, b"");
@@ -183,7 +182,6 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
     }
     ed.vars.lnum[0] = 0;
 
-    let origname = ed.vars.origname.clone();
     match origfd.as_mut() {
         None => {
             // inode 0 marks a new file
@@ -196,11 +194,11 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
             ed.vars.lnum[1] = 1;
             ed.vars.nlines = 1;
 
-            if !origname.is_empty() {
+            if !filename.is_empty() {
                 msg(
                     ed,
                     b"\"%s\" [NEW FILE]  1 line, 1 char",
-                    &[Arg::S(&origname)],
+                    &[Arg::S(filename)],
                 );
             } else {
                 msg(ed, b"\"[NO FILE]\"  1 line, 1 char", &[]);
@@ -222,8 +220,8 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
                 if nread < 0 {
                     // origfd is closed when it goes out of scope; C closes it first.
                     ed.vars.tmpfd = None;
-                    let _ = os::unlink(&ed.tmp.tmpname.clone());
-                    fail(ed, b"Error reading \"%s\"", Arg::S(&origname));
+                    let _ = os::unlink(&ed.tmp.tmpname);
+                    fail(ed, b"Error reading \"%s\"", Arg::S(filename));
                 }
                 let nread = nread as usize;
 
@@ -307,7 +305,7 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
                 ed,
                 b"\"%s\" %s %ld line%s, %ld char%s",
                 &[
-                    Arg::S(&origname),
+                    Arg::S(filename),
                     Arg::S(ro),
                     Arg::D(nlines),
                     Arg::S(if nlines == 1 { b"" } else { b"s" }),
@@ -436,9 +434,8 @@ pub fn tmpabort(ed: &mut Editor, bang: bool) -> bool {
     cutswitch(ed, &tmpname);
     ed.vars.tmpfd = None;
     let _ = os::unlink(&tmpname);
-    ed.vars.prevorig = ed.vars.origname.clone();
+    ed.vars.prevorig = std::mem::take(&mut ed.vars.origname);
     ed.vars.prevline = markline(ed.vars.cursor);
-    ed.vars.origname.clear();
     ed.vars.origtime = 0;
     ed.blk.init();
     ed.vars.nlines = 0;
