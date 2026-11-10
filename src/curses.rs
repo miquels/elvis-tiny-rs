@@ -5,11 +5,10 @@
 //! `tgoto` are reimplemented here to produce the bytes the macOS ncurses
 //! produces.
 
+use crate::fmt::{put_num, utoa};
 use crate::opts::Opt;
 use std::io::{self, IsTerminal};
 use std::os::unix::ffi::OsStrExt;
-
-use crate::tio::{put_num, utoa};
 
 use crate::os::{self, Termios};
 use crate::vars::Editor;

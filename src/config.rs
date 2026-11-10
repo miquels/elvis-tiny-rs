@@ -1,7 +1,7 @@
 //! `config.h`, resolved for the shared Unix settings (UNIXV, ANY_UNIX).
 
+use crate::fmt::{Arg, sprintf};
 use crate::os;
-use crate::tio::{Arg, sprintf};
 
 pub const TMPDIR: &[u8] = b"/tmp";
 /// `TMPNAME` is `"%s/elv%x%04llx%03llx"`; see `tmpname_fmt`.

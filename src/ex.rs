@@ -9,13 +9,14 @@ use crate::cmd2::{
     cmd_source, cmd_substitute, cmd_undo,
 };
 use crate::config::{EXRC, tread};
+use crate::fmt::Arg;
 use crate::misc::pfetch;
 use crate::move1::{m_tomark, m_updnto};
 use crate::move2::{m_bsrch, m_fsrch};
 use crate::opts::Opt;
 use crate::os;
 use crate::system::wildcard;
-use crate::tio::{Arg, exrefresh, msg, vgets};
+use crate::tio::{exrefresh, msg, vgets};
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
 use crate::vi_h::*;

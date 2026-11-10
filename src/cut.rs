@@ -5,10 +5,11 @@ use std::os::fd::AsRawFd;
 
 use crate::blk::{afterdo, beforedo, blkget, blksync, findblk, locate, lseek_read, skiplines};
 use crate::config::cutname_fmt;
+use crate::fmt::Arg;
 use crate::misc::pfetch;
 use crate::modify::add;
 use crate::os;
-use crate::tio::{Arg, msg};
+use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
 use crate::vi_h::{BLKSIZE, Blk, MARK_UNSET, MAXBLKS, Mark, cstr, markidx, markline};

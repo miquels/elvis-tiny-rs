@@ -1,5 +1,6 @@
 //! `vi.c`: the visual-mode command loop.
 
+use crate::fmt::Arg;
 use crate::misc::{fetchline, pfetch};
 use crate::move1::{
     m_bparagraph, m_bsection, m_fparagraph, m_front, m_fsection, m_left, m_match, m_rear, m_right,
@@ -12,7 +13,7 @@ use crate::move5::{m_bword, m_eword, m_fword};
 use crate::opts::Opt;
 use crate::os;
 use crate::redraw::{idx2col, redraw};
-use crate::tio::{Arg, beep, getkey, msg, vgets};
+use crate::tio::{beep, getkey, msg, vgets};
 use crate::vars::Editor;
 use crate::vcmd::{
     v_1ex, v_again, v_change, v_delete, v_filter, v_increment, v_insert, v_join, v_keyword,

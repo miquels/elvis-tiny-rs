@@ -9,6 +9,7 @@ mod config;
 mod curses;
 mod cut;
 mod ex;
+mod fmt;
 mod input;
 mod misc;
 mod modify;
@@ -132,7 +133,7 @@ fn main() {
                 ed.opts.set(Opt::Inputmode, true);
             }
             _ => {
-                tio::msg(ed, b"Ignoring unknown flag \"%s\"", &[tio::Arg::S(argv[i])]);
+                tio::msg(ed, b"Ignoring unknown flag \"%s\"", &[fmt::Arg::S(argv[i])]);
             }
         }
         i += 1;

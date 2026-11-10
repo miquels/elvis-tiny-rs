@@ -1,8 +1,9 @@
 //! `move1.c`: basic cursor motions.  No module state.
 
+use crate::fmt::Arg;
 use crate::misc::{fetchline, pfetch};
 use crate::opts::Opt;
-use crate::tio::{Arg, msg};
+use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
 use crate::vi_h::{

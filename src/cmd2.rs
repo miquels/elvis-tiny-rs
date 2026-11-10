@@ -4,6 +4,7 @@ use crate::blk::{afterdo, beforedo, undo};
 use crate::config::tread;
 use crate::cut::{cut, cutname, paste};
 use crate::ex::{doexrc, linespec, parseptrn};
+use crate::fmt::{Arg, sprintf};
 use crate::misc::fetchline;
 use crate::modify::{add, change, delete};
 use crate::opts::Opt;
@@ -12,7 +13,7 @@ use crate::redraw::redraw;
 use crate::regexp::{regcomp, regexec};
 use crate::regsub::regsub;
 use crate::system::filter;
-use crate::tio::{Arg, exrefresh, msg, sprintf, vgets};
+use crate::tio::{exrefresh, msg, vgets};
 use crate::vars::Editor;
 use crate::vi_h::Mode;
 use crate::vi_h::{

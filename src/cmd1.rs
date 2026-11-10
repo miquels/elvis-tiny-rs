@@ -1,5 +1,6 @@
 //! `cmd1.c`: ex commands (part 1).
 
+use crate::fmt::Arg;
 use crate::opts::Opt;
 use crate::vi_h::Mode;
 use std::fs::File;
@@ -13,7 +14,7 @@ use crate::opts::{dumpopts, setopts};
 use crate::os;
 use crate::regexp::{regcomp, regexec};
 use crate::system::{elvis_system, filter};
-use crate::tio::{Arg, dumpkey, exrefresh, mapkey, msg};
+use crate::tio::{dumpkey, exrefresh, mapkey, msg};
 use crate::tmp::{tmpabort, tmpend, tmpsave, tmpstart};
 use crate::vars::{ARGS_SIZE, Editor, NAME_SIZE};
 use crate::vi_h::{

@@ -1,7 +1,8 @@
 //! `misc.c`: line fetching and the regexp error hook.
 
 use crate::blk::{BufId, locate};
-use crate::tio::{Arg, msg};
+use crate::fmt::Arg;
+use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::BLKSIZE;
 

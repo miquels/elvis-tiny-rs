@@ -1,5 +1,6 @@
 //! `tmp.c`: the temporary file that holds the text being edited.
 
+use crate::fmt::Arg;
 use crate::opts::Opt;
 use crate::vi_h::Mode;
 use std::fs::File;
@@ -11,7 +12,7 @@ use crate::cut::cutswitch;
 use crate::os;
 use crate::recycle::garbage;
 use crate::redraw::redraw;
-use crate::tio::{Arg, msg};
+use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::{
     ADDEDNL, BLKSIZE, HADNUL, INFINITY, MARK_FIRST, MARK_UNSET, MAXBLKS, MODIFIED, NOFILE,

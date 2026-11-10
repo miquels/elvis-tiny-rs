@@ -1,6 +1,7 @@
 //! `system.c`: shell commands, wildcards, and filters.  Process
 //! primitives live in `os.rs`.  No module state.
 
+use crate::fmt::{Arg, sprintf};
 use crate::opts::Opt;
 use crate::vi_h::Mode;
 use std::fs::File;
@@ -11,7 +12,7 @@ use crate::cmd1::cmd_write2;
 use crate::config::{scratchout_fmt, tread};
 use crate::modify::{add, delete};
 use crate::os::{self, ShellRun, SpawnOpts};
-use crate::tio::{Arg, msg, sprintf};
+use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
 use crate::vi_h::{BLKSIZE, MODIFIED, Mark, R, cstr};

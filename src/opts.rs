@@ -3,12 +3,13 @@
 //! keep the size of their C array as a limit.
 
 use crate::curses;
+use crate::fmt::{Arg, sprintf};
 use crate::vars::Editor;
 
 use std::os::unix::ffi::OsStrExt;
 
 use crate::config::{EXRC, KEYWORDPRG, NEEDSYNC, SHELL, TMPDIR};
-use crate::tio::{Arg, exrefresh, msg, sprintf};
+use crate::tio::{exrefresh, msg};
 use crate::vi_h::{READONLY, atoi, ch, cstr};
 
 /// An option, in the order of the C `opts[]` table.
