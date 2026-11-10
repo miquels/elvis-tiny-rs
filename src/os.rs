@@ -825,8 +825,10 @@ mod tests {
         let fd = keep.as_raw_fd();
         assert!((3..60).contains(&fd));
         let out = b(&d.join("out"));
+        // `exec >` rather than `if ...; fi >`: for the latter sh saves stdout
+        // on fd 10, which would look open when `keep` happens to be fd 10.
         let cmd = format!(
-            "if [ -e /dev/fd/{fd} ]; then echo open; else echo closed; fi > '{}'",
+            "exec > '{}'; if [ -e /dev/fd/{fd} ]; then echo open; else echo closed; fi",
             String::from_utf8_lossy(&out)
         );
         let child = spawn_shell(
