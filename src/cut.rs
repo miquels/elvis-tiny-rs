@@ -18,64 +18,49 @@ pub const NANNONS: usize = 9;
 /// `struct cutbuf`
 #[derive(Default, Clone)]
 pub struct CutBuf {
-    /// Block numbers holding the text; `None` is C's null pointer.
-    pub phys: Option<Vec<i16>>,
-    pub nblks: i32,
+    /// Physical blocks holding the text, in order.
+    pub phys: Vec<u16>,
     pub start: i32,
     pub end: i32,
-    /// C's descriptor number: -1 means "use tmpfd", otherwise the raw fd of
-    /// an entry in `Cut::files`.  Several buffers may share one descriptor,
-    /// so the `File` itself lives in `Cut::files`.  Starts at 0 like a C
-    /// static.
-    pub fd: i32,
+    /// The raw descriptor of the `Cut::files` entry holding the blocks, or
+    /// `None` for the tmp file.  Several buffers may share one descriptor.
+    pub fd: Option<i32>,
     pub lnmode: bool,
 }
 
-#[derive(Default)]
 pub struct Cut {
-    pub named: [CutBuf; 27],
-    pub annon: [CutBuf; NANNONS],
+    /// `named[0..27]` (`a`-`z` and `.`), then `annon[0..NANNONS]`.
+    pub bufs: [CutBuf; ANNON + NANNONS],
     pub cbname: u8,
     /// Open descriptors referenced by `CutBuf::fd`.
     pub files: Vec<File>,
 }
 
-/// Cut buffers are addressed as `0..27` for `named` and `27..` for `annon`.
+impl Default for Cut {
+    fn default() -> Cut {
+        Cut {
+            bufs: std::array::from_fn(|_| CutBuf::default()),
+            cbname: 0,
+            files: Vec::new(),
+        }
+    }
+}
+
+/// Index of the first anonymous buffer in `Cut::bufs`.
 const ANNON: usize = 27;
-
-fn cbref(cut: &Cut, k: usize) -> &CutBuf {
-    if k < ANNON {
-        &cut.named[k]
-    } else {
-        &cut.annon[k - ANNON]
-    }
-}
-
-fn cbmut(cut: &mut Cut, k: usize) -> &mut CutBuf {
-    if k < ANNON {
-        &mut cut.named[k]
-    } else {
-        &mut cut.annon[k - ANNON]
-    }
-}
 
 // C: cut.c:cutneeds
 pub fn cutneeds(ed: &mut Editor, need: &mut Blk) -> i32 {
     let mut n: usize = 0;
 
-    for cb in ed.cut.named.iter().chain(ed.cut.annon.iter()) {
-        if cb.fd > 0 {
+    for cb in &ed.cut.bufs {
+        if cb.fd.is_some() {
             continue;
         }
-        let Some(phys) = cb.phys.as_ref() else {
-            continue;
-        };
-        let mut i = cb.nblks;
-        while i > 0 {
-            i -= 1;
+        for &p in cb.phys.iter().rev() {
             // C overflows `need` here; the extra entries are dropped.
             if n < MAXBLKS {
-                need.set_n(n, phys[i as usize] as u16);
+                need.set_n(n, p);
             }
             n += 1;
         }
@@ -86,27 +71,17 @@ pub fn cutneeds(ed: &mut Editor, need: &mut Blk) -> i32 {
 
 // C: cut.c:cutfree
 fn cutfree(ed: &mut Editor, k: usize) {
-    let buf = cbmut(&mut ed.cut, k);
-
-    if buf.nblks <= 0 {
+    let buf = &mut ed.cut.bufs[k];
+    if buf.phys.is_empty() {
         return;
     }
+    buf.phys = Vec::new();
 
-    buf.nblks = 0;
-    buf.phys = None;
-    let fd = buf.fd;
-
-    let mut i = 0;
-    if fd >= 0 {
-        while i < 27 {
-            if ed.cut.named[i].nblks > 0 && ed.cut.named[i].fd == fd {
-                break;
-            }
-            i += 1;
-        }
-    }
-
-    if fd >= 0 && i == 27 {
+    if let Some(fd) = buf.fd
+        && !ed.cut.bufs[..ANNON]
+            .iter()
+            .any(|b| !b.phys.is_empty() && b.fd == Some(fd))
+    {
         ed.cut.files.retain(|f| f.as_raw_fd() != fd);
         let cutfname = cutname_fmt(ed.opts.directory(), os::getpid(), fd);
         let _ = os::unlink(&cutfname);
@@ -115,19 +90,12 @@ fn cutfree(ed: &mut Editor, k: usize) {
 
 // C: cut.c:cutswitch
 pub fn cutswitch(ed: &mut Editor, tmpname: &[u8]) {
-    for i in 0..NANNONS {
-        cutfree(ed, ANNON + i);
+    for k in ANNON..ANNON + NANNONS {
+        cutfree(ed, k);
     }
 
-    let mut i = 0;
-    while i < 27 {
-        if ed.cut.named[i].nblks > 0 && ed.cut.named[i].fd < 0 {
-            break;
-        }
-        i += 1;
-    }
-
-    if i == 27 {
+    let in_tmp = |b: &CutBuf| !b.phys.is_empty() && b.fd.is_none();
+    if !ed.cut.bufs[..ANNON].iter().any(in_tmp) {
         return;
     }
 
@@ -135,21 +103,20 @@ pub fn cutswitch(ed: &mut Editor, tmpname: &[u8]) {
         Some(Ok(f)) => {
             let fd = f.as_raw_fd();
             ed.cut.files.push(f);
-            fd
+            Some(fd)
         }
-        _ => -1,
+        _ => None,
     };
-    let cutfname = cutname_fmt(ed.opts.directory(), os::getpid(), fd);
+    let cutfname = cutname_fmt(ed.opts.directory(), os::getpid(), fd.unwrap_or(-1));
     // C: `link(tmpname, cutfname) || unlink(tmpname);`
     if os::link(tmpname, &cutfname).is_ok() {
         let _ = os::unlink(tmpname);
     }
 
-    while i < 27 {
-        if ed.cut.named[i].nblks > 0 && ed.cut.named[i].fd < 0 {
-            ed.cut.named[i].fd = fd;
+    for b in &mut ed.cut.bufs[..ANNON] {
+        if in_tmp(b) {
+            b.fd = fd;
         }
-        i += 1;
     }
 }
 
@@ -158,8 +125,8 @@ pub fn cutswitch(ed: &mut Editor, tmpname: &[u8]) {
 #[inline(never)]
 pub fn cutend(ed: &mut Editor) {
     // Named buffers may be keeping an older tmp file alive.
-    for i in 0..27 {
-        cutfree(ed, i);
+    for k in 0..ANNON {
+        cutfree(ed, k);
     }
 }
 
@@ -179,10 +146,9 @@ pub fn cut(ed: &mut Editor, from: Mark, to: Mark) {
 
         // The last (just freed) buffer rotates to the front and is reset
         // below, which matches C's shift-and-reuse.
-        ed.cut.annon.rotate_right(1);
+        ed.cut.bufs[ANNON..].rotate_right(1);
 
         k = ANNON;
-        ed.cut.annon[0].nblks = 0;
     } else if cbname.is_ascii_lowercase() {
         k = (cbname - b'a') as usize;
         cutfree(ed, k);
@@ -195,9 +161,8 @@ pub fn cut(ed: &mut Editor, from: Mark, to: Mark) {
         return;
     }
     ed.cut.cbname = 0;
-    cbmut(&mut ed.cut, k).fd = -1;
-
-    cbmut(&mut ed.cut, k).lnmode = lnmode;
+    ed.cut.bufs[k].fd = None;
+    ed.cut.bufs[k].lnmode = lnmode;
 
     if markidx(from) == 0 && markidx(to) == 0 {
         ed.vars.rptlines = markline(to) - markline(from);
@@ -206,10 +171,10 @@ pub fn cut(ed: &mut Editor, from: Mark, to: Mark) {
 
     blksync(ed);
 
-    let (mut first, mut id, mut scan) = locate(ed, markline(from));
+    let (first, mut id, mut scan) = locate(ed, markline(from));
     scan += markidx(from);
 
-    cbmut(&mut ed.cut, k).start = scan as i32;
+    ed.cut.bufs[k].start = scan as i32;
 
     let line = markline(to);
     let last = findblk(&ed.vars.lnum, line, first);
@@ -222,30 +187,20 @@ pub fn cut(ed: &mut Editor, from: Mark, to: Mark) {
     }
 
     let hdr = &ed.blk.hdr;
-    let cb = cbmut(&mut ed.cut, k);
+    let cb = &mut ed.cut.bufs[k];
     cb.end = scan as i32;
-
-    cb.nblks = (last - first) as i32;
-    if cb.end > 0 {
-        cb.nblks += 1;
-    }
-    let mut phys = Vec::with_capacity(cb.nblks as usize);
-    for _ in 0..cb.nblks {
-        phys.push(hdr.n(first) as i16);
-        first += 1;
-    }
-    cb.phys = Some(phys);
+    let nblks = last - first + (cb.end > 0) as usize;
+    cb.phys = (first..first + nblks).map(|i| hdr.n(i)).collect();
 }
 
 // C: cut.c:readcutblk
 fn readcutblk(ed: &mut Editor, k: usize, blkno: usize) {
-    let cb = cbref(&ed.cut, k);
-    let off = cb.phys.as_ref().map_or(0, |p| p[blkno]) as u64 * BLKSIZE as u64;
+    let cb = &ed.cut.bufs[k];
+    let off = cb.phys[blkno] as u64 * BLKSIZE as u64;
 
-    let fd = if cb.fd >= 0 {
-        ed.cut.files.iter().find(|f| f.as_raw_fd() == cb.fd)
-    } else {
-        ed.vars.tmpfd.as_ref()
+    let fd = match cb.fd {
+        Some(fd) => ed.cut.files.iter().find(|f| f.as_raw_fd() == fd),
+        None => ed.vars.tmpfd.as_ref(),
     };
 
     if !lseek_read(fd, off, &mut ed.vars.tmpblk.c) {
@@ -282,7 +237,7 @@ pub fn paste(ed: &mut Editor, at: Mark, after: bool, retend: bool) -> Mark {
         }
     };
 
-    if cbref(&ed.cut, k).nblks == 0 {
+    if ed.cut.bufs[k].phys.is_empty() {
         if cbname != 0 {
             msg(ed, b"Cut buffer \"%c is empty", &[Arg::C(cbname)]);
         } else {
@@ -293,7 +248,7 @@ pub fn paste(ed: &mut Editor, at: Mark, after: bool, retend: bool) -> Mark {
     }
     ed.cut.cbname = 0;
 
-    if cbref(&ed.cut, k).lnmode {
+    if ed.cut.bufs[k].lnmode {
         at &= LINEMASK;
         if after {
             at += BLKSIZE as i64;
@@ -313,10 +268,8 @@ pub fn paste(ed: &mut Editor, at: Mark, after: bool, retend: bool) -> Mark {
     // mark[27] stays in sync with the changes add() makes.
     ed.vars.mark[27] = at;
 
-    let (nblks, start, end) = {
-        let cb = cbref(&ed.cut, k);
-        (cb.nblks, cb.start, cb.end)
-    };
+    let cb = &ed.cut.bufs[k];
+    let (nblks, start, end) = (cb.phys.len(), cb.start, cb.end);
 
     if nblks == 1 {
         readcutblk(ed, k, 0);
@@ -334,7 +287,7 @@ pub fn paste(ed: &mut Editor, at: Mark, after: bool, retend: bool) -> Mark {
         let mut i = nblks - 1;
 
         if end > 0 {
-            readcutblk(ed, k, i as usize);
+            readcutblk(ed, k, i);
             tmpblk_cut(ed, end);
             let t = tmpblk_text(ed, 0);
             add(ed, at, &t);
@@ -342,7 +295,7 @@ pub fn paste(ed: &mut Editor, at: Mark, after: bool, retend: bool) -> Mark {
         }
 
         while i > 0 {
-            readcutblk(ed, k, i as usize);
+            readcutblk(ed, k, i);
             let t = tmpblk_text(ed, 0);
             add(ed, at, &t);
             i -= 1;
