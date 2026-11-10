@@ -13,7 +13,7 @@ as `todo`.
 1. [Scope and decisions](#1-scope-and-decisions)
 2. [Source mapping and port ledger](#2-source-mapping-and-port-ledger)
 3. [Ownership and interface rules](#3-ownership-and-interface-rules)
-4. [Terminal integration with terminfo-lean](#4-terminal-integration-with-terminfo-lean)
+4. [Terminal integration](#4-terminal-integration)
 5. [Milestones](#5-milestones)
 6. [Testing instructions](#6-testing-instructions)
 7. [Validation, release settings, and definition of done](#7-validation-release-settings-and-definition-of-done)
@@ -39,7 +39,7 @@ These decisions are fixed. Do not revisit them without asking the user.
 |----|----------|
 | D1 | Port exactly the functionality enabled by the current Linux settings in `Makefile.mix`, including `CRUNCH` behavior. Exclude disabled features, other platforms, and separately built utilities. Keep every call the editor makes to external programs (the shell, `echo` for wildcards, the keyword program, filters). |
 | D2 | Preserve module and function traceability: `foo.c` maps to `src/foo.rs`, and each active C function maps to a Rust function with the same name. Only ownership, signature, representation, and control-flow changes required for safe Rust are allowed. Refactoring beyond that is deferred. |
-| D3 | Dependencies: `std`, `libc`, and `terminfo-lean` version **0.1.2** (pinned with `=0.1.2`), including its required transitive dependencies (`thiserror` and its proc-macro build dependencies). No other crates, including dev-dependencies. |
+| D3 | Dependencies: `std` and `libc` only. No other crates, including dev-dependencies. (Until 2026-11-10 the port also used `terminfo-lean` 0.1.2; section 4.1 explains its replacement.) |
 | D4 | All project-owned `unsafe` code and every direct `libc` call live in `src/os.rs`. `os.rs` exposes only safe, sound interfaces. No other module uses `unsafe` or names `libc`. |
 | D5 | No `setjmp`/`longjmp` equivalents and no nonlocal jumps across Rust frames. Signals set flags; cancellation and errors travel through return values. |
 | D6 | Keep byte-oriented text (never require UTF-8 for file contents, keys, or messages), the block-backed temporary-file storage algorithm, the existing size limits, the undo semantics, and the same-platform temporary-file layout. |
@@ -323,7 +323,7 @@ ported earlier when a previous milestone needs it; record that in the
 | `attrset` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
 | `insch` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
 | `MUSTHAVE`, `MAYHAVE`, `PAIR` | macros | M2 | macOS port 2026-11-10 | done (macOS) |
-| `tgoto`, `tputs`, `tgetent`, `tgetstr`, `tgetflag`, `tgetnum` | external termcap functions (`libtinfo` on Linux, `libncurses` on macOS) | M2, replaced by `terminfo-lean` plus adapters (section 4) | macOS port 2026-11-10 | done (macOS) |
+| `tgoto`, `tputs`, `tgetent`, `tgetstr`, `tgetflag`, `tgetnum` | external termcap functions (`libtinfo` on Linux, `libncurses` on macOS) | M2, replaced by the terminfo reader and adapters in `curses.rs` (section 4) | macOS port 2026-11-10 | done (macOS) |
 | `ospeed`, `PC`, `stdscr`, `kbuf`, `LINES`, `COLS`, `AM`, `PT`, capability strings `VB` … `TE`, `aend`, `ERASEKEY`, `oldtermio`, `newtermio`, `capbuf`, `cbmem`, `curses_active` | globals | M2 | macOS port 2026-11-10 | done (macOS) |
 | `do_VB` … `do_aend` (all `do_*`) | macros | M2 | macOS port 2026-11-10 | done (macOS) |
 | `has_*` | macros | M2 | macOS port 2026-11-10 | done (macOS) |
@@ -604,7 +604,7 @@ flowchart TD
     Commands --> Screen[Terminal and input]
     Store --> OS[os.rs]
     Screen --> OS
-    Screen --> Caps[terminfo-lean]
+    Screen --> Caps[terminfo reader]
 ```
 
 - `vars.rs` defines `pub struct Editor`, created once in `main` and passed as
@@ -821,9 +821,42 @@ Prefer `std` where its behavior is identical (for example `std::env::var_os`,
 
 ---
 
-## 4. Terminal integration with terminfo-lean
+## 4. Terminal integration
 
-### 4.1 What the crate provides
+### 4.1 The terminfo reader
+
+The port originally used the `terminfo-lean` 0.1.2 crate. It was replaced on
+2026-11-10 by a small reader in `curses.rs` to shrink the binary (about 16K of
+`__text`, see section 7.2). The reader has three parts:
+
+- `read_terminfo(term)` finds and reads the compiled file. It searches
+  `$TERMINFO`, `$HOME/.terminfo`, `$TERMINFO_DIRS` (an empty element means
+  the system directories), and then `/etc/terminfo`, `/lib/terminfo`,
+  `/usr/share/terminfo`, `/usr/lib/terminfo`. Each directory is tried with
+  both the `x/xterm` and the `78/xterm` layouts. This is the same order
+  `terminfo-lean` used.
+- `parse_terminfo(bytes)` reads the header, booleans, numbers and strings of
+  the 16-bit (0x011a) or 32-bit (0x021e) format into a `Terminfo` struct
+  indexed in standard `term.h` order. A bad magic number, counts above the
+  standard 44/39/414, truncation, a boolean other than 0 or 1, or an
+  unterminated string makes `tgetent` fail. The extended (user-defined)
+  section is ignored, because none of the capabilities in section 4.2 lives
+  there.
+- `tparm(vars, cap, params)` expands parameterized strings with numeric
+  parameters, as ncurses does. It copies `$<…>` delays through for `tputs`,
+  keeps the static variables `%PA`–`%PZ` in `ed.curses.tvars`, and supports
+  `%c %p %P %g %'c' %{n} %i %? %t %e %;`, arithmetic, comparisons, logic,
+  and printf-style `%[:][flags][width][.precision]{d,o,x,X}`. String
+  parameters (`%s`, `%l`) are not supported. A malformed string or a stack
+  underflow returns `None`, and that move outputs nothing.
+
+`tgetstr`, `tgetflag` and `tgetnum` map the two-letter termcap names in
+section 4.2 directly to capability indexes. `pt` is the obsolete `OTpt`
+boolean, and `ug` is the `UTug` number.
+
+The limitations listed below were those of `terminfo-lean`; they are kept for
+history.
+#### Former crate API
 
 `terminfo-lean` 0.1.2 (MIT or Apache-2.0, Rust 1.88 or newer):
 
@@ -923,7 +956,7 @@ Rust has no such limit. Record this as a safe divergence.
   `tputs(tgoto(CM, x, y), 1, faddch)`). ncurses `tgoto(cap, col, row)` calls
   `tparm(cap, row, col)`, so expand with `[Parameter::from(row), Parameter::from(col)]`.
   Test this order with a fixture whose `cup` is asymmetric.
-- Keep one `ExpandContext` in `ed.curses` for the whole session, because
+- Keep one set of static variables (`ed.curses.tvars`) for the whole session, because
   terminfo static variables (`%P`/`%g` with upper-case names) persist between
   calls in ncurses.
 - If `expand()` returns an error, C would have output whatever ncurses
@@ -975,8 +1008,8 @@ against the M0 captures.
 
 M2 must prove, before any storage work starts, that:
 
-- `terminfo-lean` builds under the crate's pinned settings on Linux and
-  macOS, and parses the fixture files compiled by each host's `tic`;
+- the terminfo reader parses the fixture files compiled by each host's `tic`
+  on Linux and macOS;
 - every capability in section 4.2 matches the M0 probe for each fixture
   terminal;
 - `cup` expansion and padding output match the C bytes;
@@ -1451,8 +1484,11 @@ Implications:
   | Build | File | `__TEXT` | `__text` |
   |---|---|---|---|
   | C reference (`target/c-ref/elvis`) | 132904 | 81920 | 65864 |
-  | `cargo build --release` | 437392 | 376832 | 307796 |
-  | `scripts/build-tiny.sh` | 187312 | 147456 | 120328 |
+  | `cargo build --release` | 420592 | 360448 | 292876 |
+  | `scripts/build-tiny.sh` | 170544 | 131072 | 104804 |
+
+  Before `terminfo-lean` was replaced by the reader in `curses.rs`, the
+  two Rust builds were 376832 and 147456 bytes of `__TEXT`.
 
   Most of the stable build's extra size is std's panic printing and
   backtrace code (gimli, addr2line, rustc_demangle), which the prebuilt std
@@ -1469,7 +1505,7 @@ Implications:
   `tio::sprintf`, whose integer conversions avoid `core::fmt`); `os::strerror`
   instead of `io::Error`'s `Display`. `vi`, `initscr`, `initopts` and
   `cutend` are `#[inline(never)]` because inlining them into `main` grew the
-  binary. The remaining `core::fmt` code comes from terminfo-lean.
+  binary.
 
 ### 7.3 Definition of done
 
@@ -1480,8 +1516,7 @@ Implications:
 - The full differential and pty suites pass three consecutive times on Linux
   and on macOS.
 - Terminal state is restored after every exit path tested.
-- Dependencies are exactly `libc`, `terminfo-lean` 0.1.2, and their required
-  transitive dependencies.
+- The only dependency is `libc`.
 - The M9 measurements are reported.
 - `elvis-tiny-c/` is unchanged.
 
@@ -1603,3 +1638,11 @@ Add entries as they are found. Candidate entries to evaluate: line length over
 - New Appendix B entries: B6–B18.
 - Not run: Linux (instructed to ignore for now); per-function unit tests for M3–M8 exist only for storage, regexp, options, ex, move, vcmd, tio, redraw and vi pieces.
 - Next step: user review of B1–B18; Linux verification; M9 (remove `#![allow(dead_code)]`).
+
+### Checkpoint 2026-11-10 (3) — binary size
+
+- Host: macOS 27.2, arm64, rustc 1.99.1.
+- Changes: opt-in `scripts/build-tiny.sh` (build-std, immediate-abort panics); B16 fixed (`add` refuses over-long lines); `core::fmt` removed from non-test code; `terminfo-lean` replaced by `read_terminfo`/`parse_terminfo`/`tparm` in `curses.rs` (section 4.1). Dependencies: `libc` only.
+- Commands and results: `cargo fmt`, `cargo clippy --release --all-targets -- -D warnings` → pass; `cargo test --release` → 75 passed (`os::tests::child_closes_descriptors_3_to_59` failed once out of four runs, a pre-existing race with parallel tests); capprobe goldens pass for all 8 fixtures; `tests/harness/run.py --suite all` on the stable and the tiny binary → 87 runs each, only `startup/small-screen` (B4) differs.
+- Sizes: section 7.2.
+- Next step: user review of B1–B18; Linux verification; M9.

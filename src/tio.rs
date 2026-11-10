@@ -85,7 +85,7 @@ pub enum Arg<'a> {
 }
 
 /// Digits of `v` in `radix` (8, 10 or 16), like the printf conversions.
-fn utoa(mut v: u64, radix: u64, upper: bool) -> Vec<u8> {
+pub fn utoa(mut v: u64, radix: u64, upper: bool) -> Vec<u8> {
     let digits: &[u8; 16] = if upper {
         b"0123456789ABCDEF"
     } else {

@@ -1,13 +1,14 @@
 //! `curses.h` and `curses.c`: a tiny subset of curses.
 //!
-//! Capabilities come from `terminfo-lean` (IMPLEMENTATION.md section 4)
-//! instead of the system termcap emulation.  `tputs` and `tgoto` are
-//! reimplemented here to produce the bytes the macOS ncurses produces.
+//! Capabilities come from a small terminfo reader below (IMPLEMENTATION.md
+//! section 4) instead of the system termcap emulation.  `tputs` and
+//! `tgoto` are reimplemented here to produce the bytes the macOS ncurses
+//! produces.
 
 use std::io::{self, IsTerminal};
+use std::os::unix::ffi::OsStrExt;
 
-use terminfo_lean::expand::{ExpandContext, Parameter};
-use terminfo_lean::parse::Terminfo;
+use crate::tio::utoa;
 
 use crate::os::{self, Termios};
 use crate::vars::Editor;
@@ -75,8 +76,8 @@ pub struct Curses {
     /// `tgetent()` time; -1 when absent.
     pub tc_lines: i32,
     pub tc_cols: i32,
-    /// Terminfo static variables persist across `tgoto()` calls.
-    pub ectx: ExpandContext,
+    /// Terminfo static variables `%PA`..`%PZ` persist across `tgoto()`.
+    pub tvars: [i32; 26],
 }
 
 impl Default for Curses {
@@ -130,7 +131,7 @@ impl Default for Curses {
             curses_active: false,
             tc_lines: -1,
             tc_cols: -1,
-            ectx: ExpandContext::new(),
+            tvars: [0; 26],
         }
     }
 }
@@ -138,70 +139,56 @@ impl Default for Curses {
 /*------------------------------------------------------------------------*/
 /* The termcap emulation: termcap names, tputs, tgoto                      */
 
-/// Termcap name to terminfo name, for every capability `starttcap()` asks
-/// for (plus the ones the capability probe reports).
-fn tc2ti(id: &str) -> &'static str {
-    match id {
-        "up" => "cuu1",
-        "vb" => "flash",
-        "cm" => "cup",
-        "so" => "smso",
-        "se" => "rmso",
-        "ti" => "smcup",
-        "te" => "rmcup",
-        "us" => "smul",
-        "ue" => "rmul",
-        "md" => "bold",
-        "me" => "sgr0",
-        "as" => "smacs",
-        "ae" => "rmacs",
-        "al" => "il1",
-        "dl" => "dl1",
-        "ce" => "el",
-        "cd" => "ed",
-        "sr" => "ri",
-        "im" => "smir",
-        "ei" => "rmir",
-        "ic" => "ich1",
-        "dc" => "dch1",
-        "ks" => "smkx",
-        "ke" => "rmkx",
-        "ku" => "kcuu1",
-        "kd" => "kcud1",
-        "kl" => "kcub1",
-        "kr" => "kcuf1",
-        "kP" => "kpp",
-        "kN" => "knp",
-        "kh" => "khome",
-        "kH" => "kll",
-        "am" => "am",
-        "pt" => "OTpt",
-        "xo" => "xon",
-        "nx" => "nxon",
-        "ug" => "UTug",
-        "li" => "lines",
-        "co" => "cols",
-        "pb" => "pb",
-        _ => "",
-    }
-}
-
-fn tgetstr(ti: &Terminfo<'_>, id: &str) -> Cap {
-    let s = ti.strings.get(tc2ti(id))?;
+/// `tgetstr(id)`: termcap names map to the terminfo string capabilities
+/// ncurses uses for them.
+fn tgetstr(ti: &Terminfo, id: &str) -> Cap {
+    let i = match id {
+        "up" => 19,  // cuu1
+        "vb" => 45,  // flash
+        "cm" => 10,  // cup
+        "so" => 35,  // smso
+        "se" => 43,  // rmso
+        "ti" => 28,  // smcup
+        "te" => 40,  // rmcup
+        "us" => 36,  // smul
+        "ue" => 44,  // rmul
+        "md" => 27,  // bold
+        "me" => 39,  // sgr0
+        "as" => 25,  // smacs
+        "ae" => 38,  // rmacs
+        "al" => 53,  // il1
+        "dl" => 22,  // dl1
+        "ce" => 6,   // el
+        "cd" => 7,   // ed
+        "sr" => 130, // ri
+        "im" => 31,  // smir
+        "ei" => 42,  // rmir
+        "ic" => 52,  // ich1
+        "dc" => 21,  // dch1
+        "ks" => 89,  // smkx
+        "ke" => 88,  // rmkx
+        "ku" => 87,  // kcuu1
+        "kd" => 61,  // kcud1
+        "kl" => 79,  // kcub1
+        "kr" => 83,  // kcuf1
+        "kP" => 82,  // kpp
+        "kN" => 81,  // knp
+        "kh" => 76,  // khome
+        "kH" => 80,  // kll
+        _ => return None,
+    };
+    let s = ti.str(i)?;
     if id == "me" {
         return Some(trim_sgr0(ti, s));
     }
     Some(s.to_vec())
 }
-
 /*------------------------------------------------------------------------*/
 /* ncurses `_nc_trim_sgr0()`: `tgetstr("me")` returns `sgr0` without the   */
 /* part that leaves the alternate character set.                           */
 
 fn set_attribute_9(sgr: &[u8], flag: i32) -> Option<Vec<u8>> {
-    let mut p: Vec<Parameter> = (0..8).map(|_| Parameter::from(0)).collect();
-    p.push(Parameter::from(flag));
-    let v = ExpandContext::new().expand(&keep_dollars(sgr), &p).ok()?;
+    let v = tparm(&mut [0; 26], sgr, &[0, 0, 0, 0, 0, 0, 0, 0, flag])?;
     if v.is_empty() { None } else { Some(v) }
 }
 
@@ -302,12 +289,12 @@ fn compare_part(part: &[u8], full: &[u8]) -> usize {
     used_full
 }
 
-fn trim_sgr0(ti: &Terminfo<'_>, sgr0: &[u8]) -> Vec<u8> {
-    let Some(sgr) = ti.strings.get("sgr") else {
+fn trim_sgr0(ti: &Terminfo, sgr0: &[u8]) -> Vec<u8> {
+    let Some(sgr) = ti.str(TI_SGR) else {
         return sgr0.to_vec();
     };
-    let smacs = ti.strings.get("smacs").copied();
-    let rmacs = ti.strings.get("rmacs").copied();
+    let smacs = ti.str(TI_SMACS);
+    let rmacs = ti.str(TI_RMACS);
     let (Some(mut on), Some(mut off)) = (set_attribute_9(sgr, 1), set_attribute_9(sgr, 0)) else {
         return sgr0.to_vec();
     };
@@ -361,12 +348,28 @@ fn trim_sgr0(ti: &Terminfo<'_>, sgr0: &[u8]) -> Vec<u8> {
     result
 }
 
-fn tgetflag(ti: &Terminfo<'_>, id: &str) -> bool {
-    ti.booleans.contains(tc2ti(id))
+/// `tgetflag(id)`; `pt` is the obsolete `OTpt`.
+fn tgetflag(ti: &Terminfo, id: &str) -> bool {
+    let i = match id {
+        "am" => 1,
+        "xo" => 20, // xon
+        "nx" => 21, // nxon
+        "pt" => 42, // OTpt
+        _ => return false,
+    };
+    ti.bools.get(i) == Some(&true)
 }
 
-fn tgetnum(ti: &Terminfo<'_>, id: &str) -> i32 {
-    ti.numbers.get(tc2ti(id)).copied().unwrap_or(-1)
+/// `tgetnum(id)`, -1 when absent; `ug` is `UTug`.
+fn tgetnum(ti: &Terminfo, id: &str) -> i32 {
+    let i = match id {
+        "co" => 0, // cols
+        "li" => 2, // lines
+        "pb" => 5,
+        "ug" => 33, // UTug
+        _ => return -1,
+    };
+    ti.nums.get(i).copied().unwrap_or(-1)
 }
 
 /// `_nc_getenv_num()`: a whole `strtol(s, &end, 0)` number, else -1.
@@ -390,7 +393,7 @@ fn getenv_num(name: &str) -> i32 {
 
 /// The screen size ncurses `tgetent()` stores for `li`/`co`: `LINES` and
 /// `COLUMNS`, else `TIOCGWINSZ` on fd 1, else the database, else 24x80.
-fn tc_screensize(ti: &Terminfo<'_>) -> (i32, i32) {
+fn tc_screensize(ti: &Terminfo) -> (i32, i32) {
     let mut lines = getenv_num("LINES");
     let mut cols = getenv_num("COLUMNS");
     if (lines <= 0 || cols <= 0)
@@ -462,46 +465,375 @@ pub fn tputs_into(cap: &[u8], _affcnt: i32, out: &mut Vec<u8>) {
     }
 }
 
-/// `tgoto(cm, col, row)`: ncurses calls `tparm(cm, row, col)`, which copies
-/// `$<…>` through for `tputs` to handle.  The `terminfo-lean` expander
-/// drops delays, so every literal `$` is re-encoded as `%{36}%c` first.
-/// Returns `None` if the expansion fails (C would output "OOPS").
-pub fn tgoto(ectx: &mut ExpandContext, cm: &[u8], col: i32, row: i32) -> Option<Vec<u8>> {
-    ectx.expand(
-        &keep_dollars(cm),
-        &[Parameter::from(row), Parameter::from(col)],
-    )
-    .ok()
+/// `tgoto(cm, col, row)`: ncurses calls `tparm(cm, row, col)`.
+pub fn tgoto(vars: &mut [i32; 26], cm: &[u8], col: i32, row: i32) -> Option<Vec<u8>> {
+    tparm(vars, cm, &[row, col])
 }
 
-/// Rewrites every literal `$` as `%{36}%c` so the expander keeps delays.
-fn keep_dollars(cm: &[u8]) -> Vec<u8> {
-    let mut fmt = Vec::with_capacity(cm.len() + 16);
-    let mut i = 0;
-    while i < cm.len() {
-        match cm[i] {
-            b'%' if cm.get(i + 1) == Some(&b'\'') => {
-                let end = (i + 4).min(cm.len());
-                fmt.extend_from_slice(&cm[i..end]);
-                i = end;
-            }
-            b'%' if i + 1 < cm.len() => {
-                fmt.extend_from_slice(&cm[i..i + 2]);
-                i += 2;
-            }
-            b'$' => {
-                fmt.extend_from_slice(b"%{36}%c");
-                i += 1;
-            }
-            b => {
-                fmt.push(b);
-                i += 1;
+/*------------------------------------------------------------------------*/
+/* A minimal terminfo reader                                               */
+
+/// The standard part of a compiled terminfo entry, in `term.h` order.
+pub struct Terminfo {
+    bools: Vec<bool>,
+    /// -1 for absent or cancelled numbers.
+    nums: Vec<i32>,
+    strs: Vec<Option<Vec<u8>>>,
+}
+
+impl Terminfo {
+    fn str(&self, i: usize) -> Option<&[u8]> {
+        self.strs.get(i)?.as_deref()
+    }
+}
+
+// The standard capability counts; entries claiming more are rejected.
+const NBOOLS: usize = 44;
+const NNUMS: usize = 39;
+const NSTRS: usize = 414;
+
+// String capability indexes used outside `tgetstr`.
+const TI_SMACS: usize = 25;
+const TI_RMACS: usize = 38;
+const TI_SGR: usize = 131;
+
+/// Parses the header, booleans, numbers and strings of a compiled entry in
+/// the 16-bit (0x011a) or 32-bit (0x021e) number format.  The extended
+/// (user-defined) section is ignored: none of the capabilities read here
+/// lives there.
+fn parse_terminfo(b: &[u8]) -> Option<Terminfo> {
+    let h = |i: usize| -> Option<usize> {
+        Some(u16::from_le_bytes([*b.get(2 * i)?, *b.get(2 * i + 1)?]) as usize)
+    };
+    let numsize = match h(0)? {
+        0x011a => 2,
+        0x021e => 4,
+        _ => return None,
+    };
+    let (names, nb, nn, ns, size) = (h(1)?, h(2)?, h(3)?, h(4)?, h(5)?);
+    if nb > NBOOLS || nn > NNUMS || ns > NSTRS {
+        return None;
+    }
+    let mut at = 12 + names;
+    let mut bools = Vec::with_capacity(nb);
+    for &v in b.get(at..at + nb)? {
+        match v {
+            0 => bools.push(false),
+            1 => bools.push(true),
+            _ => return None,
+        }
+    }
+    at += nb;
+    at += at & 1;
+    let nums = b
+        .get(at..at + nn * numsize)?
+        .chunks(numsize)
+        .map(|c| {
+            let v = if numsize == 2 {
+                i16::from_le_bytes([c[0], c[1]]) as i32
+            } else {
+                i32::from_le_bytes([c[0], c[1], c[2], c[3]])
+            };
+            if v > 0 { v } else { -1 }
+        })
+        .collect();
+    at += nn * numsize;
+    let offsets = b.get(at..at + 2 * ns)?;
+    let table = b.get(at + 2 * ns..at + 2 * ns + size)?;
+    let mut strs = Vec::with_capacity(ns);
+    for c in offsets.chunks(2) {
+        let off = u16::from_le_bytes([c[0], c[1]]);
+        // 0xffff is absent, 0xfffe cancelled
+        if off >= 0xfffe {
+            strs.push(None);
+            continue;
+        }
+        let s = table.get(off as usize..)?;
+        let n = s.iter().position(|&c| c == 0)?;
+        strs.push(Some(s[..n].to_vec()));
+    }
+    Some(Terminfo { bools, nums, strs })
+}
+
+/// Reads the compiled entry for `term`, searching `$TERMINFO`,
+/// `$HOME/.terminfo`, `$TERMINFO_DIRS` (an empty element means the system
+/// directories) and then the system directories.  Each directory is tried
+/// with both the `x/xterm` and the `78/xterm` layouts.
+fn read_terminfo(term: &[u8]) -> Option<Vec<u8>> {
+    const SYSDIRS: [&[u8]; 5] = [
+        b"/etc/terminfo",
+        b"/lib/terminfo",
+        b"/usr/share/terminfo",
+        b"/usr/lib/terminfo",
+        b"/boot/system/data/terminfo",
+    ];
+    let first = *term.first()?;
+    let env = |name: &str| std::env::var_os(name).map(|v| v.as_bytes().to_vec());
+    let mut dirs: Vec<Vec<u8>> = Vec::new();
+    if let Some(d) = env("TERMINFO") {
+        dirs.push(d);
+    }
+    if let Some(mut d) = env("HOME") {
+        d.extend_from_slice(b"/.terminfo");
+        dirs.push(d);
+    }
+    let mut sys_added = false;
+    if let Some(list) = env("TERMINFO_DIRS") {
+        for d in list.split(|&c| c == b':') {
+            if !d.is_empty() {
+                dirs.push(d.to_vec());
+            } else if !sys_added {
+                dirs.extend(SYSDIRS.iter().map(|d| d.to_vec()));
+                sys_added = true;
             }
         }
     }
-    fmt
+    if !sys_added {
+        dirs.extend(SYSDIRS.iter().map(|d| d.to_vec()));
+    }
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let hex = [HEX[(first >> 4) as usize], HEX[(first & 15) as usize]];
+    for dir in &dirs {
+        for sub in [&[first][..], &hex[..]] {
+            let mut path = dir.clone();
+            path.push(b'/');
+            path.extend_from_slice(sub);
+            path.push(b'/');
+            path.extend_from_slice(term);
+            if let Ok(buf) = std::fs::read(std::ffi::OsStr::from_bytes(&path)) {
+                return Some(buf);
+            }
+        }
+    }
+    None
 }
 
+/// `tparm(cap, p1, ..., p9)` with numeric parameters, expanded the way
+/// ncurses does: `$<…>` delays are copied through for `tputs`.  `vars` holds
+/// the static variables `%PA`..`%PZ`, which persist between calls.  Returns
+/// `None` for a malformed string (C's `tgoto` would return "OOPS").
+fn tparm(vars: &mut [i32; 26], cap: &[u8], params: &[i32]) -> Option<Vec<u8>> {
+    let mut p = [0i32; 9];
+    p[..params.len()].copy_from_slice(params);
+    let mut dynamic = [0i32; 26];
+    let mut stack: Vec<i32> = Vec::new();
+    let mut out = Vec::with_capacity(cap.len());
+    let mut incremented = false;
+    let mut i = 0;
+    while i < cap.len() {
+        let c = cap[i];
+        i += 1;
+        if c != b'%' {
+            out.push(c);
+            continue;
+        }
+        let Some(&op) = cap.get(i) else { break };
+        i += 1;
+        match op {
+            b'%' => out.push(b'%'),
+            b'c' => {
+                let v = stack.pop()?;
+                out.push(if v == 0 { 0o200 } else { v as u8 });
+            }
+            b'p' => {
+                let d = *cap.get(i)?;
+                i += 1;
+                if !(b'1'..=b'9').contains(&d) {
+                    return None;
+                }
+                stack.push(p[(d - b'1') as usize]);
+            }
+            b'P' | b'g' => {
+                let v = *cap.get(i)?;
+                i += 1;
+                let slot = match v {
+                    b'A'..=b'Z' => &mut vars[(v - b'A') as usize],
+                    b'a'..=b'z' => &mut dynamic[(v - b'a') as usize],
+                    _ => return None,
+                };
+                if op == b'P' {
+                    *slot = stack.pop()?;
+                } else {
+                    stack.push(*slot);
+                }
+            }
+            b'\'' => {
+                let ch = *cap.get(i)?;
+                if cap.get(i + 1) != Some(&b'\'') {
+                    return None;
+                }
+                i += 2;
+                stack.push(ch as i32);
+            }
+            b'{' => {
+                let mut n: i32 = 0;
+                loop {
+                    let d = *cap.get(i)?;
+                    i += 1;
+                    if d == b'}' {
+                        break;
+                    }
+                    if !d.is_ascii_digit() {
+                        return None;
+                    }
+                    n = n.checked_mul(10)?.checked_add((d - b'0') as i32)?;
+                }
+                stack.push(n);
+            }
+            b'+' | b'-' | b'*' | b'/' | b'm' | b'|' | b'&' | b'^' | b'=' | b'<' | b'>' | b'A'
+            | b'O' => {
+                let y = stack.pop()?;
+                let x = stack.pop()?;
+                stack.push(match op {
+                    b'+' => x.wrapping_add(y),
+                    b'-' => x.wrapping_sub(y),
+                    b'*' => x.wrapping_mul(y),
+                    b'/' => x.checked_div(y).unwrap_or(0),
+                    b'm' => x.checked_rem(y).unwrap_or(0),
+                    b'|' => x | y,
+                    b'&' => x & y,
+                    b'^' => x ^ y,
+                    b'=' => (x == y) as i32,
+                    b'<' => (x < y) as i32,
+                    b'>' => (x > y) as i32,
+                    b'A' => (x != 0 && y != 0) as i32,
+                    _ => (x != 0 || y != 0) as i32,
+                });
+            }
+            b'!' => {
+                let x = stack.pop()?;
+                stack.push((x == 0) as i32);
+            }
+            b'~' => {
+                let x = stack.pop()?;
+                stack.push(!x);
+            }
+            b'i' => {
+                if !incremented {
+                    p[0] = p[0].wrapping_add(1);
+                    p[1] = p[1].wrapping_add(1);
+                    incremented = true;
+                }
+            }
+            b'?' | b';' => {}
+            b't' => {
+                if stack.pop()? == 0 {
+                    i = skip_cond(cap, i, true);
+                }
+            }
+            b'e' => i = skip_cond(cap, i, false),
+            b'd' | b'o' | b'x' | b'X' | b':' | b'#' | b' ' | b'.' | b'0'..=b'9' => {
+                i = tparm_format(cap, i - 1, stack.pop()?, &mut out)?;
+            }
+            _ => return None,
+        }
+    }
+    Some(out)
+}
+
+/// Skips past the `%e` (if `to_else`) or `%;` that ends the current branch.
+fn skip_cond(cap: &[u8], mut i: usize, to_else: bool) -> usize {
+    let mut level = 0;
+    while i < cap.len() {
+        if cap[i] != b'%' || i + 1 >= cap.len() {
+            i += 1;
+            continue;
+        }
+        i += 2;
+        match cap[i - 1] {
+            b'?' => level += 1,
+            b';' if level == 0 => return i,
+            b';' => level -= 1,
+            b'e' if to_else && level == 0 => return i,
+            _ => {}
+        }
+    }
+    i
+}
+
+/// One printf-style `%[:][flags][width][.precision]{d,o,x,X}` conversion
+/// starting at `cap[i]` (just after the `%`).  Returns the index after it.
+fn tparm_format(cap: &[u8], mut i: usize, v: i32, out: &mut Vec<u8>) -> Option<usize> {
+    let (mut left, mut plus, mut space, mut alt, mut zero) = (false, false, false, false, false);
+    if matches!(cap[i], b':' | b'#' | b' ') {
+        if cap[i] == b':' {
+            i += 1;
+        }
+        while let Some(&c) = cap.get(i) {
+            match c {
+                b'-' => left = true,
+                b'+' => plus = true,
+                b' ' => space = true,
+                b'#' => alt = true,
+                b'0' => zero = true,
+                _ => break,
+            }
+            i += 1;
+        }
+    }
+    if cap.get(i) == Some(&b'0') {
+        zero = true;
+    }
+    let mut width = 0usize;
+    while let Some(&d) = cap.get(i).filter(|d| d.is_ascii_digit()) {
+        width = width.checked_mul(10)?.checked_add((d - b'0') as usize)?;
+        i += 1;
+    }
+    let mut prec: Option<usize> = None;
+    if cap.get(i) == Some(&b'.') {
+        i += 1;
+        let mut n = 0usize;
+        while let Some(&d) = cap.get(i).filter(|d| d.is_ascii_digit()) {
+            n = n.checked_mul(10)?.checked_add((d - b'0') as usize)?;
+            i += 1;
+        }
+        prec = Some(n);
+    }
+    let conv = *cap.get(i)?;
+    let u = v as u32 as u64;
+    let (prefix, mut digits): (&[u8], Vec<u8>) = match conv {
+        b'd' => (
+            if v < 0 {
+                b"-"
+            } else if plus {
+                b"+"
+            } else if space {
+                b" "
+            } else {
+                b""
+            },
+            utoa(v.unsigned_abs() as u64, 10, false),
+        ),
+        b'o' => (b"", utoa(u, 8, false)),
+        b'x' => (if alt && v != 0 { b"0x" } else { b"" }, utoa(u, 16, false)),
+        b'X' => (if alt && v != 0 { b"0X" } else { b"" }, utoa(u, 16, true)),
+        _ => return None,
+    };
+    if let Some(p) = prec
+        && digits.len() < p
+    {
+        digits.splice(0..0, std::iter::repeat_n(b'0', p - digits.len()));
+    }
+    if conv == b'o' && alt && digits[0] != b'0' {
+        digits.insert(0, b'0');
+    }
+    let len = prefix.len() + digits.len();
+    let pad = width.saturating_sub(len);
+    if left {
+        out.extend_from_slice(prefix);
+        out.extend_from_slice(&digits);
+        out.extend(std::iter::repeat_n(b' ', pad));
+    } else if zero && prec.is_none() {
+        out.extend_from_slice(prefix);
+        out.extend(std::iter::repeat_n(b'0', pad));
+        out.extend_from_slice(&digits);
+    } else {
+        out.extend(std::iter::repeat_n(b' ', pad));
+        out.extend_from_slice(prefix);
+        out.extend_from_slice(&digits);
+    }
+    Some(i + 1)
+}
 /*------------------------------------------------------------------------*/
 /* Output buffer: qaddch, addch, and the do_* / has_* macros               */
 
@@ -564,7 +896,7 @@ impl Curses {
     /// `move(y, x)`: `tputs(tgoto(CM, x, y), 1, faddch)`.
     pub fn mv(&mut self, y: i32, x: i32) {
         if let Some(cm) = &self.cm
-            && let Some(s) = tgoto(&mut self.ectx, cm, x, y)
+            && let Some(s) = tgoto(&mut self.tvars, cm, x, y)
         {
             tputs_into(&s, 1, &mut self.kbuf);
         }
@@ -906,25 +1238,19 @@ fn lacking(s: &str) -> ! {
     os::exit(1);
 }
 
-/// `tgetent()`: `Ok(buffer)` for a readable, parseable entry.  C also has
-/// a -1 result ("Can't read /etc/termcap", exit 2), but the macOS ncurses
+/// `tgetent()`: the entry if it is readable and parseable.  C also has a
+/// -1 result ("Can't read /etc/termcap", exit 2), but the macOS ncurses
 /// never returns it, so every failure is the 0 case.
-fn tgetent(term: &std::ffi::OsStr) -> Option<Vec<u8>> {
-    let path = terminfo_lean::locate::locate(term).ok()?;
-    let buf = std::fs::read(path).ok()?;
-    terminfo_lean::parse::parse(&buf).ok()?;
-    Some(buf)
+fn tgetent(term: &std::ffi::OsStr) -> Option<Terminfo> {
+    parse_terminfo(&read_terminfo(term.as_bytes())?)
 }
 
 // C: curses.c:starttcap
 fn starttcap(ed: &mut Editor) {
     let term = std::env::var_os("TERM").unwrap_or_default();
-    let Some(buf) = tgetent(&term) else {
+    let Some(ti) = tgetent(&term) else {
         let _ = os::err_write(b"Unrecognized TERM type\n");
         os::exit(3);
-    };
-    let Ok(ti) = terminfo_lean::parse::parse(&buf) else {
-        unreachable!("tgetent() parsed this buffer")
     };
 
     macro_rules! musthave {
@@ -1057,7 +1383,7 @@ mod tests {
 
     #[test]
     fn tgoto_order_and_padding() {
-        let mut e = ExpandContext::new();
+        let mut e = [0; 26];
         let cup = b"\x1b[%i%p1%d;%p2%dH$<5>";
         let s = tgoto(&mut e, cup, 7, 9).unwrap();
         assert_eq!(s, b"\x1b[10;8H$<5>");
@@ -1067,6 +1393,61 @@ mod tests {
         assert_eq!(tgoto(&mut e, b"%'$'%c%p1%d", 0, 4).unwrap(), b"$4");
     }
 
+    #[test]
+    fn tparm_expansion() {
+        let t = |cap: &[u8], p: &[i32]| tparm(&mut [0; 26], cap, p);
+        let setaf = b"\x1b[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m";
+        assert_eq!(t(setaf, &[1]).unwrap(), b"\x1b[31m");
+        assert_eq!(t(setaf, &[9]).unwrap(), b"\x1b[91m");
+        assert_eq!(t(setaf, &[100]).unwrap(), b"\x1b[38;5;100m");
+        assert_eq!(t(b"%p1%03d|%p1%:-3d|%p1%3d", &[7]).unwrap(), b"007|7  |  7");
+        assert_eq!(
+            t(b"%p1%#x %p1%X %p1%o %p1%#o", &[255]).unwrap(),
+            b"0xff FF 377 0377"
+        );
+        assert_eq!(t(b"%p1%.3d %p1%: +d", &[-5]).unwrap(), b"-005 -5");
+        assert_eq!(t(b"%p1%{0}%/%d%p1%!%d%p1%~%d", &[3]).unwrap(), b"00-4");
+        assert_eq!(t(b"%p1%c%p2%c", &[0, 65]).unwrap(), b"\x80A");
+        assert_eq!(t(b"a%%$<2>", &[]).unwrap(), b"a%$<2>");
+        assert_eq!(t(b"%?%p1%t%?%p2%tA%eB%;%eC%;", &[1, 0]).unwrap(), b"B");
+        assert_eq!(t(b"%?%p1%t%?%p2%tA%eB%;%eC%;", &[0, 1]).unwrap(), b"C");
+        assert!(t(b"%d", &[]).is_none());
+        assert!(t(b"%+", &[]).is_none());
+        assert!(t(b"%p0", &[]).is_none());
+        assert!(t(b"%z", &[]).is_none());
+        let mut vars = [0; 26];
+        assert_eq!(tparm(&mut vars, b"%p1%PA", &[42]).unwrap(), b"");
+        assert_eq!(tparm(&mut vars, b"%gA%d%ga%d", &[]).unwrap(), b"420");
+    }
+
+    #[test]
+    fn parse_terminfo_formats() {
+        // names "t\0", booleans [1, 0, 1], numbers [80, -1, 25], strings
+        // [absent, "ab", cancelled]
+        let mut f: Vec<u8> = Vec::new();
+        for v in [0x011au16, 2, 3, 3, 3, 3] {
+            f.extend_from_slice(&v.to_le_bytes());
+        }
+        f.extend_from_slice(b"t\0\x01\x00\x01\x00");
+        for v in [80i16, -1, 25] {
+            f.extend_from_slice(&v.to_le_bytes());
+        }
+        for v in [0xffffu16, 0, 0xfffe] {
+            f.extend_from_slice(&v.to_le_bytes());
+        }
+        f.extend_from_slice(b"ab\0");
+        let ti = parse_terminfo(&f).unwrap();
+        assert_eq!(ti.bools, [true, false, true]);
+        assert_eq!(ti.nums, [80, -1, 25]);
+        assert_eq!(ti.strs, [None, Some(b"ab".to_vec()), None]);
+        assert!(parse_terminfo(&f[..f.len() - 1]).is_none());
+        let mut bad = f.clone();
+        bad[0] = 0x1b;
+        assert!(parse_terminfo(&bad).is_none());
+        let mut bad = f.clone();
+        bad[14] = 2;
+        assert!(parse_terminfo(&bad).is_none());
+    }
     #[test]
     fn env_num() {
         assert_eq!(getenv_num("ELVIS_TEST_UNSET_VARIABLE"), -1);
@@ -1088,7 +1469,7 @@ mod tests {
             "dl", "ce", "cd", "sr", "im", "ei", "ic", "dc", "ks", "ke", "ku", "kd", "kl", "kr",
             "kP", "kN", "kh", "kH",
         ];
-        let ti = terminfo_lean::parse::parse(file).unwrap();
+        let ti = parse_terminfo(file).unwrap();
         let mut o = String::from("tgetent=1\nospeed=0 PC=0\n");
         for s in STRS {
             o.push_str(&format!("str {s}="));
@@ -1115,7 +1496,7 @@ mod tests {
             o.push_str(&format!("num {n}={v}\n"));
         }
         if let Some(cm) = tgetstr(&ti, "cm") {
-            let mut e = ExpandContext::new();
+            let mut e = [0; 26];
             for r in [0, 1, 9, 10, 23, 99] {
                 for c in [0, 1, 7, 79, 132] {
                     let mut out = Vec::new();
