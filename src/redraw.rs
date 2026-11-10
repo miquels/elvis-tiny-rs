@@ -3,9 +3,8 @@
 use crate::curses;
 use crate::misc::{fetchline, pfetch};
 use crate::vars::Editor;
-use crate::vi_h::{
-    BLKSIZE, INFINITY, MARK_UNSET, Mark, botline, ch, markidx, markline, rightcol, schar,
-};
+use crate::vi_h::LINEMASK;
+use crate::vi_h::{INFINITY, MARK_UNSET, Mark, botline, ch, markidx, markline, rightcol, schar};
 
 #[derive(Default)]
 pub struct Redraw {
@@ -59,9 +58,7 @@ pub fn idx2col(ed: &mut Editor, curs: Mark, text: &[u8], inputting: bool) -> i32
     let mut idx: i32 = markidx(curs) as i32;
     let mut t: usize = 0;
 
-    if r.idx2col_chgs == ed.vars.changes
-        && ((curs ^ r.idx2col_pcursor) & !(BLKSIZE as i64 - 1)) == 0
-    {
+    if r.idx2col_chgs == ed.vars.changes && ((curs ^ r.idx2col_pcursor) & LINEMASK) == 0 {
         if curs == r.idx2col_pcursor {
             let pcol = r.idx2col_pcol;
             if ch(text, idx as usize) == b'\t' && !inputting && !list {

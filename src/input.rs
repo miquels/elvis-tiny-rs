@@ -14,12 +14,11 @@ use crate::tio::{beep, getkey};
 use crate::vars::Editor;
 use crate::vcmd::{v_xchar, v_xit};
 use crate::vi::adjmove;
+use crate::vi_h::LINEMASK;
 use crate::vi_h::{
     BLKSIZE, CMD_SHIFTL, CMD_SHIFTR, MARK_UNSET, Mark, R, WHEN_VIREP, botline, ctrl, markidx,
     markline,
 };
-
-const LINEMASK: Mark = !(BLKSIZE as Mark - 1);
 
 /// `key` as the C string `key[2]`: empty when the key is NUL.
 fn keystr(key: &[u8; 1]) -> &[u8] {

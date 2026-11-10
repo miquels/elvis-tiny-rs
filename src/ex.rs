@@ -16,6 +16,7 @@ use crate::os;
 use crate::system::wildcard;
 use crate::tio::{Arg, exrefresh, msg, vgets};
 use crate::vars::Editor;
+use crate::vi_h::LINEMASK;
 use crate::vi_h::*;
 
 #[derive(Default)]
@@ -204,7 +205,7 @@ pub fn linespec(ed: &mut Editor, s: &[u8], markptr: &mut Mark) -> R<usize> {
             let t = s + parseptrn(&mut buf[s..]);
             let pat = cstr(&buf[s..]);
 
-            *markptr &= !(BLKSIZE as Mark - 1);
+            *markptr &= LINEMASK;
             if buf[s] == b'/' {
                 pfetch(ed, markline(*markptr));
                 if ed.vars.plen > 0 {

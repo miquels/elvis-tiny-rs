@@ -18,6 +18,7 @@ use crate::vcmd::{
     v_lshift, v_mark, v_overtype, v_paste, v_quit, v_redraw, v_replace, v_rshift, v_selcut,
     v_status, v_subst, v_switch, v_tag, v_ulcase, v_undo, v_undoline, v_xchar, v_xit, v_yank,
 };
+use crate::vi_h::LINEMASK;
 use crate::vi_h::{
     BLKSIZE, MARK_FIRST, MARK_UNSET, MODE_COLON, MODE_VI, Mark, R, WHEN_VICMD, isalnum, isascii,
     isupper, mark_at_line, mark_last, markidx, markline, schar,
@@ -297,8 +298,6 @@ static VIKEYS: [Keystru; 128] = [
 /*  ~  upper/lowercase  */ cursor_count_f(v_ulcase, SDOT),
 /* DEL not defined      */ NO_FUNC,
 ];
-
-const LINEMASK: Mark = !(BLKSIZE as Mark - 1);
 
 /// `isascii(c) && !isalnum(c) && c != '_'` negated: part of a keyword.
 fn kwchar(b: u8) -> bool {

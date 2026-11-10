@@ -47,10 +47,6 @@ pub struct Tio {
     pub next: i32,
     pub mapped: [KeyMap; MAXMAPS],
     pub getkey_cooked: Option<Cooked>,
-    pub getkey_oldwhen: i32,
-    pub getkey_oldleft: i32,
-    pub getkey_oldtop: i64,
-    pub getkey_oldnlines: i64,
 }
 
 impl Default for Tio {
@@ -63,10 +59,6 @@ impl Default for Tio {
             next: 0,
             mapped: Default::default(),
             getkey_cooked: None,
-            getkey_oldwhen: 0,
-            getkey_oldleft: 0,
-            getkey_oldtop: 0,
-            getkey_oldnlines: 0,
         }
     }
 }

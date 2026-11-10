@@ -10,6 +10,7 @@ use crate::modify::add;
 use crate::os;
 use crate::tio::{Arg, msg};
 use crate::vars::Editor;
+use crate::vi_h::LINEMASK;
 use crate::vi_h::{BLKSIZE, Blk, MARK_UNSET, MAXBLKS, Mark, cstr, markidx, markline};
 
 pub const NANNONS: usize = 9;
@@ -322,7 +323,7 @@ pub fn paste(ed: &mut Editor, at: Mark, after: bool, retend: bool) -> Mark {
     ed.cut.cbname = 0;
 
     if cbref(&ed.cut, k).lnmode {
-        at &= !(BLKSIZE as i64 - 1);
+        at &= LINEMASK;
         if after {
             at += BLKSIZE as i64;
         }

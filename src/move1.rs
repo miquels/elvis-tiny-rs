@@ -3,12 +3,11 @@
 use crate::misc::{fetchline, pfetch};
 use crate::tio::{Arg, msg};
 use crate::vars::Editor;
+use crate::vi_h::LINEMASK;
 use crate::vi_h::{
     BLKSIZE, MARK_FIRST, MARK_UNSET, Mark, R, buildmark, ch, default, mark_at_line, mark_last,
     markidx, markline,
 };
-
-const LINEMASK: Mark = !(BLKSIZE as Mark - 1);
 
 // C: move1.c:m_updnto
 pub fn m_updnto(ed: &mut Editor, m: Mark, cnt: i64, cmd: i32) -> R<Mark> {

@@ -16,6 +16,7 @@ use crate::redraw::redraw;
 use crate::system::{elvis_system, filter};
 use crate::tio::{Arg, exrefresh, getkey, msg, sprintf, vgets};
 use crate::vars::Editor;
+use crate::vi_h::LINEMASK;
 use crate::vi_h::{
     BLKSIZE, CMD_EDIT, CMD_FILE, CMD_JOIN, CMD_SHIFTL, CMD_SHIFTR, CMD_SUBAGAIN, CMD_TAG, CMD_XIT,
     Cmd, Interrupted, MARK_UNSET, MODE_COLON, MODE_EX, MODE_VI, Mark, R, WHEN_VIINP, WHEN_VIREP,
@@ -27,8 +28,6 @@ pub struct Vcmd {
     pub v_overtype_width: i64,
     pub v_increment_sign: i32,
 }
-
-const LINEMASK: Mark = !(BLKSIZE as Mark - 1);
 
 /// `static char flip[]` in `v_ulcase`.
 const V_ULCASE_FLIP: &[u8] = b"aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ[](){}<>";

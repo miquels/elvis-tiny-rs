@@ -98,6 +98,9 @@ pub fn markidx(x: Mark) -> usize {
     (x & (BLKSIZE as i64 - 1)) as usize
 }
 
+/// Clears the index part of a mark, leaving the start of its line.
+pub const LINEMASK: Mark = !(BLKSIZE as Mark - 1);
+
 pub const MARK_UNSET: Mark = 0;
 pub const MARK_FIRST: Mark = BLKSIZE as Mark;
 

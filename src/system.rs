@@ -11,6 +11,7 @@ use crate::modify::{add, delete};
 use crate::os::{self, ShellRun, SpawnOpts};
 use crate::tio::{Arg, msg, sprintf};
 use crate::vars::Editor;
+use crate::vi_h::LINEMASK;
 use crate::vi_h::{BLKSIZE, MODE_COLON, MODE_VI, MODIFIED, Mark, R, cstr};
 
 // C: system.c:elvis_system
@@ -162,9 +163,9 @@ pub fn filter(ed: &mut Editor, mut from: Mark, mut to: Mark, cmd: &[u8]) -> R<i3
 
     beforedo(ed, false);
     {
-        from &= !(BLKSIZE as Mark - 1);
+        from &= LINEMASK;
         if to != 0 {
-            to &= !(BLKSIZE as Mark - 1);
+            to &= LINEMASK;
             to += BLKSIZE as Mark;
             new = to;
         } else {
@@ -181,7 +182,7 @@ pub fn filter(ed: &mut Editor, mut from: Mark, mut to: Mark, cmd: &[u8]) -> R<i3
             add(ed, new, &text);
             for &b in &text {
                 if b == b'\n' {
-                    new = (new & !(BLKSIZE as Mark - 1)) + BLKSIZE as Mark;
+                    new = (new & LINEMASK) + BLKSIZE as Mark;
                 } else {
                     new += 1;
                 }
