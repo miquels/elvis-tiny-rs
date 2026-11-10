@@ -1,6 +1,6 @@
 //! `modify.c`: low-level text changes (`delete`, `add`, `change`).  No module state.
 
-use crate::blk::{afterdo, beforedo, blkadd, blkdirty, blkget, skipline};
+use crate::blk::{BufId, afterdo, beforedo, blkadd, blkdirty, blkget, findblk, locate, skiplines};
 use crate::misc::fetchline;
 use crate::tio::msg;
 use crate::vars::Editor;
@@ -48,11 +48,7 @@ pub fn delete(ed: &mut Editor, frommark: Mark, tomark: Mark) {
         ed.vars.rptlabel = b"deleted";
     }
 
-    let l = markline(frommark);
-    let mut i = 1;
-    while ed.vars.lnum[i] < l {
-        i += 1;
-    }
+    let mut i = findblk(&ed.vars.lnum, markline(frommark), 1);
 
     let mut m = frommark;
     while m < tomark && ed.vars.lnum[i] < INFINITY {
@@ -60,12 +56,7 @@ pub fn delete(ed: &mut Editor, frommark: Mark, tomark: Mark) {
         let lnum = &ed.vars.lnum;
         let c = &mut ed.blk.blk[id].buf.c;
 
-        let mut scan = 0;
-        let mut l = markline(m) - lnum[i - 1] - 1;
-        while l > 0 {
-            scan = skipline(c, scan);
-            l -= 1;
-        }
+        let mut scan = skiplines(c, 0, markline(m) - lnum[i - 1] - 1);
         scan += markidx(m);
 
         let mut cpy;
@@ -74,24 +65,15 @@ pub fn delete(ed: &mut Editor, frommark: Mark, tomark: Mark) {
         } else if markline(tomark) == markline(m) {
             cpy = scan - markidx(m) + markidx(tomark);
         } else {
-            cpy = scan;
-            let mut l = markline(tomark) - markline(m);
-            while l > 0 {
-                cpy = skipline(c, cpy);
-                l -= 1;
-            }
+            cpy = skiplines(c, scan, markline(tomark) - markline(m));
             cpy += markidx(tomark);
         }
 
-        while cpy < BLKSIZE {
-            c[scan] = c[cpy];
-            scan += 1;
-            cpy += 1;
+        if cpy < BLKSIZE {
+            c.copy_within(cpy.., scan);
+            scan += BLKSIZE - cpy;
         }
-        while scan < BLKSIZE {
-            c[scan] = 0;
-            scan += 1;
-        }
+        c[scan..].fill(0);
 
         tomark -= mark_at_line(lnum[i] + 1 - markline(m));
 
@@ -137,12 +119,41 @@ fn would_overflow(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
         || lastpart + rest > BLKSIZE - 1
 }
 
+/// Copies `src` into block `*blk` at `*build`.  When the block fills up, the
+/// partial last line moves to a new block added after it.
+fn append_text(ed: &mut Editor, blk: &mut BufId, blkno: &mut usize, build: &mut usize, src: &[u8]) {
+    let mut nt = 0;
+    while nt < src.len() {
+        let c = &mut ed.blk.blk[*blk].buf.c;
+        let n = (src.len() - nt).min((BLKSIZE - 1).saturating_sub(*build));
+        c[*build..*build + n].copy_from_slice(&src[nt..nt + n]);
+        *build += n;
+        nt += n;
+        if nt < src.len() {
+            let keep = c[..*build]
+                .iter()
+                .rposition(|&b| b == b'\n')
+                .map_or(0, |p| p + 1);
+            let mut linebuf = [0u8; BLKSIZE];
+            let len = *build - keep;
+            linebuf[..len].copy_from_slice(&c[keep..*build]);
+            c[keep..].fill(0);
+            blkdirty(ed, *blk);
+
+            *blkno += 1;
+            *blk = blkadd(ed, *blkno as i32);
+
+            ed.blk.blk[*blk].buf.c[..len].copy_from_slice(&linebuf[..len]);
+            *build = len;
+        }
+    }
+}
+
 // C: modify.c:add
 /// `newtext` has no NUL terminator.  Returns false, changing nothing, when a
 /// line would grow past `BLKSIZE - 1` bytes (Appendix B16).
 pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
     let newtext = cstr(newtext);
-    let mut nt = 0;
 
     if newtext.is_empty() {
         return true;
@@ -205,91 +216,12 @@ pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
     let mut blk = blkget(ed, blkno as i32);
     let buf = ed.blk.blk[blk].buf.c;
 
-    let mut newptr = 0;
-    let mut l = markline(atmark) - ed.vars.lnum[blkno - 1] - 1;
-    while l > 0 {
-        newptr = skipline(&buf, newptr);
-        l -= 1;
-    }
+    let mut newptr = skiplines(&buf, 0, markline(atmark) - ed.vars.lnum[blkno - 1] - 1);
     newptr += markidx(atmark);
 
     let mut build = newptr;
-    let mut linebuf = [0u8; BLKSIZE];
-    let mut scan;
-
-    while nt < newtext.len() {
-        {
-            let c = &mut ed.blk.blk[blk].buf.c;
-            while nt < newtext.len() && build < BLKSIZE - 1 {
-                c[build] = newtext[nt];
-                build += 1;
-                nt += 1;
-            }
-        }
-        if nt < newtext.len() {
-            let c = &mut ed.blk.blk[blk].buf.c;
-            scan = BLKSIZE;
-            while build > 0 && c[build - 1] != b'\n' {
-                scan -= 1;
-                build -= 1;
-                linebuf[scan] = c[build];
-            }
-
-            while build < BLKSIZE {
-                c[build] = 0;
-                build += 1;
-            }
-            blkdirty(ed, blk);
-
-            blkno += 1;
-            blk = blkadd(ed, blkno as i32);
-
-            let c = &mut ed.blk.blk[blk].buf.c;
-            build = 0;
-            while scan < BLKSIZE {
-                c[build] = linebuf[scan];
-                build += 1;
-                scan += 1;
-            }
-        }
-    }
-
-    while newptr < BLKSIZE && buf[newptr] != 0 {
-        {
-            let c = &mut ed.blk.blk[blk].buf.c;
-            while newptr < BLKSIZE && buf[newptr] != 0 && build < BLKSIZE - 1 {
-                c[build] = buf[newptr];
-                build += 1;
-                newptr += 1;
-            }
-        }
-        if newptr < BLKSIZE && buf[newptr] != 0 {
-            let c = &mut ed.blk.blk[blk].buf.c;
-            scan = BLKSIZE;
-            while build > 0 && c[build - 1] != b'\n' {
-                scan -= 1;
-                build -= 1;
-                linebuf[scan] = c[build];
-            }
-
-            while build < BLKSIZE {
-                c[build] = 0;
-                build += 1;
-            }
-            blkdirty(ed, blk);
-
-            blkno += 1;
-            blk = blkadd(ed, blkno as i32);
-
-            let c = &mut ed.blk.blk[blk].buf.c;
-            build = 0;
-            while scan < BLKSIZE {
-                c[build] = linebuf[scan];
-                build += 1;
-                scan += 1;
-            }
-        }
-    }
+    append_text(ed, &mut blk, &mut blkno, &mut build, newtext);
+    append_text(ed, &mut blk, &mut blkno, &mut build, cstr(&buf[newptr..]));
 
     if ed.vars.lnum[blkno] < ed.vars.nlines
         && ed.vars.lnum[blkno + 1] - ed.vars.lnum[blkno] < (BLKSIZE >> 6) as i64
@@ -300,14 +232,8 @@ pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
         if flen + build < BLKSIZE - 1 {
             let ftext = fc[..flen].to_vec();
             let c = &mut ed.blk.blk[blk].buf.c;
-            for &b in &ftext {
-                c[build] = b;
-                build += 1;
-            }
-            while build < BLKSIZE {
-                c[build] = 0;
-                build += 1;
-            }
+            c[build..build + flen].copy_from_slice(&ftext);
+            c[build + flen..].fill(0);
             blkdirty(ed, blk);
 
             blk = following;
@@ -315,11 +241,7 @@ pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
         }
     }
 
-    let c = &mut ed.blk.blk[blk].buf.c;
-    while build < BLKSIZE {
-        c[build] = 0;
-        build += 1;
-    }
+    ed.blk.blk[blk].buf.c[build..].fill(0);
     blkdirty(ed, blk);
     true
 }
@@ -329,22 +251,8 @@ pub fn change(ed: &mut Editor, frommark: Mark, tomark: Mark, newtext: &[u8]) {
     let newtext = cstr(newtext);
 
     if frommark + 1 == tomark && newtext.len() == 1 && newtext[0] != b'\n' {
-        let l = markline(frommark);
-        let mut i = 1;
-        while ed.vars.lnum[i] < l {
-            i += 1;
-        }
-
-        let blk = blkget(ed, i as i32);
-
+        let (_, blk, mut text) = locate(ed, markline(frommark));
         let c = &ed.blk.blk[blk].buf.c;
-        let mut text = 0;
-        let mut n = l - ed.vars.lnum[i - 1] - 1;
-        while n > 0 {
-            text = skipline(c, text);
-            n -= 1;
-        }
-
         text += markidx(frommark);
         if c[text] == newtext[0] {
             return;

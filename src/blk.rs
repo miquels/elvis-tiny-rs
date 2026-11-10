@@ -107,6 +107,33 @@ pub(crate) fn skipline(c: &[u8], mut i: usize) -> usize {
     i
 }
 
+/// Skips `n` lines of block text `c`, starting at offset `i`.
+pub(crate) fn skiplines(c: &[u8], mut i: usize, n: i64) -> usize {
+    for _ in 0..n {
+        i = skipline(c, i);
+    }
+    i
+}
+
+/// The first block, from `from` on, that holds line `line` or a later one.
+pub(crate) fn findblk(lnum: &[i64], line: i64, from: usize) -> usize {
+    let mut i = from;
+    while lnum[i] < line {
+        i += 1;
+    }
+    i
+}
+
+/// Finds line `line` in the cache: its block number, the buffer holding
+/// that block, and the offset where the line starts.
+#[inline(never)]
+pub(crate) fn locate(ed: &mut Editor, line: i64) -> (usize, BufId, usize) {
+    let i = findblk(&ed.vars.lnum, line, 1);
+    let id = blkget(ed, i as i32);
+    let n = line - ed.vars.lnum[i - 1] - 1;
+    (i, id, skiplines(&ed.blk.blk[id].buf.c, 0, n))
+}
+
 // C: blk.c:blkinit
 pub fn blkinit(ed: &mut Editor) {
     for i in 0..NBUFS {

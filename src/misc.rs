@@ -1,6 +1,6 @@
 //! `misc.c`: line fetching and the regexp error hook.
 
-use crate::blk::{BufId, blkget, skipline};
+use crate::blk::{BufId, locate};
 use crate::tio::{Arg, msg};
 use crate::vars::Editor;
 use crate::vi_h::{BLKSIZE, Blk};
@@ -30,24 +30,9 @@ pub fn fetchline(ed: &mut Editor, line: i64) -> Vec<u8> {
         id = ed.misc.fetchline_nextbuf;
         scan = ed.misc.fetchline_nextscan;
     } else {
-        let mut i = 1;
-        while line > ed.vars.lnum[i] {
-            i += 1;
-        }
+        let i;
+        (i, id, scan) = locate(ed, line);
         ed.misc.fetchline_nextlnum = ed.vars.lnum[i];
-
-        id = blkget(ed, i as i32);
-        scan = 0;
-
-        let c = &ed.blk.buf(id).c;
-        let mut l = ed.vars.lnum[i - 1];
-        loop {
-            l += 1;
-            if l >= line {
-                break;
-            }
-            scan = skipline(c, scan);
-        }
     }
 
     let c = &ed.blk.buf(id).c;

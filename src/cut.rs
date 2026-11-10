@@ -3,7 +3,7 @@
 use std::fs::File;
 use std::os::fd::AsRawFd;
 
-use crate::blk::{afterdo, beforedo, blkget, blksync, lseek_read, skipline};
+use crate::blk::{afterdo, beforedo, blkget, blksync, findblk, locate, lseek_read, skiplines};
 use crate::config::cutname_fmt;
 use crate::misc::pfetch;
 use crate::modify::add;
@@ -206,46 +206,17 @@ pub fn cut(ed: &mut Editor, from: Mark, to: Mark) {
 
     blksync(ed);
 
-    let mut line = markline(from);
-    let mut first = 1;
-    while line > ed.vars.lnum[first] {
-        first += 1;
-    }
-
-    let mut id = blkget(ed, first as i32);
-    let mut scan = 0;
-
-    let mut l = ed.vars.lnum[first - 1];
-    loop {
-        l += 1;
-        if l >= line {
-            break;
-        }
-        scan = skipline(&ed.blk.blk[id].buf.c, scan);
-    }
+    let (mut first, mut id, mut scan) = locate(ed, markline(from));
     scan += markidx(from);
 
     cbmut(&mut ed.cut, k).start = scan as i32;
 
-    line = markline(to);
-    let mut last = first;
-    while line > ed.vars.lnum[last] {
-        last += 1;
-    }
-
+    let line = markline(to);
+    let last = findblk(&ed.vars.lnum, line, first);
     if last != first {
         id = blkget(ed, last as i32);
     }
-    scan = 0;
-
-    let mut l = ed.vars.lnum[last - 1];
-    loop {
-        l += 1;
-        if l >= line {
-            break;
-        }
-        scan = skipline(&ed.blk.blk[id].buf.c, scan);
-    }
+    scan = skiplines(&ed.blk.blk[id].buf.c, 0, line - ed.vars.lnum[last - 1] - 1);
     if markline(to) <= ed.vars.nlines {
         scan += markidx(to);
     }
