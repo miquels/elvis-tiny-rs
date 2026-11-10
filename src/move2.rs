@@ -8,36 +8,13 @@ use crate::regexp::{Regexp, regcomp, regexec};
 use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::{
-    BLKSIZE, Interrupted, MARK_UNSET, Mark, R, ch, cstr, isspace, mark_at_line, markidx, markline,
+    BLKSIZE, Interrupted, MARK_UNSET, Mark, R, atol, ch, cstr, mark_at_line, markidx, markline,
 };
 
 #[derive(Default)]
 pub struct Move2 {
     pub re: Option<Regexp>,
     pub prevsf: bool,
-}
-
-/// C `atol()` (`strtol(s, NULL, 10)`), saturating on overflow.
-pub(crate) fn atol(s: &[u8]) -> i64 {
-    let mut i = 0;
-    while isspace(ch(s, i) as i32) {
-        i += 1;
-    }
-    let neg = ch(s, i) == b'-';
-    if matches!(ch(s, i), b'-' | b'+') {
-        i += 1;
-    }
-    let mut v: i64 = 0;
-    while ch(s, i).is_ascii_digit() {
-        let d = (ch(s, i) - b'0') as i64;
-        v = if neg {
-            v.saturating_mul(10).saturating_sub(d)
-        } else {
-            v.saturating_mul(10).saturating_add(d)
-        };
-        i += 1;
-    }
-    v
 }
 
 /// Runs the saved pattern against `subject`; returns the match bounds.

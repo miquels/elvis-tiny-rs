@@ -9,7 +9,7 @@ use std::os::unix::ffi::OsStrExt;
 
 use crate::config::{EXRC, KEYWORDPRG, NEEDSYNC, SHELL, TMPDIR};
 use crate::tio::{Arg, exrefresh, msg, sprintf};
-use crate::vi_h::{READONLY, ch, cstr};
+use crate::vi_h::{READONLY, atoi, ch, cstr};
 
 /// A NUL-terminated C string literal copied into a fixed array.
 const fn cbuf<const N: usize>(s: &[u8]) -> [u8; N] {
@@ -303,24 +303,6 @@ fn setstr(buf: &mut [u8], val: &[u8]) -> bool {
     buf[..val.len()].copy_from_slice(val);
     buf[val.len()] = 0;
     true
-}
-
-/// C `atoi`: leading white space, an optional sign, then digits.
-fn atoi(s: &[u8]) -> i32 {
-    let mut i = 0;
-    while matches!(ch(s, i), b' ' | b'\t' | b'\n' | 0x0b | 0x0c | b'\r') {
-        i += 1;
-    }
-    let neg = ch(s, i) == b'-';
-    if matches!(ch(s, i), b'-' | b'+') {
-        i += 1;
-    }
-    let mut n: i32 = 0;
-    while ch(s, i).is_ascii_digit() {
-        n = n.wrapping_mul(10).wrapping_add((ch(s, i) - b'0') as i32);
-        i += 1;
-    }
-    if neg { n.wrapping_neg() } else { n }
 }
 
 // C: opts.c:initopts

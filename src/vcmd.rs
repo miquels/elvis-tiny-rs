@@ -10,13 +10,13 @@ use crate::input::input;
 use crate::misc::pfetch;
 use crate::modify::{add, change, delete};
 use crate::move1::m_front;
-use crate::move2::atol;
 use crate::os::take_sigint;
 use crate::redraw::redraw;
 use crate::system::{elvis_system, filter};
 use crate::tio::{Arg, exrefresh, getkey, msg, sprintf, vgets};
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
+use crate::vi_h::atol;
 use crate::vi_h::{
     BLKSIZE, CMD_EDIT, CMD_FILE, CMD_JOIN, CMD_SHIFTL, CMD_SHIFTR, CMD_SUBAGAIN, CMD_TAG, CMD_XIT,
     Cmd, Interrupted, MARK_UNSET, MODE_COLON, MODE_EX, MODE_VI, Mark, R, WHEN_VIINP, WHEN_VIREP,

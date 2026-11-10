@@ -205,6 +205,34 @@ pub fn toupper(c: i32) -> i32 {
     if islower(c) { c - 32 } else { c }
 }
 
+/// C `atol()` (`strtol(s, NULL, 10)`), saturating on overflow.
+pub fn atol(s: &[u8]) -> i64 {
+    let mut i = 0;
+    while isspace(ch(s, i) as i32) {
+        i += 1;
+    }
+    let neg = ch(s, i) == b'-';
+    if matches!(ch(s, i), b'-' | b'+') {
+        i += 1;
+    }
+    let mut v: i64 = 0;
+    while ch(s, i).is_ascii_digit() {
+        let d = (ch(s, i) - b'0') as i64;
+        v = if neg {
+            v.saturating_mul(10).saturating_sub(d)
+        } else {
+            v.saturating_mul(10).saturating_add(d)
+        };
+        i += 1;
+    }
+    v
+}
+
+/// C `atoi()`: `(int)strtol(s, NULL, 10)`.
+pub fn atoi(s: &[u8]) -> i32 {
+    atol(s) as i32
+}
+
 /// `s[i]` as C sees it when `s` is a NUL-terminated string: 0 at or
 /// past the end.
 #[inline]
