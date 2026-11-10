@@ -11,8 +11,7 @@ use crate::cmd2::{
 };
 use crate::config::{EXRC, tread};
 use crate::fmt::Arg;
-use crate::move1::{m_tomark, m_updnto};
-use crate::move2::{m_bsrch, m_fsrch};
+use crate::motion::{m_bsrch, m_fsrch, m_tomark, m_updnto};
 use crate::opts::Opt;
 use crate::os;
 use crate::system::wildcard;

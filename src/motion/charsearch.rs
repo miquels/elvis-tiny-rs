@@ -23,7 +23,7 @@ impl CharSearch {
 }
 
 #[derive(Default)]
-pub struct Move3 {
+pub struct LastCharSearch {
     /// The last search, for `;`; `,` uses its reverse.  C kept this as the
     /// pair of function pointers `prevfwdfn`/`prevrevfn`.
     pub prev: Option<CharSearch>,
@@ -33,17 +33,17 @@ pub struct Move3 {
 // C: move3.c:m__ch
 #[allow(non_snake_case)]
 pub fn m__ch(ed: &mut Editor, m: Mark, cnt: i64, cmd: i32) -> R<Mark> {
-    let Some(prev) = ed.move3.prev else {
+    let Some(prev) = ed.motion.charsearch.prev else {
         msg(ed, b"No previous f, F, t, or T command", &[]);
         return Ok(MARK_UNSET);
     };
-    let key = ed.move3.prev_key;
+    let key = ed.motion.charsearch.prev_key;
 
     if cmd == b',' as i32 {
         let m = charsearch(ed, m, cnt, key, prev.reverse())?;
 
         // the search above replaced `prev`; reverse it back
-        ed.move3.prev = ed.move3.prev.map(CharSearch::reverse);
+        ed.motion.charsearch.prev = ed.motion.charsearch.prev.map(CharSearch::reverse);
 
         Ok(m)
     } else {
@@ -74,11 +74,11 @@ fn charsearch(ed: &mut Editor, m: Mark, cnt: i64, key: i32, how: CharSearch) -> 
     default(&mut cnt, 1);
 
     // A `t`/`T` that finds nothing is remembered as `f`/`F`, as in C.
-    ed.move3.prev = Some(CharSearch {
+    ed.motion.charsearch.prev = Some(CharSearch {
         forward: how.forward,
         till: false,
     });
-    ed.move3.prev_key = key;
+    ed.motion.charsearch.prev_key = key;
 
     let text = &ed.vars.ptext;
     let mut i = markidx(m) as isize;
@@ -102,7 +102,7 @@ fn charsearch(ed: &mut Editor, m: Mark, cnt: i64, key: i32, how: CharSearch) -> 
     }
 
     if how.till {
-        ed.move3.prev = Some(how);
+        ed.motion.charsearch.prev = Some(how);
         m -= step as Mark;
     }
     Ok(m)
@@ -157,10 +157,10 @@ mod tests {
             forward: true,
             till: true,
         };
-        ed.move3.prev = Some(t);
+        ed.motion.charsearch.prev = Some(t);
         // `T` at index 0 fails without touching `prev`
         let r = m__ch(&mut ed, crate::vi_h::mark_at_line(1), 1, b',' as i32).unwrap();
         assert_eq!(r, MARK_UNSET);
-        assert_eq!(ed.move3.prev, Some(t.reverse()));
+        assert_eq!(ed.motion.charsearch.prev, Some(t.reverse()));
     }
 }

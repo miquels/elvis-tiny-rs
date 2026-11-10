@@ -2,7 +2,7 @@
 
 use crate::blk::{fetchline, pfetch};
 use crate::ex::parseptrn;
-use crate::move1::m_front;
+use crate::motion::m_front;
 use crate::opts::Opt;
 use crate::os::take_sigint;
 use crate::regexp::{Regexp, regcomp, regexec};
@@ -12,44 +12,46 @@ use crate::vi_h::{
     BLKSIZE, Interrupted, MARK_UNSET, Mark, R, atol, ch, cstr, mark_at_line, markidx, markline,
 };
 
+/// The last search pattern and direction, for `n` and `N`.
 #[derive(Default)]
-pub struct Move2 {
+pub struct Search {
     pub re: Option<Regexp>,
-    pub prevsf: bool,
+    /// C's `prevsf`.
+    pub forward: bool,
 }
 
 /// Runs the saved pattern against `subject`; returns the match bounds.
 fn exec_re(ed: &mut Editor, subject: &[u8], bol: bool) -> Option<(usize, usize)> {
-    let mut re = ed.move2.re.take()?;
+    let mut re = ed.motion.search.re.take()?;
     let found = regexec(ed, &mut re, subject, bol);
     let span = (re.startp[0].unwrap_or(0), re.endp[0].unwrap_or(0));
-    ed.move2.re = Some(re);
+    ed.motion.search.re = Some(re);
     if found { Some(span) } else { None }
 }
 
 /// Parses and compiles `ptrn` (which starts at the delimiter) into
-/// `ed.move2.re`.  Returns the text after the closing delimiter, or `None`
+/// `ed.motion.search.re`.  Returns the text after the closing delimiter, or `None`
 /// where C returned MARK_UNSET.
 fn newpattern(ed: &mut Editor, ptrn: &[u8]) -> Option<Vec<u8>> {
     let mut buf = ptrn.to_vec();
     buf.push(0);
     let line = parseptrn(&mut buf);
     let rest = cstr(buf.get(line..).unwrap_or(&[])).to_vec();
-    ed.move2.re = None;
-    ed.move2.re = regcomp(ed, cstr(&buf[1..]));
-    ed.move2.re.as_ref()?;
+    ed.motion.search.re = None;
+    ed.motion.search.re = regcomp(ed, cstr(&buf[1..]));
+    ed.motion.search.re.as_ref()?;
     Some(rest)
 }
 
 // C: move2.c:m_nsrch
 pub fn m_nsrch(ed: &mut Editor, m: Mark) -> R<Mark> {
-    let m = if ed.move2.prevsf {
+    let m = if ed.motion.search.forward {
         let m = m_fsrch(ed, m, b"")?;
-        ed.move2.prevsf = true;
+        ed.motion.search.forward = true;
         m
     } else {
         let m = m_bsrch(ed, m, b"")?;
-        ed.move2.prevsf = false;
+        ed.motion.search.forward = false;
         m
     };
     Ok(m)
@@ -58,13 +60,13 @@ pub fn m_nsrch(ed: &mut Editor, m: Mark) -> R<Mark> {
 // C: move2.c:m_Nsrch
 #[allow(non_snake_case)]
 pub fn m_Nsrch(ed: &mut Editor, m: Mark) -> R<Mark> {
-    let m = if ed.move2.prevsf {
+    let m = if ed.motion.search.forward {
         let m = m_bsrch(ed, m, b"")?;
-        ed.move2.prevsf = true;
+        ed.motion.search.forward = true;
         m
     } else {
         let m = m_fsrch(ed, m, b"")?;
-        ed.move2.prevsf = false;
+        ed.motion.search.forward = false;
         m
     };
     Ok(m)
@@ -74,7 +76,7 @@ pub fn m_Nsrch(ed: &mut Editor, m: Mark) -> R<Mark> {
 /// `ptrn` starts at the `/` delimiter; empty means "reuse the previous RE".
 pub fn m_fsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
     let mut m = m;
-    ed.move2.prevsf = true;
+    ed.motion.search.forward = true;
 
     let mut delta: i64 = 0;
     if ch(ptrn, 0) != 0 {
@@ -84,7 +86,7 @@ pub fn m_fsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
         if ch(&line, 0) != 0 {
             delta = atol(&line);
         }
-    } else if ed.move2.re.is_none() {
+    } else if ed.motion.search.re.is_none() {
         msg(ed, b"No previous expression", &[]);
         return Ok(MARK_UNSET);
     }
@@ -148,13 +150,13 @@ pub fn m_fsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
 // C: move2.c:m_bsrch
 /// `ptrn` starts at the `?` delimiter; empty means "reuse the previous RE".
 pub fn m_bsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
-    ed.move2.prevsf = false;
+    ed.motion.search.forward = false;
 
     if ch(ptrn, 0) != 0 {
         if newpattern(ed, ptrn).is_none() {
             return Ok(MARK_UNSET);
         }
-    } else if ed.move2.re.is_none() {
+    } else if ed.motion.search.re.is_none() {
         msg(ed, b"No previous expression", &[]);
         return Ok(MARK_UNSET);
     }

@@ -9,7 +9,7 @@ use crate::ex::doexcmd;
 use crate::fmt::{Arg, sprintf};
 use crate::input::input;
 use crate::modify::{add, change, delete};
-use crate::move1::m_front;
+use crate::motion::m_front;
 use crate::opts::Opt;
 use crate::os::take_sigint;
 use crate::redraw::redraw;

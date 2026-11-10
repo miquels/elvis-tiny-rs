@@ -12,11 +12,7 @@ mod ex;
 mod fmt;
 mod input;
 mod modify;
-mod move1;
-mod move2;
-mod move3;
-mod move4;
-mod move5;
+mod motion;
 mod opts;
 #[allow(unsafe_code)]
 mod os;

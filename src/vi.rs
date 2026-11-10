@@ -2,14 +2,11 @@
 
 use crate::blk::{fetchline, pfetch};
 use crate::fmt::Arg;
-use crate::move1::{
-    m_bparagraph, m_bsection, m_fparagraph, m_front, m_fsection, m_left, m_match, m_rear, m_right,
-    m_tocol, m_tomark, m_updnto,
+use crate::motion::{
+    m__ch, m_Fch, m_Nsrch, m_Tch, m_bparagraph, m_bsection, m_bsrch, m_bword, m_eword, m_fch,
+    m_fparagraph, m_front, m_fsection, m_fsrch, m_fword, m_left, m_match, m_nsrch, m_rear, m_right,
+    m_row, m_scroll, m_tch, m_tocol, m_tomark, m_updnto, m_z,
 };
-use crate::move2::{m_Nsrch, m_bsrch, m_fsrch, m_nsrch};
-use crate::move3::{m__ch, m_Fch, m_Tch, m_fch, m_tch};
-use crate::move4::{m_row, m_scroll, m_z};
-use crate::move5::{m_bword, m_eword, m_fword};
 use crate::opts::Opt;
 use crate::os;
 use crate::redraw::{idx2col, redraw};
@@ -27,6 +24,7 @@ use crate::vi_h::{
     markidx, markline, schar,
 };
 
+/// `adjmove()`'s static: the column vertical motions aim for.
 #[derive(Default)]
 pub struct Vi {
     pub adjmove_colno: i32,
