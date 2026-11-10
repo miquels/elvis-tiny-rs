@@ -21,6 +21,7 @@ mod redraw;
 mod regexp;
 mod regsub;
 mod system;
+mod terminfo;
 mod tio;
 mod tmp;
 mod vars;
