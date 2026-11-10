@@ -5,8 +5,8 @@ use crate::redraw::redraw;
 use crate::tio::{getkey, msg};
 use crate::vars::Editor;
 use crate::vi_h::{
-    MARK_FIRST, MARK_UNSET, Mark, R, botline, ctrl, default, mark_at_line, mark_last, markidx,
-    markline,
+    MARK_FIRST, MARK_UNSET, Mark, R, When, botline, ctrl, default, mark_at_line, mark_last,
+    markidx, markline,
 };
 
 const CTRL_B: i32 = ctrl(b'B') as i32;
@@ -52,7 +52,7 @@ pub fn m_z(ed: &mut Editor, m: Mark, cnt: i64, key: i32) -> R<Mark> {
 
     // allow a "window size" number to be entered, but ignore it
     while key >= b'0' as i32 && key <= b'9' as i32 {
-        key = getkey(ed, 0)?;
+        key = getkey(ed, When::RAW)?;
     }
 
     let lines = ed.curses.lines as i64;

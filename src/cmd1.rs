@@ -18,7 +18,7 @@ use crate::tmp::{elvis_access, tmpabort, tmpend, tmpsave, tmpstart};
 use crate::vars::{ARGS_SIZE, Editor, NAME_SIZE};
 use crate::vi_h::{
     BLKSIZE, COPYING, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, MODIFIED, Mark, R, READONLY,
-    VERSION, WHEN_VICMD, WHEN_VIINP, WHEN_VIREP, ch, cstr, isspace, mark_at_line, markline, schar,
+    VERSION, When, ch, cstr, isspace, mark_at_line, markline, schar,
 };
 
 /// Capacity of `prevextra[80]`.
@@ -557,11 +557,7 @@ pub fn cmd_map(
     bang: bool,
     extra: &[u8],
 ) -> R<()> {
-    let when = if bang {
-        WHEN_VIINP | WHEN_VIREP
-    } else {
-        WHEN_VICMD
-    };
+    let when = if bang { When::INPUT } else { When::VICMD };
     if extra.is_empty() {
         dumpkey(ed, when);
     } else {
@@ -574,7 +570,7 @@ pub fn cmd_map(
             mapto += 1;
         }
 
-        mapkey(ed, key, &extra[mapto..], when as i16, None);
+        mapkey(ed, key, &extra[mapto..], when, None);
     }
     Ok(())
 }

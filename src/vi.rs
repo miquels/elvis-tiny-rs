@@ -22,7 +22,7 @@ use crate::vcmd::{
 use crate::vi_h::LINEMASK;
 use crate::vi_h::Mode;
 use crate::vi_h::{
-    BLKSIZE, MARK_FIRST, MARK_UNSET, Mark, R, WHEN_VICMD, isupper, isword, mark_at_line, mark_last,
+    BLKSIZE, MARK_FIRST, MARK_UNSET, Mark, R, When, isupper, isword, mark_at_line, mark_last,
     markidx, markline, schar,
 };
 
@@ -259,7 +259,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
             firstkey = 0;
         } else {
             loop {
-                key = getkey(ed, WHEN_VICMD)?;
+                key = getkey(ed, When::VICMD)?;
                 if (0..=127).contains(&key) {
                     break;
                 }
@@ -392,13 +392,13 @@ pub fn vi(ed: &mut Editor) -> R<()> {
                 if ed.vars.doingdot {
                     tcurs = f(ed, cursor, count, dotkey2)?;
                 } else {
-                    i = getkey(ed, 0)?;
+                    i = getkey(ed, When::RAW)?;
                     if i == 0o33 {
                         count = 0;
                         tcurs = MARK_UNSET;
                         break 'ck;
                     } else if i == (b'V' & 0x1f) as i32 {
-                        i = getkey(ed, 0)?;
+                        i = getkey(ed, When::RAW)?;
                     }
 
                     if (keyptr.flags & SDOT) != 0

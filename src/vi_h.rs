@@ -326,12 +326,40 @@ pub enum Mode {
     Quit,
 }
 
-pub const WHEN_VICMD: i32 = 1;
-pub const WHEN_VIINP: i32 = 2;
-pub const WHEN_VIREP: i32 = 4;
-pub const WHEN_EX: i32 = 8;
-pub const WHEN_MSG: i32 = 16;
-pub const WHEN_INMV: i32 = 256;
+/// Contexts a key map applies in, and that `getkey()` reads keys for
+/// (C `WHEN_*` bits).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct When(u16);
+
+impl When {
+    /// Unmapped keys, without the erase-key translation.
+    pub const RAW: When = When(0);
+    pub const VICMD: When = When(1);
+    pub const VIINP: When = When(2);
+    pub const VIREP: When = When(4);
+    pub const EX: When = When(8);
+    pub const MSG: When = When(16);
+    /// The map's text is visual-mode commands, even in input mode.
+    pub const INMV: When = When(256);
+    pub const INPUT: When = When(Self::VIINP.0 | Self::VIREP.0);
+
+    pub fn any(self, other: When) -> bool {
+        self.0 & other.0 != 0
+    }
+}
+
+impl core::ops::BitOr for When {
+    type Output = When;
+    fn bitor(self, rhs: When) -> When {
+        When(self.0 | rhs.0)
+    }
+}
+
+impl core::ops::BitOrAssign for When {
+    fn bitor_assign(&mut self, rhs: When) {
+        self.0 |= rhs.0
+    }
+}
 
 #[cfg(test)]
 mod tests {

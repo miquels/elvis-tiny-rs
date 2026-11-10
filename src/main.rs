@@ -40,7 +40,7 @@ use crate::vi_h::Cmd;
 use crate::vi_h::Mode;
 use std::os::unix::ffi::OsStrExt;
 
-use vi_h::{MARK_FIRST, WHEN_INMV, WHEN_VICMD, ch};
+use vi_h::{MARK_FIRST, When, ch};
 
 // C: main.c:main
 fn main() {
@@ -92,23 +92,11 @@ fn main() {
     ];
     for (slot, cooked, name) in ARROWS {
         if let Some(cap) = ed.curses.caps[slot].clone() {
-            tio::mapkey(
-                ed,
-                &cap,
-                cooked,
-                (WHEN_VICMD | WHEN_INMV) as i16,
-                Some(name),
-            );
+            tio::mapkey(ed, &cap, cooked, When::VICMD | When::INMV, Some(name));
         }
     }
     if ed.curses.erasekey != 0o177 {
-        tio::mapkey(
-            ed,
-            b"\x7f",
-            b"x",
-            (WHEN_VICMD | WHEN_INMV) as i16,
-            Some(b"<Del>"),
-        );
+        tio::mapkey(ed, b"\x7f", b"x", When::VICMD | When::INMV, Some(b"<Del>"));
     }
 
     let mut i = 1;

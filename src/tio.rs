@@ -11,10 +11,7 @@ use crate::os::{self, ReadOutcome};
 use crate::redraw::redraw;
 use crate::tmp::tmpabort;
 use crate::vars::Editor;
-use crate::vi_h::{
-    Interrupted, LONGKEY, MARK_UNSET, R, WHEN_EX, WHEN_INMV, WHEN_MSG, WHEN_VICMD, WHEN_VIINP,
-    WHEN_VIREP, ch, cstr, ctrl, schar,
-};
+use crate::vi_h::{Interrupted, LONGKEY, MARK_UNSET, R, When, ch, cstr, ctrl, schar};
 
 /// Capacity of `pmsg[80]`.
 pub const PMSG_SIZE: usize = 80;
@@ -30,7 +27,7 @@ pub struct KeyMap {
     pub rawin: [u8; LONGKEY],
     pub cooked: Vec<u8>,
     pub len: i32,
-    pub when: i32,
+    pub when: When,
 }
 
 /// Where `getkey()`'s static `cooked` pointer points: an offset into
@@ -280,7 +277,7 @@ pub fn vgets(ed: &mut Editor, prompt: u8, buf: &mut Vec<u8>, bsize: usize) -> R<
     quoted = false;
     len = 0;
     loop {
-        ch = getkey(ed, if quoted { 0 } else { WHEN_EX })?;
+        ch = getkey(ed, if quoted { When::RAW } else { When::EX })?;
 
         if ch == ctrl(b'D') as i32 && len == 0 {
             ch = ctrl(b'[') as i32;
@@ -418,7 +415,7 @@ pub fn msg(ed: &mut Editor, fmt: &[u8], args: &[Arg<'_>]) {
         ed.curses.addch(b'\n');
         exrefresh(ed);
     } else {
-        if ed.tio.manymsgs && getkey(ed, WHEN_MSG).is_err() {
+        if ed.tio.manymsgs && getkey(ed, When::MSG).is_err() {
             os::rearm_sigint();
         }
 
@@ -445,7 +442,7 @@ pub fn exrefresh(ed: &mut Editor) {
 
 /// The two counting loops of `getkey()`: `j` is how many maps could match
 /// the keys at `keybuf[next..nkeys]`, `k` the last map that matches fully.
-fn countmaps(ed: &Editor, when: i32) -> (i32, i32) {
+fn countmaps(ed: &Editor, when: When) -> (i32, i32) {
     let t = &ed.tio;
     let kptr = t.next as usize;
     let avail = (t.nkeys - t.next) as usize;
@@ -453,7 +450,7 @@ fn countmaps(ed: &Editor, when: i32) -> (i32, i32) {
     let mut j = 0;
     let mut k = -1;
     for (i, km) in t.mapped.iter().enumerate() {
-        if (km.when & when) != 0 && km.len > 0 && km.rawin[0] == t.keybuf[kptr] {
+        if km.when.any(when) && km.len > 0 && km.rawin[0] == t.keybuf[kptr] {
             let len = km.len as usize;
             if len > avail {
                 if km.rawin[..avail] == keys[..avail] {
@@ -469,13 +466,13 @@ fn countmaps(ed: &Editor, when: i32) -> (i32, i32) {
 }
 
 // C: tio.c:getkey
-pub fn getkey(ed: &mut Editor, when: i32) -> R<i32> {
+pub fn getkey(ed: &mut Editor, when: When) -> R<i32> {
     if showmsg(ed) {
-        if when == WHEN_MSG {
+        if when == When::MSG {
             ed.curses.qaddstr(b"[More...]");
             ed.curses.refresh();
             ed.tio.getkey_cooked = None;
-        } else if when == WHEN_VIINP || when == WHEN_VIREP {
+        } else if when == When::VIINP || when == When::VIREP {
             let cursor = ed.vars.cursor;
             redraw(ed, cursor, true);
         }
@@ -493,7 +490,7 @@ pub fn getkey(ed: &mut Editor, when: i32) -> R<i32> {
     }
 
     if ed.tio.next == ed.tio.nkeys {
-        if when & WHEN_VICMD != 0 {
+        if when.any(When::VICMD) {
             let cursor = ed.vars.cursor;
             redraw(ed, cursor, false);
         }
@@ -527,10 +524,10 @@ pub fn getkey(ed: &mut Editor, when: i32) -> R<i32> {
 
             ed.opts.set_num(Opt::Lines, ed.curses.lines);
             ed.opts.set_num(Opt::Columns, ed.curses.cols);
-            if when & (WHEN_VICMD | WHEN_VIINP | WHEN_VIREP) != 0 {
+            if when.any(When::VICMD | When::INPUT) {
                 redraw(ed, MARK_UNSET, false);
                 let cursor = ed.vars.cursor;
-                redraw(ed, cursor, (when & WHEN_VICMD) == 0);
+                redraw(ed, cursor, !when.any(When::VICMD));
                 ed.curses.refresh();
             }
         }
@@ -575,14 +572,14 @@ pub fn getkey(ed: &mut Editor, when: i32) -> R<i32> {
     if j == 1 && k >= 0 {
         let k = k as usize;
         ed.tio.next += ed.tio.mapped[k].len;
-        if (when & (WHEN_VIINP | WHEN_VIREP)) != 0 && (ed.tio.mapped[k].when & WHEN_INMV) != 0 {
+        if when.any(When::INPUT) && ed.tio.mapped[k].when.any(When::INMV) {
             ed.tio.getkey_cooked = Some(Cooked { map: k, off: 0 });
             Ok(0)
         } else {
             ed.tio.getkey_cooked = Some(Cooked { map: k, off: 1 });
             Ok(schar(ch(&ed.tio.mapped[k].cooked, 0)))
         }
-    } else if schar(ed.tio.keybuf[next]) == schar(ed.curses.erasekey) && when != 0 {
+    } else if schar(ed.tio.keybuf[next]) == schar(ed.curses.erasekey) && when != When::RAW {
         ed.tio.next += 1;
         Ok(b'\x08' as i32)
     } else if ed.tio.keybuf[next] == 0 {
@@ -600,22 +597,19 @@ pub fn mapkey(
     ed: &mut Editor,
     rawin: &[u8],
     cooked: &[u8],
-    when: i16,
+    mut when: When,
     name: Option<&'static [u8]>,
 ) {
-    let mut when = when as i32;
     let mut cooked = cstr(cooked);
     let rawin = cstr(rawin);
 
     if cooked.starts_with(b"visual ") {
-        when |= WHEN_INMV;
+        when |= When::INMV;
         cooked = &cooked[7..];
     }
-    if when & WHEN_INMV != 0 {
-        when |= WHEN_VIINP | WHEN_VIREP;
+    if when.any(When::INMV) {
+        when |= When::INPUT;
     }
-    // C's `short when` parameter.
-    let when = when as i16 as i32;
 
     // C overflows rawin[LONGKEY] for longer sequences.
     let j = rawin.len().min(LONGKEY);
@@ -623,7 +617,7 @@ pub fn mapkey(
     let mut i = 0;
     while i < MAXMAPS {
         let m = &ed.tio.mapped[i];
-        if m.len == j as i32 && m.rawin[..j] == *rawin && (m.when & when) != 0 {
+        if m.len == j as i32 && m.rawin[..j] == *rawin && m.when.any(when) {
             break;
         }
         i += 1;
@@ -655,9 +649,9 @@ pub fn mapkey(
 }
 
 // C: tio.c:dumpkey
-pub fn dumpkey(ed: &mut Editor, when: i32) {
+pub fn dumpkey(ed: &mut Editor, when: When) {
     for i in 0..MAXMAPS {
-        if ed.tio.mapped[i].len <= 0 || (ed.tio.mapped[i].when & when) == 0 {
+        if ed.tio.mapped[i].len <= 0 || !ed.tio.mapped[i].when.any(when) {
             continue;
         }
         let m = ed.tio.mapped[i].clone();
@@ -694,7 +688,7 @@ pub fn dumpkey(ed: &mut Editor, when: i32) {
             }
         }
 
-        if (m.when & WHEN_INMV) != 0 && (when & (WHEN_VIINP | WHEN_VIREP)) != 0 {
+        if m.when.any(When::INMV) && when.any(When::INPUT) {
             ed.curses.qaddstr(b"visual ");
         }
         for &c in cstr(&m.cooked) {
@@ -723,11 +717,11 @@ pub fn savekeys(ed: &mut Editor, fd: &mut File) {
         }
 
         let raw = &m.rawin[..];
-        if m.when & WHEN_INMV != 0 {
+        if m.when.any(When::INMV) {
             let buf = sprintf(
                 b"map%s %.*s visual %s\n",
                 &[
-                    Arg::S(if m.when & WHEN_VICMD != 0 { b"" } else { b"!" }),
+                    Arg::S(if m.when.any(When::VICMD) { b"" } else { b"!" }),
                     Arg::D(m.len as i64),
                     Arg::S(raw),
                     Arg::S(&m.cooked),
@@ -735,14 +729,14 @@ pub fn savekeys(ed: &mut Editor, fd: &mut File) {
             );
             twrite(fd, &buf);
         } else {
-            if m.when & WHEN_VICMD != 0 {
+            if m.when.any(When::VICMD) {
                 let buf = sprintf(
                     b"map %.*s %s\n",
                     &[Arg::D(m.len as i64), Arg::S(raw), Arg::S(&m.cooked)],
                 );
                 twrite(fd, &buf);
             }
-            if m.when & (WHEN_VIINP | WHEN_VIREP) != 0 {
+            if m.when.any(When::INPUT) {
                 let buf = sprintf(
                     b"map! %.*s %s\n",
                     &[Arg::D(m.len as i64), Arg::S(raw), Arg::S(&m.cooked)],
@@ -787,18 +781,12 @@ mod tests {
     fn getkey_maps_and_translates() {
         let mut ed = Editor::new();
         ed.curses.erasekey = 0x08;
-        mapkey(&mut ed, b"ab", b"xyz", WHEN_VICMD as i16, None);
-        mapkey(
-            &mut ed,
-            b"\x1b[A",
-            b"visual k",
-            WHEN_VICMD as i16,
-            Some(b"<Up>"),
-        );
+        mapkey(&mut ed, b"ab", b"xyz", When::VICMD, None);
+        mapkey(&mut ed, b"\x1b[A", b"visual k", When::VICMD, Some(b"<Up>"));
         feed(&mut ed, b"ab\x08\0\xe9\x1b[Aq");
         let mut got = Vec::new();
         for _ in 0..8 {
-            got.push(getkey(&mut ed, WHEN_VICMD).unwrap());
+            got.push(getkey(&mut ed, When::VICMD).unwrap());
         }
         assert_eq!(
             got,
@@ -816,31 +804,31 @@ mod tests {
 
         // INMV maps return 0 first in input mode, then the cooked text.
         feed(&mut ed, b"\x1b[A");
-        assert_eq!(getkey(&mut ed, WHEN_VIINP).unwrap(), 0);
-        assert_eq!(getkey(&mut ed, 0).unwrap(), b'k' as i32);
+        assert_eq!(getkey(&mut ed, When::VIINP).unwrap(), 0);
+        assert_eq!(getkey(&mut ed, When::RAW).unwrap(), b'k' as i32);
         // when == 0 disables the erase-key translation
         feed(&mut ed, b"\x08");
-        assert_eq!(getkey(&mut ed, 0).unwrap(), 8);
+        assert_eq!(getkey(&mut ed, When::RAW).unwrap(), 8);
     }
 
     #[test]
     fn mapkey_flags_slots_and_unmap() {
         let mut ed = Editor::new();
-        mapkey(&mut ed, b"v", b"visual x", WHEN_VICMD as i16, None);
+        mapkey(&mut ed, b"v", b"visual x", When::VICMD, None);
         assert_eq!(
             ed.tio.mapped[0].when,
-            WHEN_VICMD | WHEN_INMV | WHEN_VIINP | WHEN_VIREP
+            When::VICMD | When::INMV | When::INPUT
         );
         assert_eq!(ed.tio.mapped[0].cooked, b"x");
-        mapkey(&mut ed, b"v", b"", WHEN_VICMD as i16, None);
+        mapkey(&mut ed, b"v", b"", When::VICMD, None);
         assert_eq!(ed.tio.mapped[0].len, 0);
         ed.vars.mode = Mode::Ex;
         for i in 0..MAXMAPS {
-            mapkey(&mut ed, &[b'a' + i as u8], b"z", WHEN_VICMD as i16, None);
+            mapkey(&mut ed, &[b'a' + i as u8], b"z", When::VICMD, None);
         }
         ed.curses.kbuf.clear();
         ed.opts.set(Opt::Exrefresh, false);
-        mapkey(&mut ed, b"Q", b"z", WHEN_VICMD as i16, None);
+        mapkey(&mut ed, b"Q", b"z", When::VICMD, None);
         assert_eq!(ed.curses.kbuf, b"No room left in the key map table\n\r");
     }
 
@@ -853,24 +841,18 @@ mod tests {
             &mut ed,
             b"\x1b[A",
             b"k",
-            (WHEN_VICMD | WHEN_INMV) as i16,
+            When::VICMD | When::INMV,
             Some(b"<Up>"),
         );
-        mapkey(&mut ed, b"q", b"dd\x01", WHEN_VICMD as i16, None);
-        mapkey(
-            &mut ed,
-            b"#",
-            b"visual x",
-            (WHEN_VIINP | WHEN_VIREP) as i16,
-            None,
-        );
-        dumpkey(&mut ed, WHEN_VICMD);
+        mapkey(&mut ed, b"q", b"dd\x01", When::VICMD, None);
+        mapkey(&mut ed, b"#", b"visual x", When::INPUT, None);
+        dumpkey(&mut ed, When::VICMD);
         assert_eq!(
             ed.curses.kbuf,
             b"<Up>     ^[[A    k\n\r         q       dd^A\n\r".to_vec()
         );
         ed.curses.kbuf.clear();
-        dumpkey(&mut ed, WHEN_VIINP);
+        dumpkey(&mut ed, When::VIINP);
         assert_eq!(
             ed.curses.kbuf,
             b"<Up>     ^[[A    visual k\n\r         #       visual x\n\r".to_vec()

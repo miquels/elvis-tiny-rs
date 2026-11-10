@@ -20,8 +20,8 @@ use crate::vi_h::LINEMASK;
 use crate::vi_h::Mode;
 use crate::vi_h::atol;
 use crate::vi_h::{
-    BLKSIZE, Cmd, Interrupted, MARK_UNSET, Mark, R, WHEN_VIINP, WHEN_VIREP, ch, cstr, default,
-    mark_at_line, markidx, markline,
+    BLKSIZE, Cmd, Interrupted, MARK_UNSET, Mark, R, When, ch, cstr, default, mark_at_line, markidx,
+    markline,
 };
 
 #[derive(Default)]
@@ -60,7 +60,7 @@ pub fn v_1ex(ed: &mut Editor, _m: Mark, text: &[u8]) -> R<Mark> {
     if ed.vars.exwrote {
         ed.vars.mode = Mode::Vi;
         msg(ed, b"[Hit <RETURN> to continue]", &[]);
-        if getkey(ed, 0)? == b':' as i32 {
+        if getkey(ed, When::RAW)? == b':' as i32 {
             ed.vars.mode = Mode::Colon;
             ed.curses.addch(b'\n');
         } else {
@@ -205,7 +205,7 @@ pub fn v_overtype(ed: &mut Editor, m: Mark) -> R<Mark> {
     }
 
     beforedo(ed, false);
-    let end = input(ed, m, m, WHEN_VIREP)?;
+    let end = input(ed, m, m, When::VIREP)?;
     afterdo(ed);
 
     // only a single-line overtype can be repeated with the dot key
@@ -299,7 +299,7 @@ pub fn v_insert(ed: &mut Editor, m: Mark, cnt: i64, key: i32) -> R<Mark> {
             return Err(Interrupted);
         }
         ed.vars.toolong = false;
-        m = input(ed, m, m, WHEN_VIINP)?;
+        m = input(ed, m, m, When::VIINP)?;
         if after {
             m += 1;
         }
@@ -336,7 +336,7 @@ pub fn v_change(ed: &mut Editor, m: Mark, n: Mark) -> R<Mark> {
 
     beforedo(ed, false);
     cut(ed, m, n);
-    let m = input(ed, m, n, WHEN_VIINP)?;
+    let m = input(ed, m, n, When::VIINP)?;
     afterdo(ed);
 
     Ok(m)
@@ -354,7 +354,7 @@ pub fn v_subst(ed: &mut Editor, m: Mark, cnt: i64) -> R<Mark> {
 
     beforedo(ed, false);
     cut(ed, m, m + cnt);
-    let m = input(ed, m, m + cnt, WHEN_VIINP)?;
+    let m = input(ed, m, m + cnt, When::VIINP)?;
     afterdo(ed);
     Ok(m)
 }
@@ -481,7 +481,7 @@ pub fn v_increment(ed: &mut Editor, keyword: &[u8], m: Mark, cnt: i64) -> R<Mark
     default(&mut cnt, 1);
 
     if !ed.vars.doingdot {
-        ed.vcmd.v_increment_sign = getkey(ed, 0)?;
+        ed.vcmd.v_increment_sign = getkey(ed, When::RAW)?;
     }
 
     let sign = ed.vcmd.v_increment_sign;

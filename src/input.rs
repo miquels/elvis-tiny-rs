@@ -17,7 +17,7 @@ use crate::vcmd::{v_xchar, v_xit};
 use crate::vi::adjmove;
 use crate::vi_h::Cmd;
 use crate::vi_h::LINEMASK;
-use crate::vi_h::{BLKSIZE, MARK_UNSET, Mark, R, WHEN_VIREP, botline, ctrl, markidx, markline};
+use crate::vi_h::{BLKSIZE, MARK_UNSET, Mark, R, When, botline, ctrl, markidx, markline};
 
 /// `key` as the C string `key[2]`: empty when the key is NUL.
 fn keystr(key: &[u8; 1]) -> &[u8] {
@@ -25,7 +25,7 @@ fn keystr(key: &[u8; 1]) -> &[u8] {
 }
 
 // C: input.c:input
-pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
+pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
     let mut from = from;
     let mut to = to;
     let mut key: [u8; 1] = [0];
@@ -94,7 +94,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
             let cursor = ed.vars.cursor;
             match key[0] {
                 0 => {
-                    key[0] = getkey(ed, 0)? as u8;
+                    key[0] = getkey(ed, When::RAW)? as u8;
                     m = match key[0] {
                         b'h' => m_left(ed, cursor, 0)?,
                         b'j' | b'k' => m_updnto(ed, cursor, 0, key[0] as i8 as i32)?,
@@ -143,7 +143,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
                 }
 
                 k if k == ctrl(b'Z') => {
-                    if getkey(ed, 0)? == ctrl(b'Z') as i32 {
+                    if getkey(ed, When::RAW)? == ctrl(b'Z') as i32 {
                         quit = true;
                         break;
                     }
@@ -223,7 +223,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
                         }
                     }
                     let c = ed.vars.cursor;
-                    if c >= to && when != WHEN_VIREP {
+                    if c >= to && when != When::VIREP {
                         add(ed, c, &build);
                     } else {
                         change(ed, c, to, &build);
@@ -245,14 +245,14 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
                 }
 
                 k if k == ctrl(b'V') => {
-                    if cursor >= to && when != WHEN_VIREP {
+                    if cursor >= to && when != When::VIREP {
                         add(ed, cursor, b"^");
                     } else {
                         change(ed, cursor, to, b"^");
                         to = cursor + 1;
                     }
                     redraw(ed, cursor, true);
-                    key[0] = getkey(ed, 0)? as u8;
+                    key[0] = getkey(ed, When::RAW)? as u8;
                     if key[0] == b'\n' {
                         key[0] = b'\r';
                     }
@@ -268,7 +268,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
                 }
 
                 _ => {
-                    if cursor >= to && when != WHEN_VIREP {
+                    if cursor >= to && when != When::VIREP {
                         if add(ed, cursor, keystr(&key)) {
                             ed.vars.cursor += 1;
                         }
