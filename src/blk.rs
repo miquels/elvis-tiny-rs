@@ -123,14 +123,16 @@ pub(crate) fn locate(ed: &mut Editor, line: i64) -> (usize, BufId, usize) {
     (i, id, skiplines(&ed.blk.blk[id].buf.c, 0, n))
 }
 
-// C: blk.c:blkinit
-pub fn blkinit(ed: &mut Editor) {
-    for i in 0..NBUFS {
-        ed.blk.blk[i].logical = 0;
-        ed.blk.blk[i].dirty = false;
-    }
-    for i in 0..MAXBLKS {
-        ed.blk.hdr.set_n(i, 0);
+impl BlkState {
+    // C: blk.c:blkinit
+    pub fn init(&mut self) {
+        for b in &mut self.blk {
+            b.logical = 0;
+            b.dirty = false;
+        }
+        for i in 0..MAXBLKS {
+            self.hdr.set_n(i, 0);
+        }
     }
 }
 
@@ -379,7 +381,7 @@ pub fn undo(ed: &mut Editor) -> bool {
     beforedo(ed, true);
     afterdo(ed);
 
-    blkinit(ed);
+    ed.blk.init();
 
     ed.blk.hdr = oldhdr;
 

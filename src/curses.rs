@@ -296,66 +296,69 @@ pub fn initscr(ed: &mut Editor) {
     }
     ed.curses.have_oldtermio = true;
 
-    resume_curses(ed, true);
+    ed.curses.resume();
 }
 
-// C: curses.c:endwin
-pub fn endwin(ed: &mut Editor) {
-    suspend_curses(ed);
-}
+impl Curses {
+    // C: curses.c:suspend_curses
+    /// Also C's `endwin()`, which only calls `suspend_curses()`.
+    pub fn suspend(&mut self) {
+        if self.has(TE) {
+            self.do_te();
+        }
+        if self.has(KE) {
+            self.put(KE);
+        }
+        self.refresh();
 
-// C: curses.c:suspend_curses
-pub fn suspend_curses(ed: &mut Editor) {
-    let c = &mut ed.curses;
-    if c.has(TE) {
-        c.do_te();
+        // Before initscr() the terminal is still untouched (B4).
+        if self.have_oldtermio {
+            let _ = os::tcsetattr_now(io::stderr(), &self.oldtermio);
+        }
+        os::clear_restore_state();
+        self.curses_active = false;
     }
-    if c.has(KE) {
-        c.put(KE);
-    }
-    c.refresh();
 
-    // Before initscr() the terminal is still untouched (B4).
-    if c.have_oldtermio {
-        let _ = os::tcsetattr_now(io::stderr(), &c.oldtermio);
+    /// The terminal half of `resume_curses()`.
+    pub fn resume(&mut self) {
+        if self.curses_active {
+            return;
+        }
+        self.ospeed = os::ospeed_short(&self.oldtermio);
+        self.erasekey = os::erase_char(&self.oldtermio);
+        self.newtermio = os::elvis_mode(&self.oldtermio);
+        let _ = os::tcsetattr_now(io::stderr(), &self.newtermio);
+
+        if self.has(TI) {
+            self.do_ti();
+        }
+        if self.has(KS) {
+            self.put(KS);
+        }
+
+        let mut restore = Vec::new();
+        if self.has(TE) {
+            restore.extend_from_slice(self.caps[TE].as_deref().unwrap_or_default());
+        }
+        if self.has(KE) {
+            tputs_into(
+                self.caps[KE].as_deref().unwrap_or_default(),
+                1,
+                &mut restore,
+            );
+        }
+        os::save_restore_state(&self.oldtermio, &restore);
+
+        self.curses_active = true;
     }
-    os::clear_restore_state();
-    c.curses_active = false;
 }
 
 // C: curses.c:resume_curses
 pub fn resume_curses(ed: &mut Editor, quietly: bool) {
-    let c = &mut ed.curses;
-    if !c.curses_active {
-        c.ospeed = os::ospeed_short(&c.oldtermio);
-        c.erasekey = os::erase_char(&c.oldtermio);
-        c.newtermio = os::elvis_mode(&c.oldtermio);
-        let _ = os::tcsetattr_now(io::stderr(), &c.newtermio);
-
-        if c.has(TI) {
-            c.do_ti();
-        }
-        if c.has(KS) {
-            c.put(KS);
-        }
-
-        let mut restore = Vec::new();
-        if c.has(TE) {
-            restore.extend_from_slice(c.caps[TE].as_deref().unwrap_or_default());
-        }
-        if c.has(KE) {
-            tputs_into(c.caps[KE].as_deref().unwrap_or_default(), 1, &mut restore);
-        }
-        os::save_restore_state(&c.oldtermio, &restore);
-
-        c.curses_active = true;
+    ed.curses.resume();
+    if !quietly {
+        resume_curses_prompt(ed);
     }
-
-    if quietly {
-        return;
-    }
-
-    resume_curses_prompt(ed);
 }
 
 /// The "[Press <RETURN> to continue]" half of `resume_curses()`.
@@ -498,7 +501,7 @@ pub fn getsize(ed: &mut Editor, startup: bool) {
 
     if c.lines < 2 || c.cols < 30 {
         let _ = os::err_write(b"Screen too small\n");
-        endwin(ed);
+        ed.curses.suspend();
         os::exit(2);
     }
 
@@ -654,7 +657,7 @@ mod tests {
         }
         let mut ed = Editor::new();
         initscr(&mut ed);
-        endwin(&mut ed);
+        ed.curses.suspend();
         os::exit(0);
     }
 

@@ -105,7 +105,7 @@ fn main() {
                 tio::endmsgs(ed);
                 ed.curses.refresh();
                 os::sleep_secs(1);
-                curses::endwin(ed);
+                ed.curses.suspend();
                 os::exit(0);
             }
 
@@ -155,7 +155,7 @@ fn main() {
                 tio::endmsgs(ed);
                 ed.curses.refresh();
                 os::sleep_secs(1);
-                curses::endwin(ed);
+                ed.curses.suspend();
                 os::exit(1);
             }
             if ed.vars.args.len() + argv[i].len() + 1 >= vars::ARGS_SIZE {
@@ -163,7 +163,7 @@ fn main() {
                 tio::endmsgs(ed);
                 ed.curses.refresh();
                 os::sleep_secs(1);
-                curses::endwin(ed);
+                ed.curses.suspend();
                 os::exit(1);
             }
             if !ed.vars.args.is_empty() {
@@ -191,7 +191,7 @@ fn main() {
         let _ = ex::exstring(ed, s.as_bytes());
     }
 
-    blk::blkinit(ed);
+    ed.blk.init();
     if let Some(tag) = &tag {
         let _ = cmd1::cmd_tag(ed, MARK_FIRST, MARK_FIRST, Cmd::Tag, false, tag);
     }
@@ -238,6 +238,6 @@ fn main() {
     tio::endmsgs(ed);
     ed.curses.clear_last_line();
     ed.curses.refresh();
-    curses::endwin(ed);
+    ed.curses.suspend();
     os::exit(0);
 }

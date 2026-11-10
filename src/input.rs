@@ -2,7 +2,7 @@
 
 use crate::blk::{abortdo, afterdo, beforedo, blksync, pfetch};
 use crate::cmd2::cmd_shift;
-use crate::cut::{cut, cutname, paste};
+use crate::cut::{cut, paste};
 use crate::modify::{add, change, delete};
 use crate::motion::{m_bword, m_front, m_fword, m_left, m_match, m_rear, m_scroll, m_updnto};
 use crate::opts::Opt;
@@ -42,7 +42,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
             delete(ed, from, to);
         }
 
-        cutname(ed, b'.' as i32);
+        ed.cut.select(b'.');
         ed.vars.cursor = paste(ed, from, false, true) + 1;
     } else {
         if from != to && markline(from) == markline(to) {
@@ -238,7 +238,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
                         delete(ed, cursor, to);
                     }
                     if k == ctrl(b'A') {
-                        cutname(ed, b'.' as i32);
+                        ed.cut.select(b'.');
                     }
                     ed.vars.cursor = paste(ed, cursor, false, true) + 1;
                     to = ed.vars.cursor;
@@ -308,7 +308,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
 
     if !ed.vars.doingdot {
         blksync(ed);
-        cutname(ed, b'.' as i32);
+        ed.cut.select(b'.');
         let c = ed.vars.cursor;
         cut(ed, from, c);
     }

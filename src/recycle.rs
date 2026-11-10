@@ -3,7 +3,6 @@
 use std::io::{Seek, SeekFrom};
 
 use crate::config::lseek_read;
-use crate::cut::cutneeds;
 use crate::tio::msg;
 use crate::types::{Blk, MAXBLKS};
 use crate::vars::Editor;
@@ -63,7 +62,7 @@ pub fn garbage(ed: &mut Editor) {
         ed.recycle.mark_used(oldhdr.n(i) as usize);
     }
 
-    for i in 0..cutneeds(ed, &mut oldhdr) {
+    for i in 0..ed.cut.needs(&mut oldhdr) {
         ed.recycle.mark_used(oldhdr.n(i) as usize);
     }
 }

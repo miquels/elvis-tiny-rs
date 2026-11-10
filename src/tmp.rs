@@ -5,9 +5,8 @@ use crate::opts::Opt;
 use crate::types::Mode;
 use std::fs::File;
 
-use crate::blk::{blkget, blkinit};
+use crate::blk::blkget;
 use crate::config::{FILEPERMS, tmpname_fmt, tread, twrite};
-use crate::curses::endwin;
 use crate::cut::cutswitch;
 use crate::os;
 use crate::recycle::garbage;
@@ -32,7 +31,7 @@ fn fail(ed: &mut Editor, why: &[u8], arg: Arg<'_>) -> ! {
     ed.vars.mode = Mode::Ex;
     msg(ed, why, &[arg]);
     os::sleep_secs(1);
-    endwin(ed);
+    ed.curses.suspend();
     os::exit(9)
 }
 
@@ -441,7 +440,7 @@ pub fn tmpabort(ed: &mut Editor, bang: bool) -> bool {
     ed.vars.prevline = markline(ed.vars.cursor);
     ed.vars.origname.clear();
     ed.vars.origtime = 0;
-    blkinit(ed);
+    ed.blk.init();
     ed.vars.nlines = 0;
     ed.vars.viflags.initflags();
     true
@@ -462,7 +461,7 @@ pub fn tmpend(ed: &mut Editor, bang: bool) -> bool {
 mod tests {
     use super::*;
     use crate::blk::{afterdo, beforedo, fetchline, undo};
-    use crate::cut::{cut, cutname, paste};
+    use crate::cut::{cut, paste};
     use crate::modify::{add, change, delete};
     use crate::types::mark_at_line;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -719,10 +718,10 @@ mod tests {
         let lines: Vec<&[u8]> = content.split_inclusive(|&b| b == b'\n').collect();
 
         // line-mode yank of lines 20..=149 into "a, paste after line 1
-        cutname(&mut ed, b'a' as i32);
+        ed.cut.select(b'a');
         cut(&mut ed, mark_at_line(20), mark_at_line(150));
         assert_eq!(ed.vars.rptlines, 130);
-        cutname(&mut ed, b'a' as i32);
+        ed.cut.select(b'a');
         let m = paste(&mut ed, mark_at_line(1), true, false);
         assert_eq!(m, mark_at_line(2));
         assert_eq!(ed.vars.nlines, 330);
@@ -738,7 +737,7 @@ mod tests {
         assert_eq!(end, mark_at_line(1) + 1);
 
         ed.tio.manymsgs = false;
-        cutname(&mut ed, b'q' as i32);
+        ed.cut.select(b'q');
         assert_eq!(paste(&mut ed, mark_at_line(1), false, false), MARK_UNSET);
         assert_eq!(ed.tio.pmsg, b"Cut buffer \"q is empty".to_vec());
         cleanup(&mut ed, &dir);
@@ -750,7 +749,7 @@ mod tests {
         let mut ed = editor(&dir);
         let content = sample(50);
         start(&mut ed, &dir, &content);
-        cutname(&mut ed, b'b' as i32);
+        ed.cut.select(b'b');
         cut(&mut ed, mark_at_line(3), mark_at_line(5));
         assert!(tmpabort(&mut ed, true));
         assert_eq!(ed.cut.files.len(), 1);
@@ -759,7 +758,7 @@ mod tests {
         std::fs::write(std::str::from_utf8(&f2).unwrap(), b"one\ntwo\n").unwrap();
         ed.tio.manymsgs = false;
         tmpstart(&mut ed, &f2);
-        cutname(&mut ed, b'b' as i32);
+        ed.cut.select(b'b');
         paste(&mut ed, mark_at_line(1), false, false);
         let lines: Vec<&[u8]> = content.split_inclusive(|&b| b == b'\n').collect();
         let mut expect = lines[2..4].concat();

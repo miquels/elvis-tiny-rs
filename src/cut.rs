@@ -50,25 +50,32 @@ impl Default for Cut {
 /// Index of the first anonymous buffer in `Cut::bufs`.
 const ANNON: usize = 27;
 
-// C: cut.c:cutneeds
-/// Stores the blocks the cut buffers use in `need`; returns how many.
-pub fn cutneeds(ed: &mut Editor, need: &mut Blk) -> usize {
-    let mut n: usize = 0;
+impl Cut {
+    // C: cut.c:cutneeds
+    /// Stores the blocks the cut buffers use in `need`; returns how many.
+    pub fn needs(&self, need: &mut Blk) -> usize {
+        let mut n: usize = 0;
 
-    for cb in &ed.cut.bufs {
-        if cb.fd.is_some() {
-            continue;
-        }
-        for &p in cb.phys.iter().rev() {
-            // C overflows `need` here; the extra entries are dropped.
-            if n < MAXBLKS {
-                need.set_n(n, p);
+        for cb in &self.bufs {
+            if cb.fd.is_some() {
+                continue;
             }
-            n += 1;
+            for &p in cb.phys.iter().rev() {
+                // C overflows `need` here; the extra entries are dropped.
+                if n < MAXBLKS {
+                    need.set_n(n, p);
+                }
+                n += 1;
+            }
         }
+
+        n.min(MAXBLKS)
     }
 
-    n.min(MAXBLKS)
+    // C: cut.c:cutname
+    pub fn select(&mut self, name: u8) {
+        self.cbname = name;
+    }
 }
 
 // C: cut.c:cutfree
@@ -130,11 +137,6 @@ pub fn cutend(ed: &mut Editor) {
     for k in 0..ANNON {
         cutfree(ed, k);
     }
-}
-
-// C: cut.c:cutname
-pub fn cutname(ed: &mut Editor, name: i32) {
-    ed.cut.cbname = name as u8;
 }
 
 // C: cut.c:cut

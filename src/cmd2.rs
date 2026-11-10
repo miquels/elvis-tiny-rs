@@ -2,7 +2,7 @@
 
 use crate::blk::{afterdo, beforedo, fetchline, undo};
 use crate::config::tread;
-use crate::cut::{cut, cutname, paste};
+use crate::cut::{cut, paste};
 use crate::ex::{doexrc, linespec, parseptrn};
 use crate::fmt::{Arg, sprintf};
 use crate::modify::{add, change, delete};
@@ -214,7 +214,7 @@ pub fn cmd_delete(
         extra = &extra[1..];
     }
     if ch(extra, 0) != 0 {
-        cutname(ed, schar(extra[0]));
+        ed.cut.select(extra[0]);
     }
 
     let frommark = frommark & !(BLK - 1);
@@ -286,7 +286,7 @@ pub fn cmd_put(
         extra = &extra[1..];
     }
     if ch(extra, 0) != 0 {
-        cutname(ed, schar(extra[0]));
+        ed.cut.select(extra[0]);
     }
 
     beforedo(ed, false);
@@ -636,7 +636,7 @@ pub fn cmd_move(
     }
 
     beforedo(ed, false);
-    cutname(ed, 0);
+    ed.cut.select(0);
     cut(ed, frommark, tomark);
 
     if cmd != Cmd::Copy {

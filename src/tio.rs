@@ -5,7 +5,7 @@ use crate::types::Mode;
 
 use crate::config::{MAXMAPS, ttyread, ttywrite};
 use crate::curses;
-use crate::curses::{endwin, getsize};
+use crate::curses::getsize;
 use crate::fmt::{Arg, sprintf};
 use crate::os::{self, ReadOutcome};
 use crate::redraw::redraw;
@@ -239,29 +239,30 @@ pub fn exrefresh(ed: &mut Editor) {
     }
 }
 
-/// The two counting loops of `getkey()`: `j` is how many maps could match
-/// the keys at `keybuf[next..nkeys]`, `k` the last map that matches fully.
-fn countmaps(ed: &Editor, when: When) -> (i32, i32) {
-    let t = &ed.tio;
-    let kptr = t.next as usize;
-    let avail = (t.nkeys - t.next) as usize;
-    let keys = &t.keybuf[kptr..t.nkeys as usize];
-    let mut j = 0;
-    let mut k = -1;
-    for (i, km) in t.mapped.iter().enumerate() {
-        if km.when.any(when) && km.len > 0 && km.rawin[0] == t.keybuf[kptr] {
-            let len = km.len as usize;
-            if len > avail {
-                if km.rawin[..avail] == keys[..avail] {
+impl Tio {
+    /// The two counting loops of `getkey()`: `j` is how many maps could match
+    /// the keys at `keybuf[next..nkeys]`, `k` the last map that matches fully.
+    fn countmaps(&self, when: When) -> (i32, i32) {
+        let kptr = self.next as usize;
+        let avail = (self.nkeys - self.next) as usize;
+        let keys = &self.keybuf[kptr..self.nkeys as usize];
+        let mut j = 0;
+        let mut k = -1;
+        for (i, km) in self.mapped.iter().enumerate() {
+            if km.when.any(when) && km.len > 0 && km.rawin[0] == self.keybuf[kptr] {
+                let len = km.len as usize;
+                if len > avail {
+                    if km.rawin[..avail] == keys[..avail] {
+                        j += 1;
+                    }
+                } else if km.rawin[..len] == keys[..len] {
                     j += 1;
+                    k = i as i32;
                 }
-            } else if km.rawin[..len] == keys[..len] {
-                j += 1;
-                k = i as i32;
             }
         }
+        (j, k)
     }
-    (j, k)
 }
 
 // C: tio.c:getkey
@@ -336,12 +337,12 @@ pub fn getkey(ed: &mut Editor, when: When) -> R<i32> {
             tmpabort(ed, true);
             ed.curses.clear_last_line();
             ed.curses.refresh();
-            endwin(ed);
+            ed.curses.suspend();
             os::exit(1);
         }
     }
 
-    let (mut j, mut k) = countmaps(ed, when);
+    let (mut j, mut k) = ed.tio.countmaps(when);
 
     while j > 1 {
         let i = ed.tio.nkeys;
@@ -363,7 +364,7 @@ pub fn getkey(ed: &mut Editor, when: When) -> R<i32> {
         if i == ed.tio.nkeys {
             j = 0;
         } else {
-            (j, k) = countmaps(ed, when);
+            (j, k) = ed.tio.countmaps(when);
         }
     }
 

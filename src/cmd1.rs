@@ -7,7 +7,7 @@ use std::fs::File;
 
 use crate::blk::{afterdo, beforedo, fetchline};
 use crate::config::{FILEPERMS, TAGS, tread, twrite};
-use crate::curses::{resume_curses, suspend_curses};
+use crate::curses::resume_curses;
 use crate::ex::{doexcmd, linespec, parseptrn};
 use crate::opts::{dumpopts, setopts};
 use crate::os;
@@ -143,7 +143,7 @@ pub fn cmd_shell(
         ed.ex.prev_shell_cmd = extra.clone();
     }
 
-    suspend_curses(ed);
+    ed.curses.suspend();
     if frommark == 0 {
         elvis_system(ed, if interactive { None } else { Some(&extra) });
     } else {

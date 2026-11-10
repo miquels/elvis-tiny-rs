@@ -3,8 +3,8 @@
 use crate::blk::{afterdo, beforedo, pfetch, undo};
 use crate::cmd1::{cmd_edit, cmd_file, cmd_tag, cmd_xit};
 use crate::cmd2::{cmd_join, cmd_shift, cmd_substitute};
-use crate::curses::{resume_curses, suspend_curses};
-use crate::cut::{cut, cutname, paste};
+use crate::curses::resume_curses;
+use crate::cut::{cut, paste};
 use crate::ex::doexcmd;
 use crate::fmt::{Arg, sprintf};
 use crate::input::input;
@@ -220,7 +220,7 @@ pub fn v_overtype(ed: &mut Editor, m: Mark) -> R<Mark> {
 
 // C: vcmd.c:v_selcut
 pub fn v_selcut(ed: &mut Editor, m: Mark, _cnt: i64, key: i32) -> R<Mark> {
-    cutname(ed, key);
+    ed.cut.select(key as u8);
     Ok(m)
 }
 
@@ -463,7 +463,7 @@ pub fn v_keyword(ed: &mut Editor, keyword: &[u8], m: Mark, _cnt: i64) -> R<Mark>
     cmdline.truncate(129);
     let waswarn = ed.opts.on(Opt::Warn);
     ed.opts.set(Opt::Warn, false);
-    suspend_curses(ed);
+    ed.curses.suspend();
     if !elvis_system(ed, Some(&cmdline)) {
         ed.curses.addstr(b"<<< failed >>>\n");
     }
