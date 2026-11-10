@@ -1,6 +1,7 @@
 //! `config.h`, resolved for the shared Unix settings (UNIXV, ANY_UNIX).
 
 use crate::os;
+use crate::tio::{Arg, sprintf};
 
 pub const TMPDIR: &[u8] = b"/tmp";
 /// `TMPNAME` is `"%s/elv%x%04llx%03llx"`; see `tmpname_fmt`.
@@ -20,7 +21,10 @@ pub const MAXMAPS: usize = 20;
 /// `TMPNAME`: `sprintf("%s/elv%x%04llx%03llx", dir, sum, ino, dev)`.
 pub fn tmpname_fmt(dir: &[u8], sum: i32, ino: u64, dev: u64) -> Vec<u8> {
     let mut v = dir.to_vec();
-    v.extend_from_slice(format!("/elv{:x}{:04x}{:03x}", sum as u32, ino, dev).as_bytes());
+    v.extend_from_slice(&sprintf(
+        b"/elv%x%04lx%03lx",
+        &[Arg::D(sum as i64), Arg::D(ino as i64), Arg::D(dev as i64)],
+    ));
     v
 }
 
@@ -28,7 +32,10 @@ pub fn tmpname_fmt(dir: &[u8], sum: i32, ino: u64, dev: u64) -> Vec<u8> {
 pub fn cutname_fmt(dir: &[u8], pid: u32, fd: i32) -> Vec<u8> {
     let mut v = dir.to_vec();
     v.extend_from_slice(CUTNAME_PREFIX);
-    v.extend_from_slice(format!("{:04x}{:03x}", pid, fd as u32).as_bytes());
+    v.extend_from_slice(&sprintf(
+        b"%04x%03x",
+        &[Arg::D(pid as i64), Arg::D(fd as i64)],
+    ));
     v
 }
 

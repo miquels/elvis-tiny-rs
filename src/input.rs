@@ -273,14 +273,16 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
 
                 _ => {
                     if cursor >= to && when != WHEN_VIREP {
-                        add(ed, cursor, keystr(&key));
-                        ed.vars.cursor += 1;
+                        if add(ed, cursor, keystr(&key)) {
+                            ed.vars.cursor += 1;
+                        }
                         to = ed.vars.cursor;
                     } else {
                         pfetch(ed, markline(cursor));
-                        if markidx(cursor) as i32 == ed.vars.plen {
-                            add(ed, cursor, keystr(&key));
-                        } else {
+                        if markidx(cursor) as i32 == ed.vars.plen && !add(ed, cursor, keystr(&key))
+                        {
+                            ed.vars.cursor -= 1;
+                        } else if markidx(cursor) as i32 != ed.vars.plen {
                             change(ed, cursor, cursor + 1, keystr(&key));
                         }
                         ed.vars.cursor += 1;

@@ -307,6 +307,8 @@ fn kwchar(b: u8) -> bool {
 }
 
 // C: vi.c:vi
+// Out of line: inlining this into `main` makes the binary larger.
+#[inline(never)]
 pub fn vi(ed: &mut Editor) -> R<()> {
     let mut key: i32;
     let mut count: i64;

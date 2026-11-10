@@ -33,6 +33,8 @@ pub struct Vars {
     pub mustredraw: bool,
     pub changes: i64,
     pub significant: bool,
+    /// Set when `add` refuses text that would make a line too long (B16).
+    pub toolong: bool,
     pub plen: i32,
     pub pline: i64,
     pub pchgs: i64,
@@ -73,6 +75,7 @@ impl Default for Vars {
             mustredraw: false,
             changes: 0,
             significant: false,
+            toolong: false,
             plen: 0,
             pline: 0,
             pchgs: 0,

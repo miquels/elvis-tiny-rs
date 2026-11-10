@@ -1445,8 +1445,31 @@ Implications:
   The `os.rs` panic hook must restore the terminal (section 3.7). Test it
   with a release build.
 - Temporary files are not deleted on a panic, which matches a C crash.
-- Size is measured, not targeted. Report numbers in M9 without claiming a
-  goal.
+- Size matters: elvis-tiny is meant to be small. Measurements on macOS
+  arm64 (2026-11-10), as file size / `__TEXT` segment / `__text` section:
+
+  | Build | File | `__TEXT` | `__text` |
+  |---|---|---|---|
+  | C reference (`target/c-ref/elvis`) | 132904 | 81920 | 65864 |
+  | `cargo build --release` | 437392 | 376832 | 307796 |
+  | `scripts/build-tiny.sh` | 187312 | 147456 | 120328 |
+
+  Most of the stable build's extra size is std's panic printing and
+  backtrace code (gimli, addr2line, rustc_demangle), which the prebuilt std
+  always links. Neither replacing the panic hook nor codegen or linker flags
+  remove it on stable.
+- `scripts/build-tiny.sh` is an opt-in build that rebuilds std from source
+  with `panic = "immediate-abort"`. It uses unstable flags through
+  `RUSTC_BOOTSTRAP=1` and needs the rust-src component. A panic then aborts
+  without running the panic hook, so the terminal is not restored; `os::init`
+  skips installing the hook under `cfg(panic = "immediate-abort")`, because
+  `take_hook` alone links the backtrace printer. The stable profile stays the
+  supported build.
+- Code-level size rules: no `format!`/`to_string` in non-test code (use
+  `tio::sprintf`, whose integer conversions avoid `core::fmt`); `os::strerror`
+  instead of `io::Error`'s `Display`. `vi`, `initscr`, `initopts` and
+  `cutend` are `#[inline(never)]` because inlining them into `main` grew the
+  binary. The remaining `core::fmt` code comes from terminfo-lean.
 
 ### 7.3 Definition of done
 
@@ -1537,7 +1560,7 @@ user asks.
 | B13 | misc.c/move3.c/move5.c line scans | Reading past a line's NUL sees the next line in the cache block | Treated as end of line (`e` on empty line, `2fx`/`;` past end differ) | D7 | — | pending |
 | B14 | regexp.c `[…]` with bytes ≥ 128 | Signed index writes before the class bitmap | Same bytes reproduced in the program, `minlen`, `first`; `bol`/`endp` kept in a 10-byte tail | D7 | `regexp::tests` | pending |
 | B15 | cut.c `cutneeds` | Overflows `need[512]` for cut buffers over ~450000 bytes | Stops at 512 entries | D7 | — | pending |
-| B16 | modify.c `add` | Lines over 1023 bytes corrupt memory (KNOWN.BUGS) | Panics (terminal restored by the panic hook) | D7 | — | pending |
+| B16 | modify.c `add` | Lines over 1023 bytes corrupt memory (KNOWN.BUGS); crashes with SIGBUS on macOS | `add` refuses text that would make any line longer than `BLKSIZE - 1` bytes (newline included): shows "Line too long", changes nothing, sets `vars.toolong`. Input mode does not advance the cursor and a counted insert stops repeating. In `change`, the delete has already happened (undo restores it); a multi-block paste can be partly applied | D7 | `tmp::tests::modify_and_undo` | pending |
 | B17 | various loops | Interrupt only via longjmp | Extra `take_sigint` checkpoints in `:s` (per match), `:g`, `:w`/`:r`, `<`/`>`, `:p`, searches, `9999a` | D5 | — | pending |
 | B18 | ex.c, vcmd.c, cmd1.c buffers | `%`/`#` expansion, `wildcard`, `v_keyword` `cmdline[130]`, `prevorig`, `args`, `v_increment` `newval[12]` overflow | Truncated to the C buffer size or unbounded where no observable limit exists | D7 | — | pending |
 

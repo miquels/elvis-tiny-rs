@@ -40,6 +40,14 @@ static RESTORE: Mutex<Option<(Termios, Vec<u8>)>> = Mutex::new(None);
 /// not) and installs a panic hook that puts the terminal back.
 pub fn init() {
     set_disposition(libc::SIGPIPE, libc::SIG_DFL);
+    // With immediate-abort panics no hook ever runs, and taking the default
+    // hook would link in std's backtrace printer.
+    #[cfg(not(panic = "immediate-abort"))]
+    install_panic_hook();
+}
+
+#[cfg(not(panic = "immediate-abort"))]
+fn install_panic_hook() {
     let prev = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         restore_terminal();
@@ -93,6 +101,18 @@ pub enum ReadOutcome {
     Error(i32),
 }
 
+/// `strerror(code)`.
+pub fn strerror(code: i32) -> Vec<u8> {
+    let mut buf = [0u8; 128];
+    // SAFETY: `buf` is writable for `buf.len()` bytes and strerror_r
+    // NUL-terminates what it writes.
+    let r = unsafe { libc::strerror_r(code, buf.as_mut_ptr().cast(), buf.len()) };
+    if r != 0 {
+        return b"Unknown error".to_vec();
+    }
+    let n = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
+    buf[..n].to_vec()
+}
 fn last_errno() -> i32 {
     io::Error::last_os_error().raw_os_error().unwrap_or(0)
 }

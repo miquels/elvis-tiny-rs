@@ -514,12 +514,7 @@ pub fn cmd_args(
 
 /// The text `perror()` prints for an error.
 fn strerror(e: &std::io::Error) -> Vec<u8> {
-    let s = e.to_string();
-    let s = match s.rfind(" (os error ") {
-        Some(n) => &s[..n],
-        None => &s[..],
-    };
-    s.as_bytes().to_vec()
+    os::strerror(e.raw_os_error().unwrap_or(0))
 }
 
 // C: cmd1.c:cmd_cd

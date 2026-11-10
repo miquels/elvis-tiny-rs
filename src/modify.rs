@@ -1,7 +1,9 @@
 //! `modify.c`: low-level text changes (`delete`, `add`, `change`).  No module state.
 
 use crate::blk::{afterdo, beforedo, blkadd, blkdirty, blkget, skipline};
+use crate::misc::fetchline;
 use crate::redraw::redrawrange;
+use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::{
     BLKSIZE, INFINITY, MARK_FIRST, MARK_UNSET, Mark, NMARKS, cstr, mark_at_line, markidx, markline,
@@ -110,14 +112,46 @@ pub fn delete(ed: &mut Editor, frommark: Mark, tomark: Mark) {
     }
 }
 
+// C: none (B16)
+/// Whether inserting `newtext` at `atmark` would leave a line longer than a
+/// block can hold.  C's `add` overflows the block in that case.
+fn would_overflow(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
+    let pre = markidx(atmark);
+    let lastpart = newtext.iter().rev().take_while(|&&b| b != b'\n').count();
+    let addlines = newtext.contains(&b'\n');
+    let rest = if (pre == 0 && lastpart == 0) || markline(atmark) > ed.vars.nlines {
+        0
+    } else {
+        fetchline(ed, markline(atmark)).len() + 1 - pre
+    };
+    let mut lines = newtext.split(|&b| b == b'\n');
+    let first = lines.next().map_or(0, <[u8]>::len);
+    if !addlines {
+        return pre + first + rest > BLKSIZE - 1;
+    }
+    pre + first + 1 > BLKSIZE - 1
+        || newtext[..newtext.len() - lastpart]
+            .split(|&b| b == b'\n')
+            .skip(1)
+            .any(|l| l.len() + 1 > BLKSIZE - 1)
+        || lastpart + rest > BLKSIZE - 1
+}
+
 // C: modify.c:add
-/// `newtext` has no NUL terminator.
-pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) {
+/// `newtext` has no NUL terminator.  Returns false, changing nothing, when a
+/// line would grow past `BLKSIZE - 1` bytes (Appendix B16).
+pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
     let newtext = cstr(newtext);
     let mut nt = 0;
 
     if newtext.is_empty() {
-        return;
+        return true;
+    }
+
+    if would_overflow(ed, atmark, newtext) {
+        msg(ed, b"Line too long", &[]);
+        ed.vars.toolong = true;
+        return false;
     }
 
     ed.vars.changes += 1;
@@ -287,6 +321,7 @@ pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) {
         build += 1;
     }
     blkdirty(ed, blk);
+    true
 }
 
 // C: modify.c:change
@@ -327,7 +362,7 @@ pub fn change(ed: &mut Editor, frommark: Mark, tomark: Mark, newtext: &[u8]) {
 
     beforedo(ed, false);
     delete(ed, frommark, tomark);
-    add(ed, frommark, newtext);
+    let _ = add(ed, frommark, newtext);
     ed.vars.rptlabel = b"changed";
     afterdo(ed);
 }

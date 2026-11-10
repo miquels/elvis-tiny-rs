@@ -84,6 +84,24 @@ pub enum Arg<'a> {
     C(u8),
 }
 
+/// Digits of `v` in `radix` (8, 10 or 16), like the printf conversions.
+fn utoa(mut v: u64, radix: u64, upper: bool) -> Vec<u8> {
+    let digits: &[u8; 16] = if upper {
+        b"0123456789ABCDEF"
+    } else {
+        b"0123456789abcdef"
+    };
+    let mut s = Vec::new();
+    loop {
+        s.push(digits[(v % radix) as usize]);
+        v /= radix;
+        if v == 0 {
+            break;
+        }
+    }
+    s.reverse();
+    s
+}
 /// `sprintf(fmt, ...)` for the conversions elvis uses: `%s %c %d %ld %u
 /// %x %lx %o %%`, with the `-` and `0` flags, a width (digits or `*`) and
 /// a precision (digits or `*`).
@@ -177,27 +195,28 @@ pub fn sprintf(fmt: &[u8], args: &[Arg<'_>]) -> Vec<u8> {
                     _ => 0,
                 };
                 let v = if long { v } else { v as i32 as i64 };
+                let u = if long { v as u64 } else { v as u32 as u64 };
                 let mut s = match conv {
-                    b'd' | b'i' => v.to_string(),
-                    b'u' if long => (v as u64).to_string(),
-                    b'u' => (v as u32).to_string(),
-                    b'x' if long => format!("{:x}", v as u64),
-                    b'x' => format!("{:x}", v as u32),
-                    b'X' if long => format!("{:X}", v as u64),
-                    b'X' => format!("{:X}", v as u32),
-                    _ if long => format!("{:o}", v as u64),
-                    _ => format!("{:o}", v as u32),
+                    b'd' | b'i' if v < 0 => {
+                        let mut s = utoa(v.unsigned_abs(), 10, false);
+                        s.insert(0, b'-');
+                        s
+                    }
+                    b'd' | b'i' | b'u' => utoa(u, 10, false),
+                    b'x' => utoa(u, 16, false),
+                    b'X' => utoa(u, 16, true),
+                    _ => utoa(u, 8, false),
                 };
                 if let Some(p) = prec {
-                    let neg = s.starts_with('-');
+                    let neg = s.first() == Some(&b'-');
                     let digits = s.len() - neg as usize;
                     if (p as usize) > digits {
-                        let pad = "0".repeat(p as usize - digits);
-                        s.insert_str(neg as usize, &pad);
+                        let at = neg as usize;
+                        s.splice(at..at, std::iter::repeat_n(b'0', p as usize - digits));
                     }
                     zero = false;
                 }
-                s.into_bytes()
+                s
             }
             other => {
                 out.push(b'%');

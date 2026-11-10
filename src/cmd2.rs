@@ -549,7 +549,7 @@ pub fn cmd_undo(
 
 /// `sprintf("\\%03o", *scan)` with `*scan` a negative signed char.
 fn octal_escape(b: u8) -> Vec<u8> {
-    format!("\\{:03o}", schar(b) as u32).into_bytes()
+    sprintf(b"\\%03o", &[Arg::D(schar(b) as i64)])
 }
 
 // C: cmd2.c:cmd_print

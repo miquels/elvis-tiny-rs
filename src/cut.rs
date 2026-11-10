@@ -153,6 +153,8 @@ pub fn cutswitch(ed: &mut Editor, tmpname: &[u8]) {
 }
 
 // C: cut.c:cutend
+// Out of line: inlining this into `main` makes the binary larger.
+#[inline(never)]
 pub fn cutend(ed: &mut Editor) {
     // Named buffers may be keeping an older tmp file alive.
     for i in 0..27 {

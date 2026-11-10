@@ -692,6 +692,21 @@ mod tests {
         assert_eq!(ed.vars.nlines, 801);
         assert_eq!(ed.vars.rptlabel, b"changed");
 
+        // B16: lines may grow to BLKSIZE - 1 bytes including the newline
+        ed.tio.manymsgs = false;
+        let end = mark_at_line(1) + 7;
+        assert!(add(&mut ed, end, &[b'x'; BLKSIZE - 9]));
+        assert_eq!(fetchline(&mut ed, 1).len(), BLKSIZE - 2);
+        assert!(!add(&mut ed, end, b"y"));
+        assert!(ed.vars.toolong);
+        let mut long = b"y\n".to_vec();
+        long.extend_from_slice(&[b'x'; BLKSIZE - 1]);
+        long.push(b'\n');
+        ed.tio.manymsgs = false;
+        assert!(!add(&mut ed, mark_at_line(2), &long));
+        assert_eq!(ed.vars.nlines, 801);
+        assert_eq!(fetchline(&mut ed, 1).len(), BLKSIZE - 2);
+
         // deleting everything leaves one empty line
         beforedo(&mut ed, false);
         delete(&mut ed, mark_at_line(1), mark_at_line(802));

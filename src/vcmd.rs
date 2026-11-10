@@ -298,9 +298,13 @@ pub fn v_insert(ed: &mut Editor, m: Mark, cnt: i64, key: i32) -> R<Mark> {
         if take_sigint() {
             return Err(Interrupted);
         }
+        ed.vars.toolong = false;
         m = input(ed, m, m, WHEN_VIINP)?;
         if after {
             m += 1;
+        }
+        if ed.vars.toolong {
+            break;
         }
         reps -= 1;
         ed.vars.doingdot = true;

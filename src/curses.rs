@@ -792,6 +792,8 @@ impl Curses {
 /* curses.c                                                                */
 
 // C: curses.c:initscr
+// Out of line: inlining this into `main` makes the binary larger.
+#[inline(never)]
 pub fn initscr(ed: &mut Editor) {
     if std::env::var_os("TERM").is_none() {
         let _ = os::err_write(b"Environment variable TERM must be set\n");

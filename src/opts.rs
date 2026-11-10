@@ -323,6 +323,8 @@ fn atoi(s: &[u8]) -> i32 {
 }
 
 // C: opts.c:initopts
+// Out of line: inlining this into `main` makes the binary larger.
+#[inline(never)]
 pub fn initopts(ed: &mut Editor) {
     if let Some(val) = std::env::var_os("SHELL") {
         setstr(&mut ed.opts.o_shell, val.as_bytes());
