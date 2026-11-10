@@ -20,15 +20,18 @@ use crate::vi_h::LINEMASK;
 use crate::vi_h::{BLKSIZE, MARK_UNSET, Mark, R, When, botline, ctrl, markidx, markline};
 
 /// `key` as the C string `key[2]`: empty when the key is NUL.
-fn keystr(key: &[u8; 1]) -> &[u8] {
-    if key[0] == 0 { &[] } else { &key[..] }
+fn keystr(key: &u8) -> &[u8] {
+    if *key == 0 {
+        &[]
+    } else {
+        std::slice::from_ref(key)
+    }
 }
 
 // C: input.c:input
 pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
     let mut from = from;
     let mut to = to;
-    let mut key: [u8; 1] = [0];
     let mut m: Mark;
     let mut quit = false;
 
@@ -80,24 +83,24 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
         loop {
             let c = ed.vars.cursor;
             redraw(ed, c, true);
-            key[0] = getkey(ed, when)? as u8;
+            let mut key = getkey(ed, when)? as u8;
 
-            if (key[0] == b' ' || key[0] == b'\t') && ed.opts.num(Opt::Wrapmargin) != 0 {
+            if (key == b' ' || key == b'\t') && ed.opts.num(Opt::Wrapmargin) != 0 {
                 pfetch(ed, markline(ed.vars.cursor));
                 let ptext = ed.vars.ptext.clone();
                 let c = ed.vars.cursor;
                 if idx2col(ed, c, &ptext, true) > ed.curses.cols - ed.opts.num(Opt::Wrapmargin) {
-                    key[0] = b'\n';
+                    key = b'\n';
                 }
             }
 
             let cursor = ed.vars.cursor;
-            match key[0] {
+            match key {
                 0 => {
-                    key[0] = getkey(ed, When::RAW)? as u8;
-                    m = match key[0] {
+                    key = getkey(ed, When::RAW)? as u8;
+                    m = match key {
                         b'h' => m_left(ed, cursor, 0)?,
-                        b'j' | b'k' => m_updnto(ed, cursor, 0, key[0] as i8 as i32)?,
+                        b'j' | b'k' => m_updnto(ed, cursor, 0, key as i8 as i32)?,
                         b'l' => cursor + 1,
                         b'b' => m_bword(ed, cursor, 0, b'b' as i32)?,
                         b'w' => m_fword(ed, cursor, 0, b'w' as i32)?,
@@ -119,13 +122,13 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
                         ed,
                         c,
                         m,
-                        if key[0] == b'j' || key[0] == b'k' {
+                        if key == b'j' || key == b'k' {
                             NCOL
                         } else {
                             NO_FLAGS
                         },
                     );
-                    if key[0] == b'$' || (key[0] == b'l' && m <= ed.vars.cursor) {
+                    if key == b'$' || (key == b'l' && m <= ed.vars.cursor) {
                         m += 1;
                     }
                     if m == MARK_UNSET {
@@ -252,9 +255,9 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
                         to = cursor + 1;
                     }
                     redraw(ed, cursor, true);
-                    key[0] = getkey(ed, When::RAW)? as u8;
-                    if key[0] == b'\n' {
-                        key[0] = b'\r';
+                    key = getkey(ed, When::RAW)? as u8;
+                    if key == b'\n' {
+                        key = b'\r';
                     }
                     change(ed, cursor, cursor + 1, keystr(&key));
                     ed.vars.cursor += 1;
@@ -283,7 +286,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: When) -> R<Mark> {
                         }
                         ed.vars.cursor += 1;
                     }
-                    if ed.opts.on(Opt::Showmatch) && b")}]".contains(&key[0]) {
+                    if ed.opts.on(Opt::Showmatch) && b")}]".contains(&key) {
                         let c = ed.vars.cursor;
                         redraw(ed, c, true);
                         m = m_match(ed, c - 1)?;
