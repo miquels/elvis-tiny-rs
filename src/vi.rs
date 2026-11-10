@@ -9,6 +9,7 @@ use crate::move2::{m_Nsrch, m_bsrch, m_fsrch, m_nsrch};
 use crate::move3::{m__ch, m_Fch, m_Tch, m_fch, m_tch};
 use crate::move4::{m_row, m_scroll, m_z};
 use crate::move5::{m_bword, m_eword, m_fword};
+use crate::opts::Opt;
 use crate::os;
 use crate::redraw::{idx2col, redraw};
 use crate::tio::{Arg, beep, getkey, msg, vgets};
@@ -233,7 +234,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
     dotkey = 0;
 
     firstkey = 0;
-    if ed.opts.o_inputmode[0] != 0 {
+    if ed.opts.on(Opt::Inputmode) {
         firstkey = b'i' as i32;
     }
 
@@ -244,7 +245,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
             ed.vars.u_line = 0;
         }
 
-        if ed.vars.rptlines >= ed.opts.o_report[0] as i64 {
+        if ed.vars.rptlines >= (ed.opts.num(Opt::Report) as i64) {
             let c = ed.vars.cursor;
             redraw(ed, c, false);
             let (n, label) = (ed.vars.rptlines, ed.vars.rptlabel);
@@ -589,8 +590,8 @@ pub fn adjmove(ed: &mut Editor, old: Mark, new: Mark, flags: i32) -> Mark {
         }
     } else {
         let colno = ed.vi.adjmove_colno;
-        let tabstop = ed.opts.o_tabstop[0] as i32;
-        let list = ed.opts.o_list[0] != 0;
+        let tabstop = ed.opts.num(Opt::Tabstop);
+        let list = ed.opts.on(Opt::List);
         let ptext = &ed.vars.ptext;
         let mut i: i32 = 0;
         let mut t: usize = 0;

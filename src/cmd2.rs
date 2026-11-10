@@ -6,6 +6,7 @@ use crate::cut::{cut, cutname, paste};
 use crate::ex::{doexrc, linespec, parseptrn};
 use crate::misc::fetchline;
 use crate::modify::{add, change, delete};
+use crate::opts::Opt;
 use crate::os;
 use crate::redraw::redraw;
 use crate::regexp::{regcomp, regexec};
@@ -44,7 +45,7 @@ pub fn cmd_substitute(
     let mut subst: Vec<u8>;
     let mut sidx = 0;
     let re = if cmd == CMD_SUBAGAIN {
-        subst = if ed.opts.o_magic[0] != 0 {
+        subst = if ed.opts.on(Opt::Magic) {
             b"~".to_vec()
         } else {
             b"\\~".to_vec()
@@ -85,7 +86,7 @@ pub fn cmd_substitute(
             opt += 1;
         }
 
-        if ed.opts.o_edcompatible[0] == 0 {
+        if !ed.opts.on(Opt::Edcompatible) {
             ed.cmd2.cmd_substitute_optp = false;
             ed.cmd2.cmd_substitute_optg = false;
             ed.cmd2.cmd_substitute_optc = false;
@@ -196,7 +197,7 @@ pub fn cmd_substitute(
 
     if chsub == 0 {
         msg(ed, b"Substitution failed", &[]);
-    } else if chline >= ed.opts.o_report[0] as i64 {
+    } else if chline >= (ed.opts.num(Opt::Report) as i64) {
         msg(
             ed,
             b"%ld substitutions on %ld lines",
@@ -398,7 +399,7 @@ pub fn cmd_shift(
             continue;
         }
 
-        let tabstop = ed.opts.o_tabstop[0] as i32;
+        let tabstop = ed.opts.num(Opt::Tabstop);
         let mut oldidx = 0usize;
         let mut oldcol: i32 = 0;
         while ch(&text, oldidx) == b' ' || ch(&text, oldidx) == b'\t' {
@@ -410,7 +411,7 @@ pub fn cmd_shift(
             oldidx += 1;
         }
 
-        let sw = ed.opts.o_shiftwidth[0] as i32 & 0xff;
+        let sw = ed.opts.num(Opt::Shiftwidth);
         let mut newcol = if cmd == CMD_SHIFTR {
             oldcol + sw
         } else {
@@ -574,7 +575,7 @@ pub fn cmd_print(
         }
 
         let line = fetchline(ed, l);
-        let tabstop = ed.opts.o_tabstop[0] as i32;
+        let tabstop = ed.opts.num(Opt::Tabstop);
         for &b in &line {
             let c = schar(b);
             if b == b'\t' && cmd != CMD_LIST {

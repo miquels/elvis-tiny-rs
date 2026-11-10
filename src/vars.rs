@@ -139,6 +139,6 @@ mod tests {
         assert_eq!(ed.vars.mark, [0; NMARKS]);
         assert_eq!(ed.vars.viflags.file, 0);
         assert_eq!(ed.blk.recycle, 0);
-        assert_eq!(ed.opts.o_tabstop, [8, 1, 40]);
+        assert_eq!(ed.opts.num(opts::Opt::Tabstop), 8);
     }
 }

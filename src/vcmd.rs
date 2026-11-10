@@ -10,6 +10,7 @@ use crate::input::input;
 use crate::misc::pfetch;
 use crate::modify::{add, change, delete};
 use crate::move1::m_front;
+use crate::opts::Opt;
 use crate::os::take_sigint;
 use crate::redraw::redraw;
 use crate::system::{elvis_system, filter};
@@ -456,12 +457,12 @@ pub fn v_keyword(ed: &mut Editor, keyword: &[u8], m: Mark, _cnt: i64) -> R<Mark>
         .addstr(b"---------------------------------------------------------\n");
     ed.curses.clrtoeol();
     ed.curses.refresh();
-    let prg = cstr(&ed.opts.o_keywordprg).to_vec();
+    let prg = ed.opts.keywordprg().to_vec();
     let mut cmdline = sprintf(b"%s %s", &[Arg::S(&prg), Arg::S(keyword)]);
     // C wrote into char cmdline[130] without a bound.
     cmdline.truncate(129);
-    let waswarn = ed.opts.o_warn[0];
-    ed.opts.o_warn[0] = 0;
+    let waswarn = ed.opts.on(Opt::Warn);
+    ed.opts.set(Opt::Warn, false);
     suspend_curses(ed);
     if elvis_system(ed, Some(&cmdline)) != 0 {
         ed.curses.addstr(b"<<< failed >>>\n");
@@ -469,7 +470,7 @@ pub fn v_keyword(ed: &mut Editor, keyword: &[u8], m: Mark, _cnt: i64) -> R<Mark>
     resume_curses(ed, false);
     ed.vars.mode = MODE_VI;
     redraw(ed, MARK_UNSET, false);
-    ed.opts.o_warn[0] = waswarn;
+    ed.opts.set(Opt::Warn, waswarn);
 
     Ok(m)
 }

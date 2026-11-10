@@ -1,5 +1,6 @@
 //! `tmp.c`: the temporary file that holds the text being edited.
 
+use crate::opts::Opt;
 use std::fs::File;
 
 use crate::blk::{blkget, blkinit};
@@ -13,7 +14,7 @@ use crate::tio::{Arg, msg};
 use crate::vars::Editor;
 use crate::vi_h::{
     ADDEDNL, BLKSIZE, HADNUL, INFINITY, MARK_FIRST, MARK_UNSET, MAXBLKS, MODE_EX, MODIFIED, NOFILE,
-    READONLY, cstr, isalnum, isascii, markline, schar,
+    READONLY, isalnum, isascii, markline, schar,
 };
 
 /// Capacity of `tmpname[80]`.
@@ -100,7 +101,7 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) -> i32 {
             } else {
                 0o200
             };
-            if ed.opts.o_readonly[0] != 0 || statb.mode & bits == 0 {
+            if ed.opts.on(Opt::Readonly) || statb.mode & bits == 0 {
                 ed.vars.viflags.setflag(READONLY);
             }
         } else {
@@ -128,7 +129,7 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) -> i32 {
     }
     sum &= 0xf;
 
-    let dir = cstr(&ed.opts.o_directory).to_vec();
+    let dir = ed.opts.directory().to_vec();
     let mut tmpname = tmpname_fmt(&dir, sum, statb.ino, statb.dev);
     tmpname.truncate(TMPNAME_SIZE - 1);
     ed.tmp.tmpname = tmpname.clone();
@@ -351,7 +352,7 @@ pub fn tmpsave(ed: &mut Editor, filename: Option<&[u8]>, bang: bool) -> bool {
         return false;
     }
 
-    if filename == ed.vars.origname && ed.opts.o_readonly[0] != 0 && !bang {
+    if filename == ed.vars.origname && ed.opts.on(Opt::Readonly) && !bang {
         msg(
             ed,
             b"\"%s\" [READONLY] -- NOT WRITTEN",
@@ -404,7 +405,7 @@ pub fn tmpsave(ed: &mut Editor, filename: Option<&[u8]>, bang: bool) -> bool {
     ed.vars.viflags.clrflag(MODIFIED);
     ed.vars.significant = false;
 
-    if !filename.starts_with(cstr(&ed.opts.o_directory)) {
+    if !filename.starts_with(ed.opts.directory()) {
         let nlines = ed.vars.nlines;
         msg(
             ed,
@@ -425,7 +426,7 @@ pub fn tmpabort(ed: &mut Editor, bang: bool) -> bool {
     }
 
     if !bang && ed.vars.viflags.tstflag(MODIFIED) {
-        if ed.opts.o_autowrite[0] != 0 {
+        if ed.opts.on(Opt::Autowrite) {
             return tmpend(ed, bang);
         } else {
             return false;
@@ -485,8 +486,7 @@ mod tests {
     fn editor(dir: &[u8]) -> Editor {
         let mut ed = Editor::new();
         ed.vars.mode = MODE_VI;
-        ed.opts.o_directory = [0; 30];
-        ed.opts.o_directory[..dir.len()].copy_from_slice(dir);
+        ed.opts.set_str(Opt::Directory, dir);
         ed
     }
 

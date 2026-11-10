@@ -1,5 +1,6 @@
 //! `cmd1.c`: ex commands (part 1).
 
+use crate::opts::Opt;
 use std::fs::File;
 
 use crate::blk::{afterdo, beforedo};
@@ -135,7 +136,7 @@ pub fn cmd_shell(
     let mut extra = extra.to_vec();
 
     if cmd == CMD_SHELL {
-        extra = cstr(&ed.opts.o_shell).to_vec();
+        extra = ed.opts.shell().to_vec();
         interactive = true;
         frommark = 0;
         tomark = 0;
@@ -697,8 +698,8 @@ pub fn cmd_tag(
         tmpstart(ed, &name);
     }
 
-    let wasmagic = ed.opts.o_magic[0];
-    ed.opts.o_magic[0] = 0;
+    let wasmagic = ed.opts.on(Opt::Magic);
+    ed.opts.set(Opt::Magic, false);
     ed.vars.cursor = MARK_FIRST;
     let mut cursor = MARK_FIRST;
     let r = linespec(ed, &addr, &mut cursor);
@@ -706,7 +707,7 @@ pub fn cmd_tag(
     if ed.vars.cursor == MARK_UNSET {
         ed.vars.cursor = MARK_FIRST;
     }
-    ed.opts.o_magic[0] = wasmagic;
+    ed.opts.set(Opt::Magic, wasmagic);
     r.map(|_| ())
 }
 

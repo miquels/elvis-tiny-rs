@@ -1,6 +1,7 @@
 //! `system.c`: shell commands, wildcards, and filters.  Process
 //! primitives live in `os.rs`.  No module state.
 
+use crate::opts::Opt;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 
@@ -19,7 +20,7 @@ use crate::vi_h::{BLKSIZE, MODE_COLON, MODE_VI, MODIFIED, Mark, R, cstr};
 pub fn elvis_system(ed: &mut Editor, cmd: Option<&[u8]>) -> i32 {
     let status;
 
-    if ed.opts.o_warn[0] != 0 && ed.vars.viflags.tstflag(MODIFIED) {
+    if ed.opts.on(Opt::Warn) && ed.vars.viflags.tstflag(MODIFIED) {
         if ed.vars.mode == MODE_VI {
             ed.vars.mode = MODE_COLON;
         }
@@ -32,7 +33,7 @@ pub fn elvis_system(ed: &mut Editor, cmd: Option<&[u8]>) -> i32 {
     }
 
     os::ignore_sigint();
-    let shell = cstr(&ed.opts.o_shell).to_vec();
+    let shell = ed.opts.shell().to_vec();
     // The C child reports a failed exec with msg(), which shows up only when
     // not in visual mode.
     let mut fail = Vec::new();
@@ -77,7 +78,7 @@ fn rpipe(ed: &mut Editor, cmd: &[u8], input: Option<&File>) -> Option<Rpipe> {
 
     os::ignore_sigint();
 
-    let shell = cstr(&ed.opts.o_shell).to_vec();
+    let shell = ed.opts.shell().to_vec();
     let opts = SpawnOpts {
         close_3_to_59: false,
         output: Some(&w1),
@@ -140,7 +141,7 @@ pub fn filter(ed: &mut Editor, mut from: Mark, mut to: Mark, cmd: &[u8]) -> R<i3
     let mut new: Mark;
 
     if to != 0 {
-        scrout = scratchout_fmt(cstr(&ed.opts.o_directory));
+        scrout = scratchout_fmt(ed.opts.directory());
         let Ok(mut f) = os::mkstemp(&mut scrout) else {
             return Ok(-1);
         };
@@ -232,8 +233,7 @@ mod tests {
     #[test]
     fn wildcard_returns_names_when_shell_fails() {
         let mut ed = Editor::new();
-        ed.opts.o_shell[..9].copy_from_slice(b"/nonexist");
-        ed.opts.o_shell[9] = 0;
+        ed.opts.set_str(Opt::Shell, b"/nonexist");
         assert_eq!(wildcard(&mut ed, b"x*"), b"x*");
     }
 }

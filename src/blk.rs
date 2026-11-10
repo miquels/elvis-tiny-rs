@@ -1,5 +1,6 @@
 //! `blk.c`: the block cache for the temporary file, plus do/undo.
 
+use crate::opts::Opt;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 
@@ -306,7 +307,7 @@ pub fn blksync(ed: &mut Editor) {
     for i in 0..NBUFS {
         blkflush(ed, i);
     }
-    if ed.opts.o_sync[0] != 0 {
+    if ed.opts.on(Opt::Sync) {
         crate::os::sync();
     }
 }

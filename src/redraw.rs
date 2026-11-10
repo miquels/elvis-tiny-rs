@@ -2,6 +2,7 @@
 
 use crate::curses;
 use crate::misc::{fetchline, pfetch};
+use crate::opts::Opt;
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
 use crate::vi_h::{INFINITY, MARK_UNSET, Mark, botline, ch, markidx, markline, rightcol, schar};
@@ -67,8 +68,8 @@ impl Redraw {
 // C: redraw.c:idx2col
 /// `text` is the line (no NUL).
 pub fn idx2col(ed: &mut Editor, curs: Mark, text: &[u8], inputting: bool) -> i32 {
-    let tabstop = ed.opts.o_tabstop[0] as i32;
-    let list = ed.opts.o_list[0] != 0;
+    let tabstop = ed.opts.num(Opt::Tabstop);
+    let list = ed.opts.on(Opt::List);
     let r = &mut ed.redraw;
     let mut col: i32 = 0;
     let mut idx: i32 = markidx(curs) as i32;
@@ -123,13 +124,13 @@ pub fn idx2col(ed: &mut Editor, curs: Mark, text: &[u8], inputting: bool) -> i32
 fn mark2phys(ed: &mut Editor, m: Mark, text: &[u8], inputting: bool) -> i32 {
     let i = idx2col(ed, m, text, inputting);
     while i < ed.vars.leftcol {
-        ed.vars.leftcol -= ed.opts.o_sidescroll[0] as i32;
+        ed.vars.leftcol -= ed.opts.num(Opt::Sidescroll);
         ed.vars.mustredraw = true;
         ed.redraw.range(1, INFINITY, INFINITY);
         ed.curses.qaddch(b'\r');
     }
     while i > rightcol(ed.vars.leftcol, ed.curses.cols) {
-        ed.vars.leftcol += ed.opts.o_sidescroll[0] as i32;
+        ed.vars.leftcol += ed.opts.num(Opt::Sidescroll);
         ed.vars.mustredraw = true;
         ed.redraw.range(1, INFINITY, INFINITY);
         ed.curses.qaddch(b'\r');
@@ -143,13 +144,13 @@ fn mark2phys(ed: &mut Editor, m: Mark, text: &[u8], inputting: bool) -> i32 {
 // C: redraw.c:drawtext
 fn drawtext(ed: &mut Editor, text: &[u8], clr: bool) {
     let leftcol = ed.vars.leftcol;
-    let list = ed.opts.o_list[0] != 0;
+    let list = ed.opts.on(Opt::List);
     let c = &mut ed.curses;
     let mut col: i32;
     let mut i: i32;
     let mut t: usize = 0;
     let mut limitcol = leftcol;
-    let tabstop = ed.opts.o_tabstop[0] as i32;
+    let tabstop = ed.opts.num(Opt::Tabstop);
 
     col = 0;
     loop {
@@ -480,7 +481,7 @@ mod tests {
         // shortcut path agrees with a fresh count
         ed.vars.changes += 1;
         assert_eq!(idx2col(&mut ed, m(6), line, false), 14);
-        ed.opts.o_list[0] = 1;
+        ed.opts.set(Opt::List, true);
         ed.vars.changes += 1;
         assert_eq!(idx2col(&mut ed, m(1), line, false), 2);
     }

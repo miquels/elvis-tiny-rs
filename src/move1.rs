@@ -1,6 +1,7 @@
 //! `move1.c`: basic cursor motions.  No module state.
 
 use crate::misc::{fetchline, pfetch};
+use crate::opts::Opt;
 use crate::tio::{Arg, msg};
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
@@ -85,8 +86,8 @@ pub fn m_tocol(ed: &mut Editor, m: Mark, cnt: i64) -> R<Mark> {
     }
 
     pfetch(ed, markline(m));
-    let tabstop = ed.opts.o_tabstop[0] as i64;
-    let list = ed.opts.o_list[0] != 0;
+    let tabstop = ed.opts.num(Opt::Tabstop) as i64;
+    let list = ed.opts.on(Opt::List);
     let text = &ed.vars.ptext;
     let mut col: i64 = 0;
     let mut idx: usize = 0;

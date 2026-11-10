@@ -1,5 +1,6 @@
 //! `regsub.c`: substitution of matched text.
 
+use crate::opts::Opt;
 use crate::regexp::Regexp;
 use crate::vars::Editor;
 use crate::vi_h::{ch, cstr};
@@ -22,7 +23,7 @@ fn copy_sub(re: &Regexp, subject: &[u8], n: usize, dst: &mut Vec<u8>) {
 /// `subject` is the string `re` last matched; output is appended to `dst`.
 /// C wrote into the caller's buffer without a bound; callers check the size.
 pub fn regsub(ed: &mut Editor, re: &Regexp, subject: &[u8], src: &[u8], dst: &mut Vec<u8>) {
-    let magic = ed.opts.o_magic[0] != 0;
+    let magic = ed.opts.on(Opt::Magic);
     let src = cstr(src);
     let mut i = 0;
     loop {
@@ -103,7 +104,7 @@ mod tests {
         regsub(&mut ed, &re, b"xabcx", b"a\\", &mut d);
         assert_eq!(d, b"a");
 
-        ed.opts.o_magic[0] = 0;
+        ed.opts.set(Opt::Magic, false);
         let mut d = Vec::new();
         regsub(&mut ed, &re, b"xabcx", b"&\\&\\~", &mut d);
         assert_eq!(d, b"&abca\\");

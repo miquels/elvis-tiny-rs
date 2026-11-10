@@ -1,5 +1,6 @@
 //! `tio.c`: terminal input, messages, and key mapping.
 
+use crate::opts::Opt;
 use std::fs::File;
 
 use crate::config::{MAXMAPS, ttyread, ttywrite, twrite};
@@ -321,7 +322,7 @@ pub fn vgets(ed: &mut Editor, prompt: u8, buf: &mut Vec<u8>, bsize: usize) -> R<
                 ed.curses.qaddch(b'\x08');
             }
             if len + 1 < bsize {
-                let tabstop = ed.opts.o_tabstop[0] as i32;
+                let tabstop = ed.opts.num(Opt::Tabstop);
                 if ch == b'\t' as i32 {
                     widths[len] = tabstop - (tab % tabstop);
                     let spaces = vec![b' '; widths[len].max(0) as usize];
@@ -355,10 +356,10 @@ pub fn vgets(ed: &mut Editor, prompt: u8, buf: &mut Vec<u8>, bsize: usize) -> R<
 
 // C: tio.c:beep
 pub fn beep(ed: &mut Editor) {
-    if ed.opts.o_vbell[0] != 0 {
+    if ed.opts.on(Opt::Vbell) {
         ed.curses.put(curses::VB);
         ed.curses.refresh();
-    } else if ed.opts.o_errorbells[0] != 0 {
+    } else if ed.opts.on(Opt::Errorbells) {
         let _ = ttywrite(b"\x07");
     }
 }
@@ -431,7 +432,7 @@ pub fn exrefresh(ed: &mut Editor) {
         ed.vars.exwrote = true;
     }
 
-    if ed.opts.o_exrefresh[0] != 0 {
+    if ed.opts.on(Opt::Exrefresh) {
         ed.curses.refresh();
     } else {
         ed.curses.wqrefresh();
@@ -523,8 +524,8 @@ pub fn getkey(ed: &mut Editor, when: i32) -> R<i32> {
                 ReadOutcome::Timeout | ReadOutcome::Error(_) => {}
             }
 
-            ed.opts.o_lines[0] = ed.curses.lines as i8;
-            ed.opts.o_columns[0] = ed.curses.cols as i8;
+            ed.opts.set_num(Opt::Lines, ed.curses.lines);
+            ed.opts.set_num(Opt::Columns, ed.curses.cols);
             if when & (WHEN_VICMD | WHEN_VIINP | WHEN_VIREP) != 0 {
                 redraw(ed, MARK_UNSET, false);
                 let cursor = ed.vars.cursor;
@@ -547,7 +548,7 @@ pub fn getkey(ed: &mut Editor, when: i32) -> R<i32> {
 
     while j > 1 {
         let i = ed.tio.nkeys;
-        let keytime = ed.opts.o_keytime[0] as i32 as u32;
+        let keytime = ed.opts.num(Opt::Keytime) as u32;
         let start = ed.tio.nkeys as usize;
         match os::tty_read_timeout(&mut ed.tio.keybuf[start..], keytime) {
             ReadOutcome::Data(n) => ed.tio.nkeys += n as i32,
@@ -837,7 +838,7 @@ mod tests {
             mapkey(&mut ed, &[b'a' + i as u8], b"z", WHEN_VICMD as i16, None);
         }
         ed.curses.kbuf.clear();
-        ed.opts.o_exrefresh[0] = 0;
+        ed.opts.set(Opt::Exrefresh, false);
         mapkey(&mut ed, b"Q", b"z", WHEN_VICMD as i16, None);
         assert_eq!(ed.curses.kbuf, b"No room left in the key map table\n\r");
     }
@@ -846,7 +847,7 @@ mod tests {
     fn dumpkey_and_savekeys_format() {
         let mut ed = Editor::new();
         ed.vars.mode = MODE_EX;
-        ed.opts.o_exrefresh[0] = 0;
+        ed.opts.set(Opt::Exrefresh, false);
         mapkey(
             &mut ed,
             b"\x1b[A",

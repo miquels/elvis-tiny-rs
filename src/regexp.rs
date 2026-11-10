@@ -1,6 +1,7 @@
 //! `regexp.c` and `regexp.h`: regular expression compiler and matcher.
 
 use crate::misc::regerror;
+use crate::opts::Opt;
 use crate::vars::Editor;
 use crate::vi_h::{ch, cstr, isalnum, isascii, isupper, schar, tolower};
 
@@ -369,7 +370,7 @@ pub fn regcomp(ed: &mut Editor, exp: &[u8]) -> Option<Regexp> {
         exp.to_vec()
     };
 
-    let magic = ed.opts.o_magic[0] != 0;
+    let magic = ed.opts.on(Opt::Magic);
     match compile(&mut ed.regexp, magic, &text) {
         Ok(re) => Some(re),
         Err(why) => {
@@ -497,7 +498,7 @@ pub fn regexec(ed: &mut Editor, prog: &mut Regexp, string: &[u8], bolflag: bool)
     if re.program.len() <= SHADOW {
         return false;
     }
-    let ic = ed.opts.o_ignorecase[0] != 0;
+    let ic = ed.opts.on(Opt::Ignorecase);
 
     let slen = cstr(string).len();
     let mut len = slen as i64;
@@ -539,7 +540,7 @@ mod tests {
     use super::*;
 
     fn comp(ed: &mut Editor, p: &[u8]) -> Regexp {
-        compile(&mut ed.regexp, ed.opts.o_magic[0] != 0, p).expect("compiles")
+        compile(&mut ed.regexp, ed.opts.on(Opt::Magic), p).expect("compiles")
     }
 
     fn find(ed: &mut Editor, p: &[u8], s: &[u8]) -> Option<(usize, usize)> {
@@ -585,10 +586,10 @@ mod tests {
         assert_eq!((re.startp[2], re.endp[2]), (Some(3), Some(4)));
         let mut re = comp(&mut ed, b"^a");
         assert!(!regexec(&mut ed, &mut re, b"a", false));
-        ed.opts.o_ignorecase[0] = 1;
+        ed.opts.set(Opt::Ignorecase, true);
         assert_eq!(find(&mut ed, b"abc", b"xABC"), Some((1, 4)));
-        ed.opts.o_ignorecase[0] = 0;
-        ed.opts.o_magic[0] = 0;
+        ed.opts.set(Opt::Ignorecase, false);
+        ed.opts.set(Opt::Magic, false);
         assert_eq!(find(&mut ed, b"a.c", b"abc a.c"), Some((4, 7)));
         assert_eq!(find(&mut ed, b"a\\.c", b"xabc"), Some((1, 4)));
     }

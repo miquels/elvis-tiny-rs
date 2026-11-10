@@ -108,7 +108,7 @@ fn cutfree(ed: &mut Editor, k: usize) {
 
     if fd >= 0 && i == 27 {
         ed.cut.files.retain(|f| f.as_raw_fd() != fd);
-        let cutfname = cutname_fmt(cstr(&ed.opts.o_directory), os::getpid(), fd);
+        let cutfname = cutname_fmt(ed.opts.directory(), os::getpid(), fd);
         let _ = os::unlink(&cutfname);
     }
 }
@@ -139,7 +139,7 @@ pub fn cutswitch(ed: &mut Editor, tmpname: &[u8]) {
         }
         _ => -1,
     };
-    let cutfname = cutname_fmt(cstr(&ed.opts.o_directory), os::getpid(), fd);
+    let cutfname = cutname_fmt(ed.opts.directory(), os::getpid(), fd);
     // C: `link(tmpname, cutfname) || unlink(tmpname);`
     if os::link(tmpname, &cutfname).is_ok() {
         let _ = os::unlink(tmpname);

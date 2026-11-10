@@ -5,6 +5,7 @@
 //! `tgoto` are reimplemented here to produce the bytes the macOS ncurses
 //! produces.
 
+use crate::opts::Opt;
 use std::io::{self, IsTerminal};
 use std::os::unix::ffi::OsStrExt;
 
@@ -1211,8 +1212,8 @@ pub fn getsize(ed: &mut Editor, signo: i32) {
         os::exit(2);
     }
 
-    ed.opts.o_columns[0] = ed.curses.cols as i8;
-    ed.opts.o_lines[0] = ed.curses.lines as i8;
+    ed.opts.set_num(Opt::Columns, ed.curses.cols);
+    ed.opts.set_num(Opt::Lines, ed.curses.lines);
 }
 
 #[cfg(test)]

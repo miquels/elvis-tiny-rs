@@ -12,6 +12,7 @@ use crate::config::{EXRC, tread};
 use crate::misc::pfetch;
 use crate::move1::{m_tomark, m_updnto};
 use crate::move2::{m_bsrch, m_fsrch};
+use crate::opts::Opt;
 use crate::os;
 use crate::system::wildcard;
 use crate::tio::{Arg, exrefresh, msg, vgets};
@@ -273,7 +274,7 @@ pub fn ex(ed: &mut Editor) -> R<()> {
         if ed.vars.significant || markline(ed.vars.cursor) != ed.ex.ex_oldline {
             ed.vars.significant = false;
             ed.ex.ex_oldline = markline(ed.vars.cursor);
-            if ed.opts.o_autoprint[0] != 0 && ed.vars.mode == MODE_EX {
+            if ed.opts.on(Opt::Autoprint) && ed.vars.mode == MODE_EX {
                 let cur = ed.vars.cursor;
                 cmd_print(ed, cur, cur, CMD_PRINT, false, b"")?;
             }

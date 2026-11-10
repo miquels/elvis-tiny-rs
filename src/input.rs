@@ -8,6 +8,7 @@ use crate::modify::{add, change, delete};
 use crate::move1::{m_front, m_left, m_match, m_rear, m_updnto};
 use crate::move4::m_scroll;
 use crate::move5::{m_bword, m_fword};
+use crate::opts::Opt;
 use crate::os;
 use crate::redraw::{idx2col, redraw};
 use crate::tio::{beep, getkey};
@@ -56,7 +57,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
         }
 
         ed.vars.cursor = from;
-        if ed.opts.o_autoindent[0] != 0
+        if ed.opts.on(Opt::Autoindent)
             && markline(ed.vars.cursor) > 1
             && markidx(ed.vars.cursor) == 0
         {
@@ -83,13 +84,11 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
             redraw(ed, c, true);
             key[0] = getkey(ed, when)? as u8;
 
-            if (key[0] == b' ' || key[0] == b'\t') && ed.opts.o_wrapmargin[0] != 0 {
+            if (key[0] == b' ' || key[0] == b'\t') && ed.opts.num(Opt::Wrapmargin) != 0 {
                 pfetch(ed, markline(ed.vars.cursor));
                 let ptext = ed.vars.ptext.clone();
                 let c = ed.vars.cursor;
-                if idx2col(ed, c, &ptext, true)
-                    > ed.curses.cols - (ed.opts.o_wrapmargin[0] as i32 & 0xff)
-                {
+                if idx2col(ed, c, &ptext, true) > ed.curses.cols - ed.opts.num(Opt::Wrapmargin) {
                     key[0] = b'\n';
                 }
             }
@@ -207,7 +206,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
 
                 b'\n' | b'\r' => {
                     let mut build: Vec<u8> = vec![b'\n'];
-                    if ed.opts.o_autoindent[0] != 0 {
+                    if ed.opts.on(Opt::Autoindent) {
                         pfetch(ed, markline(ed.vars.cursor));
                         let indent = ed
                             .vars
@@ -286,7 +285,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
                         }
                         ed.vars.cursor += 1;
                     }
-                    if ed.opts.o_showmatch[0] != 0 && b")}]".contains(&key[0]) {
+                    if ed.opts.on(Opt::Showmatch) && b")}]".contains(&key[0]) {
                         let c = ed.vars.cursor;
                         redraw(ed, c, true);
                         m = m_match(ed, c - 1)?;

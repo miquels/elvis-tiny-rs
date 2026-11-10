@@ -35,6 +35,7 @@ mod vcmd;
 mod vi;
 mod vi_h;
 
+use crate::opts::Opt;
 use std::os::unix::ffi::OsStrExt;
 
 use vi_h::{CMD_TAG, MARK_FIRST, MODE_EX, MODE_QUIT, MODE_VI, WHEN_INMV, WHEN_VICMD, ch};
@@ -58,11 +59,11 @@ fn main() {
         }
         b'w' => {
             ed.vars.mode = MODE_VI;
-            ed.opts.o_readonly[0] = 1;
+            ed.opts.set(Opt::Readonly, true);
         }
         b't' => {
             ed.vars.mode = MODE_VI;
-            ed.opts.o_inputmode[0] = 1;
+            ed.opts.set(Opt::Inputmode, true);
         }
         _ => {
             ed.vars.mode = MODE_VI;
@@ -112,7 +113,7 @@ fn main() {
     while i < argc && argv[i].first() == Some(&b'-') {
         match ch(argv[i], 1) {
             b'R' => {
-                ed.opts.o_readonly[0] = 1;
+                ed.opts.set(Opt::Readonly, true);
             }
 
             b'r' => {
@@ -141,7 +142,7 @@ fn main() {
                 ed.vars.mode = MODE_EX;
             }
             b'i' => {
-                ed.opts.o_inputmode[0] = 1;
+                ed.opts.set(Opt::Inputmode, true);
             }
             _ => {
                 tio::msg(ed, b"Ignoring unknown flag \"%s\"", &[tio::Arg::S(argv[i])]);

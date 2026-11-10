@@ -1,5 +1,6 @@
 //! `move4.c`: screen-relative motions and scrolling.  No module state.
 
+use crate::opts::Opt;
 use crate::redraw::redraw;
 use crate::tio::{getkey, msg};
 use crate::vars::Editor;
@@ -90,12 +91,12 @@ pub fn m_scroll(ed: &mut Editor, m: Mark, cnt: i64, key: i32) -> R<Mark> {
         }
         CTRL_U | CTRL_D => {
             if cnt == 0 {
-                cnt = ed.opts.o_scroll[0] as i64;
+                cnt = ed.opts.scroll();
             } else {
                 if cnt > lines - 1 {
                     cnt = lines - 1;
                 }
-                ed.opts.o_scroll[0] = cnt as i8;
+                ed.opts.set_num(Opt::Scroll, cnt as i32);
             }
         }
         _ => {}

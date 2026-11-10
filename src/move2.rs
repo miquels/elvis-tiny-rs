@@ -3,6 +3,7 @@
 use crate::ex::parseptrn;
 use crate::misc::{fetchline, pfetch};
 use crate::move1::m_front;
+use crate::opts::Opt;
 use crate::os::take_sigint;
 use crate::regexp::{Regexp, regcomp, regexec};
 use crate::tio::msg;
@@ -106,7 +107,7 @@ pub fn m_fsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
                 break;
             }
 
-            if ed.opts.o_wrapscan[0] != 0 {
+            if ed.opts.on(Opt::Wrapscan) {
                 l = 0;
                 wrapped = true;
                 l += 1;
@@ -119,7 +120,7 @@ pub fn m_fsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
         let line = fetchline(ed, l);
 
         if let Some((start, _)) = exec_re(ed, line.get(pos..).unwrap_or(&[]), pos == 0) {
-            if wrapped && ed.opts.o_warn[0] != 0 {
+            if wrapped && ed.opts.on(Opt::Warn) {
                 msg(ed, b"(wrapped)", &[]);
             }
             if delta != 0 {
@@ -136,7 +137,7 @@ pub fn m_fsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
         l += 1;
     }
 
-    if ed.opts.o_wrapscan[0] != 0 {
+    if ed.opts.on(Opt::Wrapscan) {
         msg(ed, b"Not found", &[]);
     } else {
         msg(ed, b"Hit bottom without finding RE", &[]);
@@ -167,7 +168,7 @@ pub fn m_bsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
         }
 
         if l < 1 {
-            if ed.opts.o_wrapscan[0] != 0 {
+            if ed.opts.on(Opt::Wrapscan) {
                 l = ed.vars.nlines + 1;
                 wrapped = true;
                 l -= 1;
@@ -202,7 +203,7 @@ pub fn m_bsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
                 }
             }
 
-            if wrapped && ed.opts.o_warn[0] != 0 {
+            if wrapped && ed.opts.on(Opt::Warn) {
                 msg(ed, b"(wrapped)", &[]);
             }
             return Ok(mark_at_line(l) + last as Mark);
@@ -211,7 +212,7 @@ pub fn m_bsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
         l -= 1;
     }
 
-    if ed.opts.o_wrapscan[0] != 0 {
+    if ed.opts.on(Opt::Wrapscan) {
         msg(ed, b"Not found", &[]);
     } else {
         msg(ed, b"Hit top without finding RE", &[]);
