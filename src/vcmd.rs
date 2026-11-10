@@ -270,7 +270,7 @@ pub fn v_insert(ed: &mut Editor, m: Mark, cnt: i64, key: i32) -> R<Mark> {
             after = true;
         }
         Ok(b'I') => {
-            m = m_front(ed, m, 1)?;
+            m = m_front(ed, m)?;
             after = false;
         }
         Ok(b'A') => {

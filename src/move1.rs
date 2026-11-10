@@ -110,7 +110,7 @@ pub fn m_tocol(ed: &mut Editor, m: Mark, cnt: i64) -> R<Mark> {
 }
 
 // C: move1.c:m_front
-pub fn m_front(ed: &mut Editor, m: Mark, _cnt: i64) -> R<Mark> {
+pub fn m_front(ed: &mut Editor, m: Mark) -> R<Mark> {
     let mut m = m;
     pfetch(ed, markline(m));
     m &= LINEMASK;
@@ -124,7 +124,7 @@ pub fn m_front(ed: &mut Editor, m: Mark, _cnt: i64) -> R<Mark> {
 }
 
 // C: move1.c:m_rear
-pub fn m_rear(_ed: &mut Editor, m: Mark, _cnt: i64) -> R<Mark> {
+pub fn m_rear(_ed: &mut Editor, m: Mark) -> R<Mark> {
     // Deliberately past the end of the line; adjmove() in vi.rs fixes it.
     Ok(m | (BLKSIZE as Mark - 1))
 }
@@ -226,7 +226,7 @@ pub fn m_bsection(ed: &mut Editor, m: Mark, _cnt: i64, key: i32) -> R<Mark> {
 }
 
 // C: move1.c:m_match
-pub fn m_match(ed: &mut Editor, m: Mark, _cnt: i64) -> R<Mark> {
+pub fn m_match(ed: &mut Editor, m: Mark) -> R<Mark> {
     let mut l = markline(m);
     pfetch(ed, l);
     let mut text = markidx(m);
@@ -334,7 +334,7 @@ mod tests {
         assert_eq!(m_left(&mut ed, m, 0).unwrap(), m - 1);
         assert_eq!(m_left(&mut ed, m, 5).unwrap(), m - 5);
         assert_eq!(m_left(&mut ed, m, 6).unwrap(), MARK_UNSET);
-        assert_eq!(m_rear(&mut ed, m, 0).unwrap(), mark_at_line(3) + 1023);
+        assert_eq!(m_rear(&mut ed, m).unwrap(), mark_at_line(3) + 1023);
     }
 
     #[test]

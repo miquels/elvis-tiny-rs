@@ -32,18 +32,6 @@ pub struct Vi {
 /*------------------------------------------------------------------------*/
 /* struct keystru and vikeys[]                                             */
 
-const NO_ARGS: u8 = 0;
-const CURSOR_COUNT: u8 = 1;
-const CURSOR: u8 = 2;
-const CURSOR_CNT_KEY: u8 = 3;
-const CURSOR_MOVED: u8 = 4;
-const CURSOR_EOL: u8 = 5;
-const ZERO: u8 = 6;
-const DIGIT: u8 = 7;
-const CURSOR_TEXT: u8 = 8;
-const CURSOR_CNT_CMD: u8 = 9;
-const KEYWORD: u8 = 10;
-
 const NO_FLAGS: u8 = 0x00;
 const MVMT: u8 = 0x01;
 const PTMV: u8 = 0x02;
@@ -54,248 +42,168 @@ const NCOL: u8 = 0x20;
 const NREL: u8 = 0x40;
 const SDOT: u8 = 0x80;
 
-/// The C `func` union; `CURSOR_CNT_CMD` shares `CursorCntKey` and
-/// `CURSOR_EOL` shares `CursorMoved`, as in C.
+/// What a key does and the arguments its function takes (C's `args`
+/// field together with the `func` union).
 #[derive(Clone, Copy)]
 enum Func {
     None,
+    Zero,
+    Digit,
     NoArg(fn(&mut Editor) -> R<Mark>),
     Keyword(fn(&mut Editor, &[u8], Mark, i64) -> R<Mark>),
     Cursor(fn(&mut Editor, Mark) -> R<Mark>),
     CursorCount(fn(&mut Editor, Mark, i64) -> R<Mark>),
+    /// Reads one more key and passes it.
     CursorCntKey(fn(&mut Editor, Mark, i64, i32) -> R<Mark>),
+    /// Passes the command key itself.
+    CursorCntCmd(fn(&mut Editor, Mark, i64, i32) -> R<Mark>),
     CursorText(fn(&mut Editor, Mark, &[u8]) -> R<Mark>),
+    /// An operator that waits for a motion.
     CursorMoved(fn(&mut Editor, Mark, Mark) -> R<Mark>),
+    /// An operator applied up to the end of the line.
+    CursorEol(fn(&mut Editor, Mark, Mark) -> R<Mark>),
 }
 
 #[derive(Clone, Copy)]
 struct Keystru {
     func: Func,
-    args: u8,
     flags: u8,
 }
 
-// C: vi.c:m_rear_wrapper
-fn m_rear_wrapper(ed: &mut Editor, m: Mark) -> R<Mark> {
-    m_rear(ed, m, 0)
+const fn k(func: Func, flags: u8) -> Keystru {
+    Keystru { func, flags }
 }
 
-// C: vi.c:m_match_wrapper
-fn m_match_wrapper(ed: &mut Editor, m: Mark) -> R<Mark> {
-    m_match(ed, m, 0)
-}
-
-// C: vi.c:m_front_wrapper
-fn m_front_wrapper(ed: &mut Editor, m: Mark) -> R<Mark> {
-    m_front(ed, m, 0)
-}
-
-const NO_FUNC: Keystru = Keystru {
-    func: Func::None,
-    args: NO_ARGS,
-    flags: NO_FLAGS,
-};
-
-const fn no_args_f(f: fn(&mut Editor) -> R<Mark>, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::NoArg(f),
-        args: NO_ARGS,
-        flags,
-    }
-}
-const fn keyword_f(f: fn(&mut Editor, &[u8], Mark, i64) -> R<Mark>, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::Keyword(f),
-        args: KEYWORD,
-        flags,
-    }
-}
-const fn cursor_f(f: fn(&mut Editor, Mark) -> R<Mark>, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::Cursor(f),
-        args: CURSOR,
-        flags,
-    }
-}
-const fn cursor_count_f(f: fn(&mut Editor, Mark, i64) -> R<Mark>, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::CursorCount(f),
-        args: CURSOR_COUNT,
-        flags,
-    }
-}
-const fn cursor_cnt_key_f(f: fn(&mut Editor, Mark, i64, i32) -> R<Mark>, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::CursorCntKey(f),
-        args: CURSOR_CNT_KEY,
-        flags,
-    }
-}
-const fn cursor_text_f(f: fn(&mut Editor, Mark, &[u8]) -> R<Mark>, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::CursorText(f),
-        args: CURSOR_TEXT,
-        flags,
-    }
-}
-const fn cursor_cnt_cmd_f(f: fn(&mut Editor, Mark, i64, i32) -> R<Mark>, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::CursorCntKey(f),
-        args: CURSOR_CNT_CMD,
-        flags,
-    }
-}
-const fn cursor_moved_f(f: fn(&mut Editor, Mark, Mark) -> R<Mark>, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::CursorMoved(f),
-        args: CURSOR_MOVED,
-        flags,
-    }
-}
-const fn cursor_eol_f(f: fn(&mut Editor, Mark, Mark) -> R<Mark>, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::CursorMoved(f),
-        args: CURSOR_EOL,
-        flags,
-    }
-}
-const fn no_func(args: u8, flags: u8) -> Keystru {
-    Keystru {
-        func: Func::None,
-        args,
-        flags,
-    }
-}
-
+const NO_FUNC: Keystru = k(Func::None, NO_FLAGS);
 #[rustfmt::skip]
 static VIKEYS: [Keystru; 128] = [
 /* NUL not defined      */ NO_FUNC,
 /* ^A  not defined      */ NO_FUNC,
-/* ^B  page backward    */ cursor_cnt_cmd_f(m_scroll, FRNT),
+/* ^B  page backward    */ k(Func::CursorCntCmd(m_scroll), FRNT),
 /* ^C  not defined      */ NO_FUNC,
-/* ^D  scroll dn 1/2page*/ cursor_cnt_cmd_f(m_scroll, NCOL),
-/* ^E  scroll up        */ cursor_cnt_cmd_f(m_scroll, NCOL),
-/* ^F  page forward     */ cursor_cnt_cmd_f(m_scroll, FRNT),
-/* ^G  show file status */ no_args_f(v_status, NO_FLAGS),
-/* ^H  move left, like h*/ cursor_count_f(m_left, MVMT),
+/* ^D  scroll dn 1/2page*/ k(Func::CursorCntCmd(m_scroll), NCOL),
+/* ^E  scroll up        */ k(Func::CursorCntCmd(m_scroll), NCOL),
+/* ^F  page forward     */ k(Func::CursorCntCmd(m_scroll), FRNT),
+/* ^G  show file status */ k(Func::NoArg(v_status), NO_FLAGS),
+/* ^H  move left, like h*/ k(Func::CursorCount(m_left), MVMT),
 /* ^I  not defined      */ NO_FUNC,
-/* ^J  move down        */ cursor_cnt_cmd_f(m_updnto, MVMT|LNMD),
+/* ^J  move down        */ k(Func::CursorCntCmd(m_updnto), MVMT|LNMD),
 /* ^K  not defined      */ NO_FUNC,
-/* ^L  redraw screen    */ no_args_f(v_redraw, NO_FLAGS),
-/* ^M  mv front next ln */ cursor_cnt_cmd_f(m_updnto, MVMT|FRNT|LNMD),
-/* ^N  move down        */ cursor_cnt_cmd_f(m_updnto, MVMT|LNMD),
+/* ^L  redraw screen    */ k(Func::NoArg(v_redraw), NO_FLAGS),
+/* ^M  mv front next ln */ k(Func::CursorCntCmd(m_updnto), MVMT|FRNT|LNMD),
+/* ^N  move down        */ k(Func::CursorCntCmd(m_updnto), MVMT|LNMD),
 /* ^O  not defined      */ NO_FUNC,
-/* ^P  move up          */ cursor_cnt_cmd_f(m_updnto, MVMT|LNMD),
+/* ^P  move up          */ k(Func::CursorCntCmd(m_updnto), MVMT|LNMD),
 /* ^Q  not defined      */ NO_FUNC,
-/* ^R  redraw screen    */ no_args_f(v_redraw, NO_FLAGS),
+/* ^R  redraw screen    */ k(Func::NoArg(v_redraw), NO_FLAGS),
 /* ^S  not defined      */ NO_FUNC,
 /* ^T  not defined      */ NO_FUNC,
-/* ^U  scroll up 1/2page*/ cursor_cnt_cmd_f(m_scroll, NCOL),
+/* ^U  scroll up 1/2page*/ k(Func::CursorCntCmd(m_scroll), NCOL),
 /* ^V  not defined      */ NO_FUNC,
 /* ^W  not defined      */ NO_FUNC,
 /* ^X  not defined      */ NO_FUNC,
-/* ^Y  scroll down      */ cursor_cnt_cmd_f(m_scroll, NCOL),
+/* ^Y  scroll down      */ k(Func::CursorCntCmd(m_scroll), NCOL),
 /* ^Z  not defined      */ NO_FUNC,
 /* ESC not defined      */ NO_FUNC,
 /* ^\  not defined      */ NO_FUNC,
-/* ^]  keyword is tag   */ keyword_f(v_tag, NO_FLAGS),
-/* ^^  previous file    */ no_args_f(v_switch, NO_FLAGS),
+/* ^]  keyword is tag   */ k(Func::Keyword(v_tag), NO_FLAGS),
+/* ^^  previous file    */ k(Func::NoArg(v_switch), NO_FLAGS),
 /* ^_  not defined      */ NO_FUNC,
-/* SPC move right,like l*/ cursor_count_f(m_right, MVMT),
-/*  !  run thru filter  */ cursor_moved_f(v_filter, FRNT|LNMD|INCL),
-/*  "  select cut buffer*/ cursor_cnt_key_f(v_selcut, PTMV),
-/*  #  increment number */ keyword_f(v_increment, SDOT),
-/*  $  move to rear     */ cursor_f(m_rear_wrapper, MVMT|INCL),
-/*  %  move to match    */ cursor_f(m_match_wrapper, MVMT|INCL),
-/*  &  repeat subst     */ cursor_moved_f(v_again, SDOT|NCOL|LNMD|INCL),
-/*  '  move to a mark   */ cursor_cnt_key_f(m_tomark, MVMT|FRNT|NREL|LNMD|INCL),
+/* SPC move right,like l*/ k(Func::CursorCount(m_right), MVMT),
+/*  !  run thru filter  */ k(Func::CursorMoved(v_filter), FRNT|LNMD|INCL),
+/*  "  select cut buffer*/ k(Func::CursorCntKey(v_selcut), PTMV),
+/*  #  increment number */ k(Func::Keyword(v_increment), SDOT),
+/*  $  move to rear     */ k(Func::Cursor(m_rear), MVMT|INCL),
+/*  %  move to match    */ k(Func::Cursor(m_match), MVMT|INCL),
+/*  &  repeat subst     */ k(Func::CursorMoved(v_again), SDOT|NCOL|LNMD|INCL),
+/*  '  move to a mark   */ k(Func::CursorCntKey(m_tomark), MVMT|FRNT|NREL|LNMD|INCL),
 /*  (  not defined      */ NO_FUNC,
 /*  )  not defined      */ NO_FUNC,
 /*  *  not defined      */ NO_FUNC,
-/*  +  mv front next ln */ cursor_cnt_cmd_f(m_updnto, MVMT|FRNT|LNMD),
-/*  ,  reverse [fFtT] cmd*/ cursor_cnt_cmd_f(m__ch, MVMT|INCL),
-/*  -  mv front prev ln */ cursor_cnt_cmd_f(m_updnto, MVMT|FRNT|LNMD),
+/*  +  mv front next ln */ k(Func::CursorCntCmd(m_updnto), MVMT|FRNT|LNMD),
+/*  ,  reverse [fFtT] cmd*/ k(Func::CursorCntCmd(m__ch), MVMT|INCL),
+/*  -  mv front prev ln */ k(Func::CursorCntCmd(m_updnto), MVMT|FRNT|LNMD),
 /*  .  special...       */ NO_FUNC,
-/*  /  forward search   */ cursor_text_f(m_fsrch, MVMT|NREL),
-/*  0  part of count?   */ no_func(ZERO, MVMT|PTMV),
-/*  1  part of count    */ no_func(DIGIT, PTMV),
-/*  2  part of count    */ no_func(DIGIT, PTMV),
-/*  3  part of count    */ no_func(DIGIT, PTMV),
-/*  4  part of count    */ no_func(DIGIT, PTMV),
-/*  5  part of count    */ no_func(DIGIT, PTMV),
-/*  6  part of count    */ no_func(DIGIT, PTMV),
-/*  7  part of count    */ no_func(DIGIT, PTMV),
-/*  8  part of count    */ no_func(DIGIT, PTMV),
-/*  9  part of count    */ no_func(DIGIT, PTMV),
-/*  :  run single EX cmd*/ cursor_text_f(v_1ex, NO_FLAGS),
-/*  ;  repeat [fFtT] cmd*/ cursor_cnt_cmd_f(m__ch, MVMT|INCL),
-/*  <  shift text left  */ cursor_moved_f(v_lshift, SDOT|FRNT|LNMD|INCL),
+/*  /  forward search   */ k(Func::CursorText(m_fsrch), MVMT|NREL),
+/*  0  part of count?   */ k(Func::Zero, MVMT|PTMV),
+/*  1  part of count    */ k(Func::Digit, PTMV),
+/*  2  part of count    */ k(Func::Digit, PTMV),
+/*  3  part of count    */ k(Func::Digit, PTMV),
+/*  4  part of count    */ k(Func::Digit, PTMV),
+/*  5  part of count    */ k(Func::Digit, PTMV),
+/*  6  part of count    */ k(Func::Digit, PTMV),
+/*  7  part of count    */ k(Func::Digit, PTMV),
+/*  8  part of count    */ k(Func::Digit, PTMV),
+/*  9  part of count    */ k(Func::Digit, PTMV),
+/*  :  run single EX cmd*/ k(Func::CursorText(v_1ex), NO_FLAGS),
+/*  ;  repeat [fFtT] cmd*/ k(Func::CursorCntCmd(m__ch), MVMT|INCL),
+/*  <  shift text left  */ k(Func::CursorMoved(v_lshift), SDOT|FRNT|LNMD|INCL),
 /*  =  not defined      */ NO_FUNC,
-/*  >  shift text right */ cursor_moved_f(v_rshift, SDOT|FRNT|LNMD|INCL),
-/*  ?  backward search  */ cursor_text_f(m_bsrch, MVMT|NREL),
+/*  >  shift text right */ k(Func::CursorMoved(v_rshift), SDOT|FRNT|LNMD|INCL),
+/*  ?  backward search  */ k(Func::CursorText(m_bsrch), MVMT|NREL),
 /*  @  undefined        */ NO_FUNC,
-/*  A  append at EOL    */ cursor_cnt_cmd_f(v_insert, SDOT),
-/*  B  move back Word   */ cursor_cnt_cmd_f(m_bword, MVMT),
-/*  C  change to EOL    */ cursor_eol_f(v_change, SDOT),
-/*  D  delete to EOL    */ cursor_eol_f(v_delete, SDOT),
-/*  E  move end of Word */ cursor_cnt_cmd_f(m_eword, MVMT|INCL),
-/*  F  move bk to char  */ cursor_cnt_key_f(m_Fch, MVMT|INCL),
-/*  G  move to line #   */ cursor_cnt_cmd_f(m_updnto, MVMT|NREL|LNMD|FRNT|INCL),
-/*  H  move to row      */ cursor_cnt_cmd_f(m_row, MVMT|FRNT),
-/*  I  insert at front  */ cursor_cnt_cmd_f(v_insert, SDOT),
-/*  J  join lines       */ cursor_count_f(v_join, SDOT),
-/*  K  look up keyword  */ keyword_f(v_keyword, NO_FLAGS),
-/*  L  move to last row */ cursor_cnt_cmd_f(m_row, MVMT|FRNT),
-/*  M  move to mid row  */ cursor_cnt_cmd_f(m_row, MVMT|FRNT),
-/*  N  reverse prev srch*/ cursor_f(m_Nsrch, MVMT),
-/*  O  insert above line*/ cursor_cnt_cmd_f(v_insert, SDOT),
-/*  P  paste before     */ cursor_cnt_cmd_f(v_paste, NO_FLAGS),
-/*  Q  quit to EX mode  */ no_args_f(v_quit, NO_FLAGS),
-/*  R  overtype         */ cursor_f(v_overtype, SDOT),
-/*  S  change line      */ cursor_moved_f(v_change, SDOT),
-/*  T  move bk to char  */ cursor_cnt_key_f(m_Tch, MVMT|INCL),
-/*  U  undo whole line  */ cursor_f(v_undoline, FRNT),
+/*  A  append at EOL    */ k(Func::CursorCntCmd(v_insert), SDOT),
+/*  B  move back Word   */ k(Func::CursorCntCmd(m_bword), MVMT),
+/*  C  change to EOL    */ k(Func::CursorEol(v_change), SDOT),
+/*  D  delete to EOL    */ k(Func::CursorEol(v_delete), SDOT),
+/*  E  move end of Word */ k(Func::CursorCntCmd(m_eword), MVMT|INCL),
+/*  F  move bk to char  */ k(Func::CursorCntKey(m_Fch), MVMT|INCL),
+/*  G  move to line #   */ k(Func::CursorCntCmd(m_updnto), MVMT|NREL|LNMD|FRNT|INCL),
+/*  H  move to row      */ k(Func::CursorCntCmd(m_row), MVMT|FRNT),
+/*  I  insert at front  */ k(Func::CursorCntCmd(v_insert), SDOT),
+/*  J  join lines       */ k(Func::CursorCount(v_join), SDOT),
+/*  K  look up keyword  */ k(Func::Keyword(v_keyword), NO_FLAGS),
+/*  L  move to last row */ k(Func::CursorCntCmd(m_row), MVMT|FRNT),
+/*  M  move to mid row  */ k(Func::CursorCntCmd(m_row), MVMT|FRNT),
+/*  N  reverse prev srch*/ k(Func::Cursor(m_Nsrch), MVMT),
+/*  O  insert above line*/ k(Func::CursorCntCmd(v_insert), SDOT),
+/*  P  paste before     */ k(Func::CursorCntCmd(v_paste), NO_FLAGS),
+/*  Q  quit to EX mode  */ k(Func::NoArg(v_quit), NO_FLAGS),
+/*  R  overtype         */ k(Func::Cursor(v_overtype), SDOT),
+/*  S  change line      */ k(Func::CursorMoved(v_change), SDOT),
+/*  T  move bk to char  */ k(Func::CursorCntKey(m_Tch), MVMT|INCL),
+/*  U  undo whole line  */ k(Func::Cursor(v_undoline), FRNT),
 /*  V  not defined      */ NO_FUNC,
-/*  W  move forward Word*/ cursor_cnt_cmd_f(m_fword, MVMT),
-/*  X  delete to left   */ cursor_cnt_cmd_f(v_xchar, SDOT),
-/*  Y  yank text        */ cursor_moved_f(v_yank, NCOL),
-/*  Z  save file & exit */ cursor_cnt_key_f(v_xit, NO_FLAGS),
-/*  [  move back section*/ cursor_cnt_key_f(m_bsection, MVMT|LNMD|NREL),
+/*  W  move forward Word*/ k(Func::CursorCntCmd(m_fword), MVMT),
+/*  X  delete to left   */ k(Func::CursorCntCmd(v_xchar), SDOT),
+/*  Y  yank text        */ k(Func::CursorMoved(v_yank), NCOL),
+/*  Z  save file & exit */ k(Func::CursorCntKey(v_xit), NO_FLAGS),
+/*  [  move back section*/ k(Func::CursorCntKey(m_bsection), MVMT|LNMD|NREL),
 /*  \  not defined      */ NO_FUNC,
-/*  ]  move fwd section */ cursor_cnt_key_f(m_fsection, MVMT|LNMD|NREL),
-/*  ^  move to front    */ cursor_f(m_front_wrapper, MVMT),
+/*  ]  move fwd section */ k(Func::CursorCntKey(m_fsection), MVMT|LNMD|NREL),
+/*  ^  move to front    */ k(Func::Cursor(m_front), MVMT),
 /*  _  not defined      */ NO_FUNC,
-/*  `  move to mark     */ cursor_cnt_key_f(m_tomark, MVMT|NREL),
-/*  a  append at cursor */ cursor_cnt_cmd_f(v_insert, SDOT),
-/*  b  move back word   */ cursor_cnt_cmd_f(m_bword, MVMT),
-/*  c  change text      */ cursor_moved_f(v_change, SDOT),
-/*  d  delete op        */ cursor_moved_f(v_delete, SDOT|NCOL),
-/*  e  move end word    */ cursor_cnt_cmd_f(m_eword, MVMT|INCL),
-/*  f  move fwd for char*/ cursor_cnt_key_f(m_fch, MVMT|INCL),
+/*  `  move to mark     */ k(Func::CursorCntKey(m_tomark), MVMT|NREL),
+/*  a  append at cursor */ k(Func::CursorCntCmd(v_insert), SDOT),
+/*  b  move back word   */ k(Func::CursorCntCmd(m_bword), MVMT),
+/*  c  change text      */ k(Func::CursorMoved(v_change), SDOT),
+/*  d  delete op        */ k(Func::CursorMoved(v_delete), SDOT|NCOL),
+/*  e  move end word    */ k(Func::CursorCntCmd(m_eword), MVMT|INCL),
+/*  f  move fwd for char*/ k(Func::CursorCntKey(m_fch), MVMT|INCL),
 /*  g  not defined      */ NO_FUNC,
-/*  h  move left        */ cursor_count_f(m_left, MVMT),
-/*  i  insert at cursor */ cursor_cnt_cmd_f(v_insert, SDOT),
-/*  j  move down        */ cursor_cnt_cmd_f(m_updnto, MVMT|NCOL|LNMD),
-/*  k  move up          */ cursor_cnt_cmd_f(m_updnto, MVMT|NCOL|LNMD),
-/*  l  move right       */ cursor_count_f(m_right, MVMT),
-/*  m  define a mark    */ cursor_cnt_key_f(v_mark, NO_FLAGS),
-/*  n  repeat prev srch */ cursor_f(m_nsrch, MVMT),
-/*  o  insert below line*/ cursor_cnt_cmd_f(v_insert, SDOT),
-/*  p  paste after      */ cursor_cnt_cmd_f(v_paste, NO_FLAGS),
+/*  h  move left        */ k(Func::CursorCount(m_left), MVMT),
+/*  i  insert at cursor */ k(Func::CursorCntCmd(v_insert), SDOT),
+/*  j  move down        */ k(Func::CursorCntCmd(m_updnto), MVMT|NCOL|LNMD),
+/*  k  move up          */ k(Func::CursorCntCmd(m_updnto), MVMT|NCOL|LNMD),
+/*  l  move right       */ k(Func::CursorCount(m_right), MVMT),
+/*  m  define a mark    */ k(Func::CursorCntKey(v_mark), NO_FLAGS),
+/*  n  repeat prev srch */ k(Func::Cursor(m_nsrch), MVMT),
+/*  o  insert below line*/ k(Func::CursorCntCmd(v_insert), SDOT),
+/*  p  paste after      */ k(Func::CursorCntCmd(v_paste), NO_FLAGS),
 /*  q  not defined      */ NO_FUNC,
-/*  r  replace chars    */ cursor_cnt_key_f(v_replace, SDOT),
-/*  s  subst N chars    */ cursor_count_f(v_subst, SDOT),
-/*  t  move fwd to char */ cursor_cnt_key_f(m_tch, MVMT|INCL),
-/*  u  undo             */ cursor_f(v_undo, NO_FLAGS),
+/*  r  replace chars    */ k(Func::CursorCntKey(v_replace), SDOT),
+/*  s  subst N chars    */ k(Func::CursorCount(v_subst), SDOT),
+/*  t  move fwd to char */ k(Func::CursorCntKey(m_tch), MVMT|INCL),
+/*  u  undo             */ k(Func::Cursor(v_undo), NO_FLAGS),
 /*  v  not defined      */ NO_FUNC,
-/*  w  move fwd word    */ cursor_cnt_cmd_f(m_fword, MVMT),
-/*  x  delete character */ cursor_cnt_cmd_f(v_xchar, SDOT),
-/*  y  yank text        */ cursor_moved_f(v_yank, NCOL),
-/*  z  adjust scrn row  */ cursor_cnt_key_f(m_z, NCOL),
-/*  {  back paragraph   */ cursor_count_f(m_bparagraph, MVMT|LNMD),
-/*  |  move to column   */ cursor_count_f(m_tocol, NREL),
-/*  }  fwd paragraph    */ cursor_count_f(m_fparagraph, MVMT|LNMD),
-/*  ~  upper/lowercase  */ cursor_count_f(v_ulcase, SDOT),
+/*  w  move fwd word    */ k(Func::CursorCntCmd(m_fword), MVMT),
+/*  x  delete character */ k(Func::CursorCntCmd(v_xchar), SDOT),
+/*  y  yank text        */ k(Func::CursorMoved(v_yank), NCOL),
+/*  z  adjust scrn row  */ k(Func::CursorCntKey(m_z), NCOL),
+/*  {  back paragraph   */ k(Func::CursorCount(m_bparagraph), MVMT|LNMD),
+/*  |  move to column   */ k(Func::CursorCount(m_tocol), NREL),
+/*  }  fwd paragraph    */ k(Func::CursorCount(m_fparagraph), MVMT|LNMD),
+/*  ~  upper/lowercase  */ k(Func::CursorCount(v_ulcase), SDOT),
 /* DEL not defined      */ NO_FUNC,
 ];
 
@@ -418,9 +326,9 @@ pub fn vi(ed: &mut Editor) -> R<()> {
         let cursor = ed.vars.cursor;
         tcurs = cursor;
         let keyptr = VIKEYS[kp];
-        match keyptr.args {
-            ZERO | DIGIT => {
-                if keyptr.args == ZERO && count == 0 {
+        match keyptr.func {
+            Func::Zero | Func::Digit => {
+                if matches!(keyptr.func, Func::Zero) && count == 0 {
                     tcurs = cursor & LINEMASK;
                 } else {
                     count = count
@@ -429,7 +337,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
                 }
             }
 
-            KEYWORD => 'kw: {
+            Func::Keyword(f) => 'kw: {
                 pfetch(ed, markline(cursor));
                 let ptext = &ed.vars.ptext;
                 let at = |k: usize| ptext.get(k).copied().unwrap_or(0);
@@ -456,39 +364,31 @@ pub fn vi(ed: &mut Editor) -> R<()> {
                 }
                 key = k as i32;
 
-                if let Func::Keyword(f) = keyptr.func {
-                    tcurs = f(ed, &text, tcurs, count)?;
-                }
+                tcurs = f(ed, &text, tcurs, count)?;
                 count = 0;
             }
 
-            NO_ARGS => {
-                if let Func::NoArg(f) = keyptr.func {
-                    f(ed)?;
-                } else {
-                    beep(ed);
-                }
+            Func::NoArg(f) => {
+                f(ed)?;
                 count = 0;
             }
 
-            CURSOR_COUNT => {
-                if let Func::CursorCount(f) = keyptr.func {
-                    tcurs = f(ed, cursor, count)?;
-                }
+            Func::None => {
+                beep(ed);
                 count = 0;
             }
 
-            CURSOR => {
-                if let Func::Cursor(f) = keyptr.func {
-                    tcurs = f(ed, cursor)?;
-                }
+            Func::CursorCount(f) => {
+                tcurs = f(ed, cursor, count)?;
                 count = 0;
             }
 
-            CURSOR_CNT_KEY => 'ck: {
-                let Func::CursorCntKey(f) = keyptr.func else {
-                    break 'ck;
-                };
+            Func::Cursor(f) => {
+                tcurs = f(ed, cursor)?;
+                count = 0;
+            }
+
+            Func::CursorCntKey(f) => 'ck: {
                 if ed.vars.doingdot {
                     tcurs = f(ed, cursor, count, dotkey2)?;
                 } else {
@@ -512,7 +412,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
                 count = 0;
             }
 
-            CURSOR_MOVED => {
+            Func::CursorMoved(_) => {
                 if key == b'&' as i32 || (isascii(key) && isupper(key)) {
                     prevkey = key;
                 }
@@ -531,7 +431,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
                 }
             }
 
-            CURSOR_EOL => {
+            Func::CursorEol(_) => {
                 prevkey = key;
                 pfetch(ed, markline(cursor));
                 if ed.vars.plen == 0 {
@@ -540,14 +440,14 @@ pub fn vi(ed: &mut Editor) -> R<()> {
                     key = b' ' as i32;
                 } else {
                     range = cursor;
-                    tcurs = m_rear(ed, cursor, 1)?;
+                    tcurs = m_rear(ed, cursor)?;
                     key = b'$' as i32;
                 }
                 count = 0;
                 kp = key as usize;
             }
 
-            CURSOR_TEXT => {
+            Func::CursorText(f) => {
                 loop {
                     let mut buf = Vec::new();
                     if vgets(ed, key as u8, &mut buf, 100 - 1)? >= 0 {
@@ -556,10 +456,8 @@ pub fn vi(ed: &mut Editor) -> R<()> {
 
                         let mut text = vec![key as u8];
                         text.extend_from_slice(&buf);
-                        if let Func::CursorText(f) = keyptr.func {
-                            let c = ed.vars.cursor;
-                            tcurs = f(ed, c, &text)?;
-                        }
+                        let c = ed.vars.cursor;
+                        tcurs = f(ed, c, &text)?;
                     } else {
                         if ed.vars.exwrote || ed.vars.mode == MODE_COLON {
                             redraw(ed, MARK_UNSET, false);
@@ -573,14 +471,10 @@ pub fn vi(ed: &mut Editor) -> R<()> {
                 count = 0;
             }
 
-            CURSOR_CNT_CMD => {
-                if let Func::CursorCntKey(f) = keyptr.func {
-                    tcurs = f(ed, cursor, count, key)?;
-                }
+            Func::CursorCntCmd(f) => {
+                tcurs = f(ed, cursor, count, key)?;
                 count = 0;
             }
-
-            _ => {}
         }
 
         if ed.vars.mode != MODE_VI {
@@ -589,7 +483,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
 
         let keyptr = VIKEYS[kp];
         let c = ed.vars.cursor;
-        if keyptr.args == CURSOR_MOVED {
+        if matches!(keyptr.func, Func::CursorMoved(_)) {
             tcurs = adjmove(ed, c, tcurs, 0);
         } else {
             tcurs = adjmove(ed, c, tcurs, keyptr.flags as i32);
@@ -628,7 +522,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
             }
 
             tcurs = match pk.func {
-                Func::CursorMoved(f) => f(ed, range, tcurs)?,
+                Func::CursorMoved(f) | Func::CursorEol(f) => f(ed, range, tcurs)?,
                 _ => MARK_UNSET,
             };
             let c = ed.vars.cursor;
@@ -667,7 +561,7 @@ pub fn adjmove(ed: &mut Editor, old: Mark, new: Mark, flags: i32) -> Mark {
     pfetch(ed, markline(new));
 
     if flags & FRNT != 0 {
-        new = match m_front(ed, new, 1) {
+        new = match m_front(ed, new) {
             Ok(m) => m,
             Err(_) => {
                 os::rearm_sigint();
@@ -727,27 +621,27 @@ mod tests {
     #[test]
     fn vikeys_table_matches_c() {
         assert_eq!(VIKEYS.len(), 128);
-        assert_eq!(VIKEYS[b'0' as usize].args, ZERO);
+        assert!(matches!(VIKEYS[b'0' as usize].func, Func::Zero));
         assert_eq!(VIKEYS[b'0' as usize].flags, MVMT | PTMV);
         for d in b'1'..=b'9' {
-            assert_eq!(VIKEYS[d as usize].args, DIGIT);
+            assert!(matches!(VIKEYS[d as usize].func, Func::Digit));
         }
-        assert_eq!(VIKEYS[b'C' as usize].args, CURSOR_EOL);
+        assert!(matches!(VIKEYS[b'C' as usize].func, Func::CursorEol(_)));
         assert_eq!(VIKEYS[b'd' as usize].flags, SDOT | NCOL);
         assert_eq!(
             VIKEYS[b'G' as usize].flags,
             MVMT | NREL | LNMD | FRNT | INCL
         );
-        assert_eq!(VIKEYS[b':' as usize].args, CURSOR_TEXT);
-        assert_eq!(VIKEYS[b'#' as usize].args, KEYWORD);
-        assert_eq!(VIKEYS[b'~' as usize].args, CURSOR_COUNT);
-        assert_eq!(VIKEYS[b'z' as usize].args, CURSOR_CNT_KEY);
-        assert_eq!(VIKEYS[b'x' as usize].args, CURSOR_CNT_CMD);
+        assert!(matches!(VIKEYS[b':' as usize].func, Func::CursorText(_)));
+        assert!(matches!(VIKEYS[b'#' as usize].func, Func::Keyword(_)));
+        assert!(matches!(VIKEYS[b'~' as usize].func, Func::CursorCount(_)));
+        assert!(matches!(VIKEYS[b'z' as usize].func, Func::CursorCntKey(_)));
+        assert!(matches!(VIKEYS[b'x' as usize].func, Func::CursorCntCmd(_)));
         assert!(matches!(VIKEYS[b'.' as usize].func, Func::None));
         assert!(matches!(VIKEYS[127].func, Func::None));
         let defined = VIKEYS
             .iter()
-            .filter(|k| !matches!(k.func, Func::None))
+            .filter(|k| !matches!(k.func, Func::None | Func::Zero | Func::Digit))
             .count();
         assert_eq!(defined, 128 - 29 - 10);
     }

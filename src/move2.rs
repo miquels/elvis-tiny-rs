@@ -151,7 +151,7 @@ pub fn m_fsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
                     msg(ed, b"search offset too big", &[]);
                     return Ok(MARK_UNSET);
                 }
-                return m_front(ed, mark_at_line(l), 0);
+                return m_front(ed, mark_at_line(l));
             }
             return Ok(mark_at_line(l) + (pos + start) as Mark);
         }

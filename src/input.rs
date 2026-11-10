@@ -104,8 +104,8 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
                         b'l' => cursor + 1,
                         b'b' => m_bword(ed, cursor, 0, b'b' as i32)?,
                         b'w' => m_fword(ed, cursor, 0, b'w' as i32)?,
-                        b'^' => m_front(ed, cursor, 0)?,
-                        b'$' => m_rear(ed, cursor, 0)?,
+                        b'^' => m_front(ed, cursor)?,
+                        b'$' => m_rear(ed, cursor)?,
                         k if k == ctrl(b'B') || k == ctrl(b'F') => {
                             m_scroll(ed, cursor, 0, k as i32)?
                         }
@@ -176,7 +176,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
                     if ed.vars.mark[27] != 0 {
                         ed.vars.cursor = ed.vars.mark[27];
                     } else {
-                        ed.vars.cursor = m_front(ed, cursor, 0)?;
+                        ed.vars.cursor = m_front(ed, cursor)?;
                     }
                     to = ed.vars.cursor;
                 }
@@ -289,7 +289,7 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
                     if ed.opts.o_showmatch[0] != 0 && b")}]".contains(&key[0]) {
                         let c = ed.vars.cursor;
                         redraw(ed, c, true);
-                        m = m_match(ed, c - 1, 0)?;
+                        m = m_match(ed, c - 1)?;
                         if markline(m) >= ed.vars.topline
                             && markline(m) <= botline(ed.vars.topline, ed.curses.lines)
                         {
