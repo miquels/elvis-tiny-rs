@@ -37,9 +37,10 @@ mod vi_h;
 
 use crate::opts::Opt;
 use crate::vi_h::Cmd;
+use crate::vi_h::Mode;
 use std::os::unix::ffi::OsStrExt;
 
-use vi_h::{MARK_FIRST, MODE_EX, MODE_QUIT, MODE_VI, WHEN_INMV, WHEN_VICMD, ch};
+use vi_h::{MARK_FIRST, WHEN_INMV, WHEN_VICMD, ch};
 
 // C: main.c:main
 fn main() {
@@ -56,18 +57,18 @@ fn main() {
 
     match argv.first().and_then(|a| a.last().copied()).unwrap_or(0) {
         b'x' => {
-            ed.vars.mode = MODE_EX;
+            ed.vars.mode = Mode::Ex;
         }
         b'w' => {
-            ed.vars.mode = MODE_VI;
+            ed.vars.mode = Mode::Vi;
             ed.opts.set(Opt::Readonly, true);
         }
         b't' => {
-            ed.vars.mode = MODE_VI;
+            ed.vars.mode = Mode::Vi;
             ed.opts.set(Opt::Inputmode, true);
         }
         _ => {
-            ed.vars.mode = MODE_VI;
+            ed.vars.mode = Mode::Vi;
         }
     }
 
@@ -136,11 +137,11 @@ fn main() {
             }
 
             b'v' => {
-                ed.vars.mode = MODE_VI;
+                ed.vars.mode = Mode::Vi;
             }
 
             b'e' => {
-                ed.vars.mode = MODE_EX;
+                ed.vars.mode = Mode::Ex;
             }
             b'i' => {
                 ed.opts.set(Opt::Inputmode, true);
@@ -224,7 +225,7 @@ fn main() {
         let _ = ex::doexcmd(ed, cmd);
     }
 
-    while ed.vars.mode != MODE_QUIT {
+    while ed.vars.mode != Mode::Quit {
         let mut jumped = false;
         loop {
             if jumped {
@@ -233,8 +234,8 @@ fn main() {
             os::trap_sigint();
 
             let r = match ed.vars.mode {
-                MODE_VI => vi::vi(ed),
-                MODE_EX => ex::ex(ed),
+                Mode::Vi => vi::vi(ed),
+                Mode::Ex => ex::ex(ed),
                 _ => Ok(()),
             };
             if r.is_err() {

@@ -2,6 +2,7 @@
 //! primitives live in `os.rs`.  No module state.
 
 use crate::opts::Opt;
+use crate::vi_h::Mode;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 
@@ -13,7 +14,7 @@ use crate::os::{self, ShellRun, SpawnOpts};
 use crate::tio::{Arg, msg, sprintf};
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
-use crate::vi_h::{BLKSIZE, MODE_COLON, MODE_VI, MODIFIED, Mark, R, cstr};
+use crate::vi_h::{BLKSIZE, MODIFIED, Mark, R, cstr};
 
 // C: system.c:elvis_system
 /// `None` is `cmd == o_shell` (run an interactive shell).
@@ -21,8 +22,8 @@ pub fn elvis_system(ed: &mut Editor, cmd: Option<&[u8]>) -> i32 {
     let status;
 
     if ed.opts.on(Opt::Warn) && ed.vars.viflags.tstflag(MODIFIED) {
-        if ed.vars.mode == MODE_VI {
-            ed.vars.mode = MODE_COLON;
+        if ed.vars.mode == Mode::Vi {
+            ed.vars.mode = Mode::Colon;
         }
         let name = ed.vars.origname.clone();
         msg(
@@ -37,7 +38,7 @@ pub fn elvis_system(ed: &mut Editor, cmd: Option<&[u8]>) -> i32 {
     // The C child reports a failed exec with msg(), which shows up only when
     // not in visual mode.
     let mut fail = Vec::new();
-    if ed.vars.mode != MODE_VI {
+    if ed.vars.mode != Mode::Vi {
         fail = sprintf(b"execle(\"%s\", ...) failed", &[Arg::S(&shell)]);
         fail.extend_from_slice(b"\n\r");
     }

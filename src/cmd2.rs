@@ -14,9 +14,10 @@ use crate::regsub::regsub;
 use crate::system::filter;
 use crate::tio::{Arg, exrefresh, msg, sprintf, vgets};
 use crate::vars::Editor;
+use crate::vi_h::Mode;
 use crate::vi_h::{
-    BLKSIZE, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, MODE_VI, Mark, R, ch, cstr, mark_at_line,
-    mark_last, markidx, markline, schar,
+    BLKSIZE, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, Mark, R, ch, cstr, mark_at_line, mark_last,
+    markidx, markline, schar,
 };
 
 const BLK: Mark = BLKSIZE as Mark;
@@ -109,7 +110,7 @@ pub fn cmd_substitute(
     let optg = ed.cmd2.cmd_substitute_optg;
     let optc = ed.cmd2.cmd_substitute_optc;
 
-    if (optc || optp) && ed.vars.mode == MODE_VI {
+    if (optc || optp) && ed.vars.mode == Mode::Vi {
         ed.curses.addch(b'\n');
         exrefresh(ed);
     }

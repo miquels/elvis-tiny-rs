@@ -1,6 +1,7 @@
 //! `cmd1.c`: ex commands (part 1).
 
 use crate::opts::Opt;
+use crate::vi_h::Mode;
 use std::fs::File;
 
 use crate::blk::{afterdo, beforedo};
@@ -16,9 +17,8 @@ use crate::tio::{Arg, dumpkey, exrefresh, mapkey, msg};
 use crate::tmp::{elvis_access, tmpabort, tmpend, tmpsave, tmpstart};
 use crate::vars::{ARGS_SIZE, Editor, NAME_SIZE};
 use crate::vi_h::{
-    BLKSIZE, COPYING, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, MODE_COLON, MODE_EX, MODE_QUIT,
-    MODE_VI, MODIFIED, Mark, R, READONLY, VERSION, WHEN_VICMD, WHEN_VIINP, WHEN_VIREP, ch, cstr,
-    isspace, mark_at_line, markline, schar,
+    BLKSIZE, COPYING, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, MODIFIED, Mark, R, READONLY,
+    VERSION, WHEN_VICMD, WHEN_VIINP, WHEN_VIREP, ch, cstr, isspace, mark_at_line, markline, schar,
 };
 
 /// Capacity of `prevextra[80]`.
@@ -159,7 +159,7 @@ pub fn cmd_shell(
         filter(ed, frommark, tomark, &extra)?;
     }
 
-    let quietly = ed.vars.mode == MODE_EX;
+    let quietly = ed.vars.mode == Mode::Ex;
     resume_curses(ed, quietly);
     Ok(())
 }
@@ -412,7 +412,7 @@ pub fn cmd_xit(
 
     if cmd == Cmd::Quit {
         if tmpabort(ed, bang) {
-            ed.vars.mode = MODE_QUIT;
+            ed.vars.mode = Mode::Quit;
         } else {
             msg(ed, b"Use q! to abort changes, or wq to save changes", &[]);
         }
@@ -422,7 +422,7 @@ pub fn cmd_xit(
             ed.vars.viflags.setflag(MODIFIED);
         }
         if tmpend(ed, bang) {
-            ed.vars.mode = MODE_QUIT;
+            ed.vars.mode = Mode::Quit;
         } else {
             msg(
                 ed,
@@ -485,7 +485,7 @@ pub fn cmd_args(
             col += addcols;
         }
         let mode = ed.vars.mode;
-        if (mode == MODE_EX || mode == MODE_COLON || scrolled) && col != 0 {
+        if (mode == Mode::Ex || mode == Mode::Colon || scrolled) && col != 0 {
             ed.curses.addch(b'\n');
         }
         exrefresh(ed);
@@ -719,7 +719,7 @@ pub fn cmd_visual(
     _bang: bool,
     _extra: &[u8],
 ) -> R<()> {
-    ed.vars.mode = MODE_VI;
+    ed.vars.mode = Mode::Vi;
     msg(ed, b"", &[]);
     Ok(())
 }

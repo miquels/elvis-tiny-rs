@@ -17,10 +17,11 @@ use crate::system::{elvis_system, filter};
 use crate::tio::{Arg, exrefresh, getkey, msg, sprintf, vgets};
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
+use crate::vi_h::Mode;
 use crate::vi_h::atol;
 use crate::vi_h::{
-    BLKSIZE, Cmd, Interrupted, MARK_UNSET, MODE_COLON, MODE_EX, MODE_VI, Mark, R, WHEN_VIINP,
-    WHEN_VIREP, ch, cstr, default, mark_at_line, markidx, markline,
+    BLKSIZE, Cmd, Interrupted, MARK_UNSET, Mark, R, WHEN_VIINP, WHEN_VIREP, ch, cstr, default,
+    mark_at_line, markidx, markline,
 };
 
 #[derive(Default)]
@@ -36,7 +37,7 @@ const V_ULCASE_FLIP: &[u8] = b"aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXy
 pub fn v_quit(ed: &mut Editor) -> R<Mark> {
     let lines = ed.curses.lines;
     ed.curses.mv(lines - 1, 0);
-    ed.vars.mode = MODE_EX;
+    ed.vars.mode = Mode::Ex;
     Ok(ed.vars.cursor)
 }
 
@@ -48,19 +49,19 @@ pub fn v_redraw(ed: &mut Editor) -> R<Mark> {
 
 // C: vcmd.c:v_1ex
 pub fn v_1ex(ed: &mut Editor, _m: Mark, text: &[u8]) -> R<Mark> {
-    ed.vars.exwrote = ed.vars.mode == MODE_COLON;
+    ed.vars.exwrote = ed.vars.mode == Mode::Colon;
     doexcmd(ed, text)?;
     exrefresh(ed);
 
-    if ed.vars.mode != MODE_VI && ed.vars.mode != MODE_COLON {
+    if ed.vars.mode != Mode::Vi && ed.vars.mode != Mode::Colon {
         return Ok(ed.vars.cursor);
     }
 
     if ed.vars.exwrote {
-        ed.vars.mode = MODE_VI;
+        ed.vars.mode = Mode::Vi;
         msg(ed, b"[Hit <RETURN> to continue]", &[]);
         if getkey(ed, 0)? == b':' as i32 {
-            ed.vars.mode = MODE_COLON;
+            ed.vars.mode = Mode::Colon;
             ed.curses.addch(b'\n');
         } else {
             redraw(ed, MARK_UNSET, false);
@@ -467,7 +468,7 @@ pub fn v_keyword(ed: &mut Editor, keyword: &[u8], m: Mark, _cnt: i64) -> R<Mark>
         ed.curses.addstr(b"<<< failed >>>\n");
     }
     resume_curses(ed, false);
-    ed.vars.mode = MODE_VI;
+    ed.vars.mode = Mode::Vi;
     redraw(ed, MARK_UNSET, false);
     ed.opts.set(Opt::Warn, waswarn);
 

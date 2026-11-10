@@ -1080,11 +1080,11 @@ fn resume_curses_prompt(ed: &mut Editor) {
     let mut buf = [0u8; 20];
     let _ = crate::config::ttyread(&mut buf);
     if buf[0] == b':' {
-        ed.vars.mode = crate::vi_h::MODE_COLON;
+        ed.vars.mode = crate::vi_h::Mode::Colon;
         ed.curses.addch(b'\n');
         ed.curses.refresh();
     } else {
-        ed.vars.mode = crate::vi_h::MODE_VI;
+        ed.vars.mode = crate::vi_h::Mode::Vi;
         crate::redraw::redraw(ed, crate::vi_h::MARK_UNSET, false);
     }
     ed.vars.exwrote = false;

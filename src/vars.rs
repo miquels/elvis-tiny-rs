@@ -3,7 +3,7 @@
 
 use std::fs::File;
 
-use crate::vi_h::{Blk, MAXBLKS, Mark, NMARKS, Viflags};
+use crate::vi_h::{Blk, MAXBLKS, Mark, Mode, NMARKS, Viflags};
 use crate::{
     blk, cmd1, cmd2, curses, cut, ex, misc, move2, move3, opts, recycle, redraw, regexp, regsub,
     tio, tmp, vcmd, vi,
@@ -26,7 +26,7 @@ pub struct Vars {
     pub prevline: i64,
     pub mark: [Mark; NMARKS],
     pub cursor: Mark,
-    pub mode: i32,
+    pub mode: Mode,
     pub args: Vec<u8>,
     pub argno: i32,
     pub nargs: i32,
@@ -68,7 +68,7 @@ impl Default for Vars {
             prevline: 1,
             mark: [0; NMARKS],
             cursor: 0,
-            mode: 0,
+            mode: Mode::Ex,
             args: Vec::new(),
             argno: 0,
             nargs: 0,

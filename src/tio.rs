@@ -1,6 +1,7 @@
 //! `tio.c`: terminal input, messages, and key mapping.
 
 use crate::opts::Opt;
+use crate::vi_h::Mode;
 use std::fs::File;
 
 use crate::config::{MAXMAPS, ttyread, ttywrite, twrite};
@@ -11,8 +12,8 @@ use crate::redraw::redraw;
 use crate::tmp::tmpabort;
 use crate::vars::Editor;
 use crate::vi_h::{
-    Interrupted, LONGKEY, MARK_UNSET, MODE_EX, MODE_VI, R, WHEN_EX, WHEN_INMV, WHEN_MSG,
-    WHEN_VICMD, WHEN_VIINP, WHEN_VIREP, ch, cstr, ctrl, schar,
+    Interrupted, LONGKEY, MARK_UNSET, R, WHEN_EX, WHEN_INMV, WHEN_MSG, WHEN_VICMD, WHEN_VIINP,
+    WHEN_VIREP, ch, cstr, ctrl, schar,
 };
 
 /// Capacity of `pmsg[80]`.
@@ -307,7 +308,7 @@ pub fn vgets(ed: &mut Editor, prompt: u8, buf: &mut Vec<u8>, bsize: usize) -> R<
                     ed.curses.addch(b'\x08');
                     c -= 1;
                 }
-                if ed.vars.mode == MODE_EX {
+                if ed.vars.mode == Mode::Ex {
                     ed.curses.clrtoeol();
                 }
                 tab -= widths[len];
@@ -409,7 +410,7 @@ fn format_pmsg(fmt: &[u8], args: &[Arg<'_>]) -> Vec<u8> {
 /// `msg(fmt, ...)`.  If the `[More...]` wait is interrupted, the interrupt
 /// is re-armed (`os::rearm_sigint`) for the next checkpoint.
 pub fn msg(ed: &mut Editor, fmt: &[u8], args: &[Arg<'_>]) {
-    if ed.vars.mode != MODE_VI {
+    if ed.vars.mode != Mode::Vi {
         ed.tio.pmsg = format_pmsg(fmt, args);
         let pmsg = std::mem::take(&mut ed.tio.pmsg);
         ed.curses.qaddstr(&pmsg);
@@ -437,7 +438,7 @@ pub fn exrefresh(ed: &mut Editor) {
     } else {
         ed.curses.wqrefresh();
     }
-    if ed.vars.mode != MODE_VI {
+    if ed.vars.mode != Mode::Vi {
         ed.tio.manymsgs = false;
     }
 }
@@ -833,7 +834,7 @@ mod tests {
         assert_eq!(ed.tio.mapped[0].cooked, b"x");
         mapkey(&mut ed, b"v", b"", WHEN_VICMD as i16, None);
         assert_eq!(ed.tio.mapped[0].len, 0);
-        ed.vars.mode = MODE_EX;
+        ed.vars.mode = Mode::Ex;
         for i in 0..MAXMAPS {
             mapkey(&mut ed, &[b'a' + i as u8], b"z", WHEN_VICMD as i16, None);
         }
@@ -846,7 +847,7 @@ mod tests {
     #[test]
     fn dumpkey_and_savekeys_format() {
         let mut ed = Editor::new();
-        ed.vars.mode = MODE_EX;
+        ed.vars.mode = Mode::Ex;
         ed.opts.set(Opt::Exrefresh, false);
         mapkey(
             &mut ed,
@@ -887,7 +888,7 @@ mod tests {
     #[test]
     fn vgets_edits_line() {
         let mut ed = Editor::new();
-        ed.vars.mode = MODE_EX;
+        ed.vars.mode = Mode::Ex;
         feed(&mut ed, b"ab\tc\x08\x16\x1bd\r");
         let mut buf = Vec::new();
         assert_eq!(vgets(&mut ed, b':', &mut buf, 80).unwrap(), 5);
@@ -906,7 +907,7 @@ mod tests {
     #[test]
     fn msg_truncates_and_queues() {
         let mut ed = Editor::new();
-        ed.vars.mode = MODE_VI;
+        ed.vars.mode = Mode::Vi;
         msg(&mut ed, b"%s", &[Arg::S(&[b'x'; 200])]);
         assert!(ed.tio.manymsgs);
         assert_eq!(ed.tio.pmsg.len(), PMSG_SIZE - 1);

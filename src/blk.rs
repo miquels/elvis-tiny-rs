@@ -1,6 +1,7 @@
 //! `blk.c`: the block cache for the temporary file, plus do/undo.
 
 use crate::opts::Opt;
+use crate::vi_h::Mode;
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 
@@ -9,8 +10,7 @@ use crate::redraw::redraw;
 use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::{
-    BLKSIZE, Blk, INFINITY, MARK_UNSET, MAXBLKS, MODE_COLON, MODE_VI, MODIFIED, Mark, mark_last,
-    markline,
+    BLKSIZE, Blk, INFINITY, MARK_UNSET, MAXBLKS, MODIFIED, Mark, mark_last, markline,
 };
 
 pub const NBUFS: usize = 5;
@@ -366,10 +366,10 @@ pub fn abortdo(ed: &mut Editor) {
         afterdo(ed);
     }
 
-    if ed.vars.mode == MODE_COLON {
-        ed.vars.mode = MODE_VI;
+    if ed.vars.mode == Mode::Colon {
+        ed.vars.mode = Mode::Vi;
     }
-    if ed.vars.mode == MODE_VI {
+    if ed.vars.mode == Mode::Vi {
         redraw(ed, MARK_UNSET, false);
     }
 }

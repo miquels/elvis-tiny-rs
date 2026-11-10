@@ -20,9 +20,10 @@ use crate::vcmd::{
     v_status, v_subst, v_switch, v_tag, v_ulcase, v_undo, v_undoline, v_xchar, v_xit, v_yank,
 };
 use crate::vi_h::LINEMASK;
+use crate::vi_h::Mode;
 use crate::vi_h::{
-    BLKSIZE, MARK_FIRST, MARK_UNSET, MODE_COLON, MODE_VI, Mark, R, WHEN_VICMD, isupper, isword,
-    mark_at_line, mark_last, markidx, markline, schar,
+    BLKSIZE, MARK_FIRST, MARK_UNSET, Mark, R, WHEN_VICMD, isupper, isword, mark_at_line, mark_last,
+    markidx, markline, schar,
 };
 
 #[derive(Default)]
@@ -240,7 +241,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
 
     count = 0;
     prevkey = 0;
-    while ed.vars.mode == MODE_VI {
+    while ed.vars.mode == Mode::Vi {
         if markline(ed.vars.cursor) != ed.vars.u_line {
             ed.vars.u_line = 0;
         }
@@ -458,12 +459,12 @@ pub fn vi(ed: &mut Editor) -> R<()> {
                         let c = ed.vars.cursor;
                         tcurs = f(ed, c, &text)?;
                     } else {
-                        if ed.vars.exwrote || ed.vars.mode == MODE_COLON {
+                        if ed.vars.exwrote || ed.vars.mode == Mode::Colon {
                             redraw(ed, MARK_UNSET, false);
                         }
-                        ed.vars.mode = MODE_VI;
+                        ed.vars.mode = Mode::Vi;
                     }
-                    if ed.vars.mode != MODE_COLON {
+                    if ed.vars.mode != Mode::Colon {
                         break;
                     }
                 }
@@ -476,7 +477,7 @@ pub fn vi(ed: &mut Editor) -> R<()> {
             }
         }
 
-        if ed.vars.mode != MODE_VI {
+        if ed.vars.mode != Mode::Vi {
             break;
         }
 

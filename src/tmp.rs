@@ -1,6 +1,7 @@
 //! `tmp.c`: the temporary file that holds the text being edited.
 
 use crate::opts::Opt;
+use crate::vi_h::Mode;
 use std::fs::File;
 
 use crate::blk::{blkget, blkinit};
@@ -13,7 +14,7 @@ use crate::redraw::redraw;
 use crate::tio::{Arg, msg};
 use crate::vars::Editor;
 use crate::vi_h::{
-    ADDEDNL, BLKSIZE, HADNUL, INFINITY, MARK_FIRST, MARK_UNSET, MAXBLKS, MODE_EX, MODIFIED, NOFILE,
+    ADDEDNL, BLKSIZE, HADNUL, INFINITY, MARK_FIRST, MARK_UNSET, MAXBLKS, MODIFIED, NOFILE,
     READONLY, isalnum, isascii, markline, schar,
 };
 
@@ -27,7 +28,7 @@ pub struct Tmp {
 
 /// `FAIL(why, arg)`: message, then exit 9.
 fn fail(ed: &mut Editor, why: &[u8], arg: Arg<'_>) -> ! {
-    ed.vars.mode = MODE_EX;
+    ed.vars.mode = Mode::Ex;
     msg(ed, why, &[arg]);
     os::sleep_secs(1);
     endwin(ed);
@@ -470,7 +471,7 @@ mod tests {
     use crate::cut::{cut, cutname, paste};
     use crate::misc::fetchline;
     use crate::modify::{add, change, delete};
-    use crate::vi_h::{MODE_VI, mark_at_line};
+    use crate::vi_h::mark_at_line;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static SEQ: AtomicUsize = AtomicUsize::new(0);
@@ -485,7 +486,7 @@ mod tests {
 
     fn editor(dir: &[u8]) -> Editor {
         let mut ed = Editor::new();
-        ed.vars.mode = MODE_VI;
+        ed.vars.mode = Mode::Vi;
         ed.opts.set_str(Opt::Directory, dir);
         ed
     }
@@ -624,7 +625,7 @@ mod tests {
     fn nul_and_long_lines() {
         let dir = testdir();
         let mut ed = editor(&dir);
-        ed.vars.mode = MODE_EX;
+        ed.vars.mode = Mode::Ex;
         let mut content = b"a\0b\n".to_vec();
         content.extend_from_slice(&[b'y'; 2000]);
         start(&mut ed, &dir, &content);

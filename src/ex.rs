@@ -258,7 +258,7 @@ pub fn ex(ed: &mut Editor) -> R<()> {
     ed.vars.significant = false;
     ed.ex.ex_oldline = markline(ed.vars.cursor);
 
-    while ed.vars.mode == MODE_EX {
+    while ed.vars.mode == Mode::Ex {
         let cmdlen = vgets(ed, b':', &mut cmdbuf, 80)?;
         if cmdlen < 0 {
             return Ok(());
@@ -279,7 +279,7 @@ pub fn ex(ed: &mut Editor) -> R<()> {
         if ed.vars.significant || markline(ed.vars.cursor) != ed.ex.ex_oldline {
             ed.vars.significant = false;
             ed.ex.ex_oldline = markline(ed.vars.cursor);
-            if ed.opts.on(Opt::Autoprint) && ed.vars.mode == MODE_EX {
+            if ed.opts.on(Opt::Autoprint) && ed.vars.mode == Mode::Ex {
                 let cur = ed.vars.cursor;
                 cmd_print(ed, cur, cur, Cmd::Print, false, b"")?;
             }
@@ -433,7 +433,7 @@ pub fn doexcmd(ed: &mut Editor, cmdbuf: &[u8]) -> R<()> {
                 || (cmd == Cmd::Write && t0 == b'!')
             {
                 if didsub {
-                    if ed.vars.mode != MODE_EX {
+                    if ed.vars.mode != Mode::Ex {
                         ed.curses.addch(b'\n');
                     }
                     let t = cstr(&ed.vars.tmpblk.c).to_vec();
@@ -525,7 +525,7 @@ pub fn doexcmd(ed: &mut Editor, cmdbuf: &[u8]) -> R<()> {
         tomark = 0;
     }
 
-    if argt & NL != 0 && ed.vars.mode != MODE_EX && !ed.vars.exwrote {
+    if argt & NL != 0 && ed.vars.mode != Mode::Ex && !ed.vars.exwrote {
         ed.curses.addch(b'\n');
         exrefresh(ed);
     }

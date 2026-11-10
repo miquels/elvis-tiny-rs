@@ -316,10 +316,15 @@ pub enum Cmd {
 /*------------------------------------------------------------------------*/
 /* These describe what mode we're in                                        */
 
-pub const MODE_EX: i32 = 1;
-pub const MODE_VI: i32 = 2;
-pub const MODE_COLON: i32 = 3;
-pub const MODE_QUIT: i32 = 4;
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    #[default]
+    Ex,
+    Vi,
+    /// Visual mode, running one ex command typed after `:`.
+    Colon,
+    Quit,
+}
 
 pub const WHEN_VICMD: i32 = 1;
 pub const WHEN_VIINP: i32 = 2;
