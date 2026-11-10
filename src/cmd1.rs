@@ -5,11 +5,10 @@ use crate::opts::Opt;
 use crate::vi_h::Mode;
 use std::fs::File;
 
-use crate::blk::{afterdo, beforedo};
+use crate::blk::{afterdo, beforedo, fetchline};
 use crate::config::{FILEPERMS, TAGS, tread, twrite};
 use crate::curses::{resume_curses, suspend_curses};
 use crate::ex::{doexcmd, linespec, parseptrn};
-use crate::misc::fetchline;
 use crate::opts::{dumpopts, setopts};
 use crate::os;
 use crate::regexp::{regcomp, regexec};

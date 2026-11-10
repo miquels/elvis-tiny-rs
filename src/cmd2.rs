@@ -1,11 +1,10 @@
 //! `cmd2.c`: ex commands (part 2).
 
-use crate::blk::{afterdo, beforedo, undo};
+use crate::blk::{afterdo, beforedo, fetchline, undo};
 use crate::config::tread;
 use crate::cut::{cut, cutname, paste};
 use crate::ex::{doexrc, linespec, parseptrn};
 use crate::fmt::{Arg, sprintf};
-use crate::misc::fetchline;
 use crate::modify::{add, change, delete};
 use crate::opts::Opt;
 use crate::os;

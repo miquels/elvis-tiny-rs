@@ -1,7 +1,7 @@
 //! `move1.c`: basic cursor motions.  No module state.
 
+use crate::blk::{fetchline, pfetch};
 use crate::fmt::Arg;
-use crate::misc::{fetchline, pfetch};
 use crate::opts::Opt;
 use crate::tio::msg;
 use crate::vars::Editor;

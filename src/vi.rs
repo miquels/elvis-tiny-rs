@@ -1,7 +1,7 @@
 //! `vi.c`: the visual-mode command loop.
 
+use crate::blk::{fetchline, pfetch};
 use crate::fmt::Arg;
-use crate::misc::{fetchline, pfetch};
 use crate::move1::{
     m_bparagraph, m_bsection, m_fparagraph, m_front, m_fsection, m_left, m_match, m_rear, m_right,
     m_tocol, m_tomark, m_updnto,

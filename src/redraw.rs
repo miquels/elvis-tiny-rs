@@ -1,7 +1,7 @@
 //! `redraw.c`: screen updates.
 
+use crate::blk::{fetchline, pfetch};
 use crate::curses;
-use crate::misc::{fetchline, pfetch};
 use crate::opts::Opt;
 use crate::vars::Editor;
 use crate::vi_h::LINEMASK;

@@ -1,7 +1,8 @@
 //! `regexp.c` and `regexp.h`: regular expression compiler and matcher.
 
-use crate::misc::regerror;
+use crate::fmt::Arg;
 use crate::opts::Opt;
+use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::{ch, cstr, isalnum, isascii, isupper, schar, tolower};
 
@@ -532,6 +533,11 @@ pub fn regexec(ed: &mut Editor, prog: &mut Regexp, string: &[u8], bolflag: bool)
     }
 
     true
+}
+
+// C: misc.c:regerror
+pub fn regerror(ed: &mut Editor, txt: &[u8]) {
+    msg(ed, b"RE error: %s", &[Arg::S(txt)]);
 }
 
 #[cfg(test)]

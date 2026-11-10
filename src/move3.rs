@@ -1,6 +1,6 @@
 //! `move3.c`: character searches (`f`, `F`, `t`, `T`, `;`, `,`).
 
-use crate::misc::pfetch;
+use crate::blk::pfetch;
 use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::{MARK_UNSET, Mark, R, ch, default, markidx, markline, schar};

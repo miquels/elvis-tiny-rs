@@ -1,7 +1,8 @@
 //! `modify.c`: low-level text changes (`delete`, `add`, `change`).  No module state.
 
-use crate::blk::{BufId, afterdo, beforedo, blkadd, blkdirty, blkget, findblk, locate, skiplines};
-use crate::misc::fetchline;
+use crate::blk::{
+    BufId, afterdo, beforedo, blkadd, blkdirty, blkget, fetchline, findblk, locate, skiplines,
+};
 use crate::tio::msg;
 use crate::vars::Editor;
 use crate::vi_h::{

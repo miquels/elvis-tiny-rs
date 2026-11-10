@@ -34,6 +34,20 @@ pub struct BlkState {
     pub undocurs: Mark,
     pub oldnlines: i64,
     pub oldlnum: [i64; MAXBLKS],
+    pub fetch: FetchCache,
+}
+
+/// `fetchline()`'s function-local statics: where the line after the last
+/// one fetched starts, while `changes` is unchanged.
+#[derive(Default)]
+pub struct FetchCache {
+    pub nextline: i64,
+    pub chglevel: i64,
+    /// Offset into the cached block (C kept a pointer).
+    pub nextscan: usize,
+    /// The cache buffer `nextscan` points into.
+    pub nextbuf: BufId,
+    pub nextlnum: i64,
 }
 
 impl Default for BlkState {
@@ -48,6 +62,7 @@ impl Default for BlkState {
             undocurs: 0,
             oldnlines: 0,
             oldlnum: [0; MAXBLKS],
+            fetch: FetchCache::default(),
         }
     }
 }
@@ -389,4 +404,55 @@ pub fn undo(ed: &mut Editor) -> bool {
     ed.vars.changes += 1;
 
     true
+}
+
+// C: misc.c:fetchline
+/// Returns a copy of line `line` without its NUL terminator.
+pub fn fetchline(ed: &mut Editor, line: i64) -> Vec<u8> {
+    let id;
+    let mut scan;
+
+    // `blkget` bumps `changes` whenever it reuses a buffer, so an unchanged
+    // `changes` means the saved buffer index and offset are still good.
+    if ed.vars.changes == ed.blk.fetch.chglevel && line == ed.blk.fetch.nextline {
+        id = ed.blk.fetch.nextbuf;
+        scan = ed.blk.fetch.nextscan;
+    } else {
+        let i;
+        (i, id, scan) = locate(ed, line);
+        ed.blk.fetch.nextlnum = ed.vars.lnum[i];
+    }
+
+    let c = &ed.blk.buf(id).c;
+    let start = scan.min(BLKSIZE);
+    scan = start;
+    while scan < BLKSIZE && c[scan] != b'\n' {
+        scan += 1;
+    }
+    let text = c[start..scan].to_vec();
+
+    if line < ed.blk.fetch.nextlnum {
+        ed.blk.fetch.nextline = line + 1;
+        ed.blk.fetch.chglevel = ed.vars.changes;
+        ed.blk.fetch.nextscan = scan + 1;
+        ed.blk.fetch.nextbuf = id;
+    } else {
+        ed.blk.fetch.nextline = 0;
+    }
+
+    // fetchline() and pfetch() share state; force pfetch() to refetch.
+    ed.vars.pchgs = 0;
+
+    text
+}
+
+// C: misc.c:pfetch
+/// Copies line `l` into `ed.vars.ptext` (no NUL) and sets `plen`, `pline`, `pchgs`.
+pub fn pfetch(ed: &mut Editor, l: i64) {
+    if l != ed.vars.pline || ed.vars.changes != ed.vars.pchgs {
+        ed.vars.pline = l;
+        ed.vars.ptext = fetchline(ed, ed.vars.pline);
+        ed.vars.plen = ed.vars.ptext.len() as i32;
+        ed.vars.pchgs = ed.vars.changes;
+    }
 }

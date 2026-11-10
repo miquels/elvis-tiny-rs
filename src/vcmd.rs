@@ -1,6 +1,6 @@
 //! `vcmd.c`: visual-mode commands.
 
-use crate::blk::{afterdo, beforedo, undo};
+use crate::blk::{afterdo, beforedo, pfetch, undo};
 use crate::cmd1::{cmd_edit, cmd_file, cmd_tag, cmd_xit};
 use crate::cmd2::{cmd_join, cmd_shift, cmd_substitute};
 use crate::curses::{resume_curses, suspend_curses};
@@ -8,7 +8,6 @@ use crate::cut::{cut, cutname, paste};
 use crate::ex::doexcmd;
 use crate::fmt::{Arg, sprintf};
 use crate::input::input;
-use crate::misc::pfetch;
 use crate::modify::{add, change, delete};
 use crate::move1::m_front;
 use crate::opts::Opt;

@@ -461,9 +461,8 @@ pub fn tmpend(ed: &mut Editor, bang: bool) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::blk::{afterdo, beforedo, undo};
+    use crate::blk::{afterdo, beforedo, fetchline, undo};
     use crate::cut::{cut, cutname, paste};
-    use crate::misc::fetchline;
     use crate::modify::{add, change, delete};
     use crate::vi_h::mark_at_line;
     use std::sync::atomic::{AtomicUsize, Ordering};

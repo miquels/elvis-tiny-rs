@@ -11,7 +11,6 @@ mod cut;
 mod ex;
 mod fmt;
 mod input;
-mod misc;
 mod modify;
 mod move1;
 mod move2;

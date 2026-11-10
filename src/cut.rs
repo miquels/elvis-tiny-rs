@@ -3,10 +3,11 @@
 use std::fs::File;
 use std::os::fd::AsRawFd;
 
-use crate::blk::{afterdo, beforedo, blkget, blksync, findblk, locate, lseek_read, skiplines};
+use crate::blk::{
+    afterdo, beforedo, blkget, blksync, findblk, locate, lseek_read, pfetch, skiplines,
+};
 use crate::config::cutname_fmt;
 use crate::fmt::Arg;
-use crate::misc::pfetch;
 use crate::modify::add;
 use crate::os;
 use crate::tio::msg;

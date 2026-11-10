@@ -1,5 +1,6 @@
 //! `ex.c`: ex command parsing and dispatch.
 
+use crate::blk::pfetch;
 use crate::cmd1::{
     cmd_args, cmd_cd, cmd_edit, cmd_file, cmd_global, cmd_map, cmd_mark, cmd_next, cmd_set,
     cmd_shell, cmd_tag, cmd_version, cmd_visual, cmd_write, cmd_xit,
@@ -10,7 +11,6 @@ use crate::cmd2::{
 };
 use crate::config::{EXRC, tread};
 use crate::fmt::Arg;
-use crate::misc::pfetch;
 use crate::move1::{m_tomark, m_updnto};
 use crate::move2::{m_bsrch, m_fsrch};
 use crate::opts::Opt;

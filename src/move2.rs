@@ -1,7 +1,7 @@
 //! `move2.c`: searching (`/`, `?`, `n`, `N`).
 
+use crate::blk::{fetchline, pfetch};
 use crate::ex::parseptrn;
-use crate::misc::{fetchline, pfetch};
 use crate::move1::m_front;
 use crate::opts::Opt;
 use crate::os::take_sigint;

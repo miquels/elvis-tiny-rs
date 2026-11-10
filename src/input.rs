@@ -1,9 +1,8 @@
 //! `input.c`: text input mode.  No module state.
 
-use crate::blk::{abortdo, afterdo, beforedo, blksync};
+use crate::blk::{abortdo, afterdo, beforedo, blksync, pfetch};
 use crate::cmd2::cmd_shift;
 use crate::cut::{cut, cutname, paste};
-use crate::misc::pfetch;
 use crate::modify::{add, change, delete};
 use crate::move1::{m_front, m_left, m_match, m_rear, m_updnto};
 use crate::move4::m_scroll;

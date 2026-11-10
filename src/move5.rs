@@ -1,6 +1,6 @@
 //! `move5.c`: word motions.  No module state.
 
-use crate::misc::pfetch;
+use crate::blk::pfetch;
 use crate::vars::Editor;
 use crate::vi_h::{
     MARK_UNSET, Mark, R, buildmark, ch, default, isalnum, isascii, isspace, isword, markidx,
