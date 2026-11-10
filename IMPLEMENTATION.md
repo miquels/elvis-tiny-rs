@@ -221,7 +221,7 @@ the ledger before porting.
 | `main.c` | `src/main.rs` | Entry point, startup, main loop, `trapint` |
 | `config.h` | `src/config.rs` | Constants resolved for the shared Unix settings only |
 | `vi.h` | `src/types.rs` | Constants, `Mark` helpers, flag helpers, shared types. Was `vi_h.rs` until the idiomatic-cleanup pass |
-| `curses.h`, `curses.c` | `src/curses.rs` | Header macros become methods or functions |
+| `curses.h`, `curses.c` | `src/curses.rs`, `src/terminfo.rs` | Header macros become methods or functions; `terminfo.rs` replaces the system termcap emulation (section 4.1) |
 | `regexp.h`, `regexp.c` | `src/regexp.rs` | |
 | `vars.c` | `src/vars.rs` | Shared state, plus the `Editor` struct |
 | `blk.c` | `src/blk.rs` | |
@@ -230,9 +230,9 @@ the ledger before porting.
 | `cut.c` | `src/cut.rs` | |
 | `ex.c` | `src/ex.rs` | |
 | `input.c` | `src/input.rs` | |
-| `misc.c` | `src/misc.rs` | |
+| `misc.c` | `src/blk.rs`, `src/regexp.rs` | `fetchline`/`pfetch` in `blk.rs`, `regerror` in `regexp.rs` |
 | `modify.c` | `src/modify.rs` | |
-| `move1.c` to `move5.c` | `src/move1.rs` to `src/move5.rs` | |
+| `move1.c` to `move5.c` | `src/motion/{basic,search,charsearch,screen,word}.rs` | In that order |
 | `opts.c` | `src/opts.rs` | |
 | `recycle.c` | `src/recycle.rs` | |
 | `redraw.c` | `src/redraw.rs` | |
@@ -243,10 +243,11 @@ the ledger before porting.
 | `vcmd.c` | `src/vcmd.rs` | |
 | `vi.c` | `src/vi.rs` | |
 | (new) | `src/os.rs` | The only module with `unsafe` and `libc` |
+| (new) | `src/fmt.rs` | `sprintf` and number formatting, shared by `tio.rs` and `terminfo.rs` |
 
-No other modules may be added except `#[cfg(test)]` test modules inside these
-files. A helper needed by several modules goes in the module where C defined it,
-or in `vi_h.rs` if it replaces a `vi.h` macro.
+Add a module only with a row in this table; `#[cfg(test)]` test modules
+inside these files need no row. A helper needed by several modules goes in the module where C defined it,
+or in `types.rs` if it replaces a `vi.h` macro.
 
 ### 2.3 Ledger rules
 
@@ -826,7 +827,7 @@ binary (for example `std::process::id` and `std::fs::hard_link`). Every
 ### 4.1 The terminfo reader
 
 The port originally used the `terminfo-lean` 0.1.2 crate. It was replaced on
-2026-11-10 by a small reader in `curses.rs` to shrink the binary (about 16K of
+2026-11-10 by a small reader, now in `terminfo.rs`, to shrink the binary (about 16K of
 `__text`, see section 7.2). The reader has three parts:
 
 - `read_terminfo(term)` finds and reads the compiled file. It searches
@@ -835,11 +836,11 @@ The port originally used the `terminfo-lean` 0.1.2 crate. It was replaced on
   `/usr/share/terminfo`, `/usr/lib/terminfo`. Each directory is tried with
   both the `x/xterm` and the `78/xterm` layouts. This is the same order
   `terminfo-lean` used.
-- `parse_terminfo(bytes)` reads the header, booleans, numbers and strings of
+- `Terminfo::parse(bytes)` reads the header, booleans, numbers and strings of
   the 16-bit (0x011a) or 32-bit (0x021e) format into a `Terminfo` struct
   indexed in standard `term.h` order. A bad magic number, counts above the
   standard 44/39/414, truncation, a boolean other than 0 or 1, or an
-  unterminated string makes `tgetent` fail. The extended (user-defined)
+  unterminated string makes `Terminfo::load` (`tgetent`) fail. The extended (user-defined)
   section is ignored, because none of the capabilities in section 4.2 lives
   there.
 - `tparm(vars, cap, params)` expands parameterized strings with numeric
@@ -850,7 +851,7 @@ The port originally used the `terminfo-lean` 0.1.2 crate. It was replaced on
   parameters (`%s`, `%l`) are not supported. A malformed string or a stack
   underflow returns `None`, and that move outputs nothing.
 
-`tgetflag` and `tgetnum` map the two-letter termcap names in section 4.2
+`Terminfo::flag` and `Terminfo::num` (`tgetflag`, `tgetnum`) map the two-letter termcap names in section 4.2
 directly to capability indexes. `tgetstr` takes a slot of `Curses::caps`;
 the `NAMES` and `TINFO` tables give each slot's termcap name and terminfo
 index, and `starttcap` loads the slots from a list of `MUST`, `MAY` and
@@ -1490,12 +1491,16 @@ Implications:
   | `cargo build --release` | 420544 | 360448 | 286732 |
   | `scripts/build-tiny.sh` | 153936 | 114688 | 97512 |
 
+  After the idiomatic cleanup (checkpoint 5) the `__text` sections are
+  281356 (`cargo build --release`) and 91792 (`scripts/build-tiny.sh`); the
+  file and `__TEXT` sizes of the tiny build are 153872 and 114688.
+
   On arm64 macOS the `__TEXT` segment, and so the file size, grows in 16K
   pages; compare the `__text` section. `opt-level = "s"`,
   `-Zfmt-debug=none`, `-Zlocation-detail=none` and a zero inline threshold
   were tried on the tiny build and did not help (`s` adds about 25K).
 
-  Before `terminfo-lean` was replaced by the reader in `curses.rs`, the
+  Before `terminfo-lean` was replaced by the reader in `terminfo.rs`, the
   two Rust builds were 376832 and 147456 bytes of `__TEXT`.
 
   Most of the stable build's extra size is std's panic printing and
@@ -1667,3 +1672,20 @@ Add entries as they are found. Candidate entries to evaluate: line length over
 - Commands and results: `cargo fmt`, `cargo clippy --release --all-targets -- -D warnings` → pass; `cargo test --release` → 75 passed (capprobe goldens and exit paths ran against the compiled fixtures); `tests/harness/run.py --suite all` on the stable and the tiny binary → 87 runs each, only `startup/small-screen` (B4) differs.
 - Sizes: section 7.2 (tiny `__text` 104804 → 97512).
 - Next step: as before.
+
+### Checkpoint 2026-11-10 (5) — idiomatic cleanup
+
+- Host: macOS 27.2, arm64, rustc 1.99.1.
+- Scope: make the port more idiomatic without growing the binary. One commit per step after `eb80ccf`. Behaviour is unchanged; the harness results match the previous checkpoint.
+- Changes:
+  - Types: `Func` enum for the vi key table, `Opt` enum with `Opts` accessors, `Cmd` enum, `Mode` enum, `When` bit-flag newtype, curses `Need` enum. Functions that returned C status codes return `bool`, `Option` or `R<bool>` (`lseek_*`, `elvis_system`, `filter`, regexp matching, `vgets`). `input` keys are `u8`.
+  - Data: cut buffers are `Cut::bufs: [CutBuf; 36]` with `phys: Vec<u16>` and `fd: Option<i32>`; the recycle bitmap is private with methods; the move3, move2, ex, cmd1 and cmd2 statics are in `Motion` and `ex::ExState` with descriptive names.
+  - Modules: `fmt.rs` (`Arg`, `sprintf`, `put_num`) out of `tio.rs`; `misc.rs` removed (`fetchline`/`pfetch` in `blk.rs`, `regerror` in `regexp.rs`); `move1.rs`–`move5.rs` became `motion/{basic,search,charsearch,screen,word}.rs`; `terminfo.rs` out of `curses.rs`; `vi_h.rs` renamed `types.rs`.
+  - Methods: `Tio::countmaps`, `BlkState::init`, `Cut::needs`/`select`, `Curses::suspend`/`resume` (C `endwin` and `suspend_curses` are both `suspend`), `Redraw::idx2col`, `Terminfo::{load, parse, flag, num, screensize, trim_sgr0}`.
+  - `#![allow(dead_code)]` removed from `main.rs` together with the dead items it hid (M9 item).
+  - Fewer copies: `idx2col` callers, `pmsg`, `tmpstart`, `prevorig`.
+  - Test fix: `os::tests::child_closes_descriptors_3_to_59` failed whenever the kept descriptor was fd 10, because `sh` saves stdout on fd 10 for `if …; fi > file`. The command now uses `exec > file`.
+- Tried and rejected because of size: `Option` for `prevkey`/`firstkey` (+12…+100), `KeyMap::rawin` as `Vec` (+1064), `usize` lengths in `KeyMap` (+190) and `Tio` (+1500), `Option` from `countmaps` (+28) and `allocate`, an `ExArgs` struct for the `cmd_*` signature (+412). Kept as they are: tables over `match`, `#[inline(never)]` on `vi`/`initscr`/`initopts`/`cutend`, no `core::fmt`, `Mark` as `i64`, the regex program bytes.
+- Commands and results: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` → pass; `cargo test` → 76 passed (12 consecutive full runs after the fd 10 fix); `tests/harness/run.py --suite all` on the stable and the tiny binary → 88 runs each, only `startup/small-screen` (B4) differs.
+- Sizes: section 7.2 (tiny `__text` 97512 → 91792, stable 286732 → 281356).
+- Next step: user review of B1–B18; Linux verification; M9.
