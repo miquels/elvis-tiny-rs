@@ -15,9 +15,8 @@ use crate::system::filter;
 use crate::tio::{Arg, exrefresh, msg, sprintf, vgets};
 use crate::vars::Editor;
 use crate::vi_h::{
-    BLKSIZE, CMD_APPEND, CMD_CHANGE, CMD_COPY, CMD_LIST, CMD_MOVE, CMD_NUMBER, CMD_SHIFTR,
-    CMD_SUBAGAIN, CMD_SUBSTITUTE, CMD_YANK, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, MODE_VI,
-    Mark, R, ch, cstr, mark_at_line, mark_last, markidx, markline, schar,
+    BLKSIZE, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, MODE_VI, Mark, R, ch, cstr, mark_at_line,
+    mark_last, markidx, markline, schar,
 };
 
 const BLK: Mark = BLKSIZE as Mark;
@@ -44,7 +43,7 @@ pub fn cmd_substitute(
     buf.push(0);
     let mut subst: Vec<u8>;
     let mut sidx = 0;
-    let re = if cmd == CMD_SUBAGAIN {
+    let re = if cmd == Cmd::SubAgain {
         subst = if ed.opts.on(Opt::Magic) {
             b"~".to_vec()
         } else {
@@ -72,7 +71,7 @@ pub fn cmd_substitute(
         return Ok(());
     };
 
-    if cmd == CMD_SUBSTITUTE {
+    if cmd == Cmd::Substitute {
         let delim = buf[0];
         let mut opt = sidx;
         while ch(&buf, opt) != 0 && buf[opt] != delim {
@@ -229,7 +228,7 @@ pub fn cmd_delete(
 
     cut(ed, frommark, tomark);
 
-    if cmd != CMD_YANK {
+    if cmd != Cmd::Yank {
         let curs2 = ed.vars.cursor;
         beforedo(ed, false);
         delete(ed, frommark, tomark);
@@ -253,12 +252,12 @@ pub fn cmd_append(
     extra: &[u8],
 ) -> R<()> {
     beforedo(ed, false);
-    if cmd == CMD_CHANGE {
+    if cmd == Cmd::Change {
         cmd_delete(ed, frommark, tomark, cmd, bang, extra)?;
     }
 
     let mut l = markline(frommark);
-    if cmd == CMD_APPEND {
+    if cmd == Cmd::Append {
         l += 1;
     }
 
@@ -412,7 +411,7 @@ pub fn cmd_shift(
         }
 
         let sw = ed.opts.num(Opt::Shiftwidth);
-        let mut newcol = if cmd == CMD_SHIFTR {
+        let mut newcol = if cmd == Cmd::ShiftRight {
             oldcol + sw
         } else {
             (oldcol - sw).max(0)
@@ -444,7 +443,11 @@ pub fn cmd_shift(
     afterdo(ed);
 
     ed.vars.rptlines = markline(tomark) - markline(frommark) + 1;
-    ed.vars.rptlabel = if cmd == CMD_SHIFTR { b">ed" } else { b"<ed" };
+    ed.vars.rptlabel = if cmd == Cmd::ShiftRight {
+        b">ed"
+    } else {
+        b"<ed"
+    };
     Ok(())
 }
 
@@ -566,7 +569,7 @@ pub fn cmd_print(
             return Err(Interrupted);
         }
         let mut col: i32;
-        if cmd == CMD_NUMBER {
+        if cmd == Cmd::Number {
             let num = sprintf(b"%6ld  ", &[Arg::D(l)]);
             ed.curses.qaddstr(&num);
             col = 8;
@@ -578,7 +581,7 @@ pub fn cmd_print(
         let tabstop = ed.opts.num(Opt::Tabstop);
         for &b in &line {
             let c = schar(b);
-            if b == b'\t' && cmd != CMD_LIST {
+            if b == b'\t' && cmd != Cmd::List {
                 loop {
                     ed.curses.qaddch(b' ');
                     col += 1;
@@ -589,7 +592,7 @@ pub fn cmd_print(
             } else if (0..b' ' as i32).contains(&c) || b == 0o177 {
                 ed.curses.qaddctl(b);
                 col += 2;
-            } else if b & 0x80 != 0 && cmd == CMD_LIST {
+            } else if b & 0x80 != 0 && cmd == Cmd::List {
                 ed.curses.qaddstr(&octal_escape(b));
                 col += 4;
             } else {
@@ -602,7 +605,7 @@ pub fn cmd_print(
                 col -= ed.curses.cols;
             }
         }
-        if cmd == CMD_LIST {
+        if cmd == Cmd::List {
             ed.curses.qaddch(b'$');
         }
         ed.curses.addch(b'\n');
@@ -634,7 +637,7 @@ pub fn cmd_move(
     destmark = (destmark & !(BLK - 1)) + BLK;
 
     // C reports the error but still performs the move.
-    if cmd == CMD_MOVE && destmark >= frommark && destmark < tomark {
+    if cmd == Cmd::Move && destmark >= frommark && destmark < tomark {
         msg(ed, b"invalid destination address", &[]);
     }
 
@@ -642,7 +645,7 @@ pub fn cmd_move(
     cutname(ed, 0);
     cut(ed, frommark, tomark);
 
-    if cmd != CMD_COPY {
+    if cmd != Cmd::Copy {
         delete(ed, frommark, tomark);
         if destmark >= frommark {
             destmark -= tomark - frommark;
@@ -657,7 +660,11 @@ pub fn cmd_move(
         ed.vars.cursor = mark_last(ed.vars.nlines);
     }
 
-    ed.vars.rptlabel = if cmd == CMD_COPY { b"copied" } else { b"moved" };
+    ed.vars.rptlabel = if cmd == Cmd::Copy {
+        b"copied"
+    } else {
+        b"moved"
+    };
     Ok(())
 }
 

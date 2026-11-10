@@ -25,7 +25,7 @@ pub struct Ex {
     pub ex_oldline: i64,
 }
 
-type Argt = i16;
+type Argt = u16;
 const FROM: Argt = 1;
 const TO: Argt = 2;
 const BANG: Argt = 4;
@@ -39,12 +39,12 @@ const EXRCOK: Argt = 512;
 const NL: Argt = 1024;
 const PLUS: Argt = 2048;
 const ZERO: Argt = 4096;
-const FILES: Argt = XFILE + EXTRA;
-const WORD1: Argt = EXTRA + NOSPC;
-const FILE1: Argt = FILES + NOSPC;
-const NAMEDF: Argt = FILE1 + NODFL;
-const NAMEDFS: Argt = FILES + NODFL;
-const RANGE: Argt = FROM + TO;
+const FILES: Argt = XFILE | EXTRA;
+const WORD1: Argt = EXTRA | NOSPC;
+const FILE1: Argt = FILES | NOSPC;
+const NAMEDF: Argt = FILE1 | NODFL;
+const NAMEDFS: Argt = FILES | NODFL;
+const RANGE: Argt = FROM | TO;
 const NONE: Argt = 0;
 
 type CmdFn = fn(&mut Editor, Mark, Mark, Cmd, bool, &[u8]) -> R<()>;
@@ -67,68 +67,73 @@ const fn c(name: &'static [u8], code: Cmd, func: CmdFn, argt: Argt) -> CmdName {
 
 /// The order is significant: an ambiguous abbreviation means the first match.
 static CMDNAMES: [CmdName; 47] = [
-    c(b"append", CMD_APPEND, cmd_append, FROM + ZERO),
-    c(b"change", CMD_CHANGE, cmd_append, RANGE),
-    c(b"delete", CMD_DELETE, cmd_delete, RANGE + WORD1),
-    c(b"edit", CMD_EDIT, cmd_edit, BANG + FILE1 + PLUS),
-    c(b"file", CMD_FILE, cmd_file, NAMEDF),
+    c(b"append", Cmd::Append, cmd_append, FROM | ZERO),
+    c(b"change", Cmd::Change, cmd_append, RANGE),
+    c(b"delete", Cmd::Delete, cmd_delete, RANGE | WORD1),
+    c(b"edit", Cmd::Edit, cmd_edit, BANG | FILE1 | PLUS),
+    c(b"file", Cmd::File, cmd_file, NAMEDF),
     c(
         b"global",
-        CMD_GLOBAL,
+        Cmd::Global,
         cmd_global,
-        RANGE + BANG + EXTRA + DFLALL,
+        RANGE | BANG | EXTRA | DFLALL,
     ),
-    c(b"insert", CMD_INSERT, cmd_append, FROM),
-    c(b"join", CMD_INSERT, cmd_join, RANGE),
-    c(b"k", CMD_MARK, cmd_mark, FROM + WORD1),
-    c(b"list", CMD_LIST, cmd_print, RANGE + NL),
-    c(b"move", CMD_MOVE, cmd_move, RANGE + EXTRA),
-    c(b"next", CMD_NEXT, cmd_next, BANG + NAMEDFS),
-    c(b"Next", CMD_PREVIOUS, cmd_next, BANG),
-    c(b"print", CMD_PRINT, cmd_print, RANGE + NL),
-    c(b"quit", CMD_QUIT, cmd_xit, BANG),
-    c(b"read", CMD_READ, cmd_read, FROM + ZERO + NAMEDF),
-    c(b"substitute", CMD_SUBSTITUTE, cmd_substitute, RANGE + EXTRA),
-    c(b"to", CMD_COPY, cmd_move, RANGE + EXTRA),
-    c(b"undo", CMD_UNDO, cmd_undo, NONE),
-    c(b"vglobal", CMD_VGLOBAL, cmd_global, RANGE + EXTRA + DFLALL),
+    c(b"insert", Cmd::Insert, cmd_append, FROM),
+    c(b"join", Cmd::Insert, cmd_join, RANGE),
+    c(b"k", Cmd::Mark, cmd_mark, FROM | WORD1),
+    c(b"list", Cmd::List, cmd_print, RANGE | NL),
+    c(b"move", Cmd::Move, cmd_move, RANGE | EXTRA),
+    c(b"next", Cmd::Next, cmd_next, BANG | NAMEDFS),
+    c(b"Next", Cmd::Previous, cmd_next, BANG),
+    c(b"print", Cmd::Print, cmd_print, RANGE | NL),
+    c(b"quit", Cmd::Quit, cmd_xit, BANG),
+    c(b"read", Cmd::Read, cmd_read, FROM | ZERO | NAMEDF),
+    c(
+        b"substitute",
+        Cmd::Substitute,
+        cmd_substitute,
+        RANGE | EXTRA,
+    ),
+    c(b"to", Cmd::Copy, cmd_move, RANGE | EXTRA),
+    c(b"undo", Cmd::Undo, cmd_undo, NONE),
+    c(b"vglobal", Cmd::VGlobal, cmd_global, RANGE | EXTRA | DFLALL),
     c(
         b"write",
-        CMD_WRITE,
+        Cmd::Write,
         cmd_write,
-        RANGE + BANG + FILE1 + DFLALL,
+        RANGE | BANG | FILE1 | DFLALL,
     ),
-    c(b"xit", CMD_XIT, cmd_xit, BANG + NL),
-    c(b"yank", CMD_YANK, cmd_delete, RANGE + WORD1),
+    c(b"xit", Cmd::Xit, cmd_xit, BANG | NL),
+    c(b"yank", Cmd::Yank, cmd_delete, RANGE | WORD1),
     c(
         b"!",
-        CMD_BANG,
+        Cmd::Bang,
         cmd_shell,
-        EXRCOK + RANGE + NAMEDFS + DFLNONE + NL,
+        EXRCOK | RANGE | NAMEDFS | DFLNONE | NL,
     ),
-    c(b"<", CMD_SHIFTL, cmd_shift, RANGE),
-    c(b">", CMD_SHIFTR, cmd_shift, RANGE),
-    c(b"=", CMD_EQUAL, cmd_file, RANGE),
-    c(b"&", CMD_SUBAGAIN, cmd_substitute, RANGE),
-    c(b"args", CMD_ARGS, cmd_args, EXRCOK + NAMEDFS),
-    c(b"cd", CMD_CD, cmd_cd, EXRCOK + NAMEDF),
-    c(b"copy", CMD_COPY, cmd_move, RANGE + EXTRA),
-    c(b"ex", CMD_EDIT, cmd_edit, BANG + FILE1),
-    c(b"map", CMD_MAP, cmd_map, EXRCOK + BANG + EXTRA),
-    c(b"number", CMD_NUMBER, cmd_print, RANGE + NL),
-    c(b"put", CMD_PUT, cmd_put, FROM + ZERO + WORD1),
-    c(b"set", CMD_SET, cmd_set, EXRCOK + EXTRA),
-    c(b"shell", CMD_SHELL, cmd_shell, NL),
-    c(b"source", CMD_SOURCE, cmd_source, EXRCOK + NAMEDF),
-    c(b"tag", CMD_TAG, cmd_tag, BANG + WORD1),
-    c(b"version", CMD_VERSION, cmd_version, EXRCOK + NONE),
-    c(b"visual", CMD_VISUAL, cmd_visual, NONE),
-    c(b"wq", CMD_WQUIT, cmd_xit, NL),
-    c(b"chdir", CMD_CD, cmd_cd, EXRCOK + NAMEDF),
-    c(b"mark", CMD_MARK, cmd_mark, FROM + WORD1),
-    c(b"previous", CMD_PREVIOUS, cmd_next, BANG),
-    c(b"rewind", CMD_REWIND, cmd_next, BANG),
-    c(b"unmap", CMD_UNMAP, cmd_map, EXRCOK + BANG + EXTRA),
+    c(b"<", Cmd::ShiftLeft, cmd_shift, RANGE),
+    c(b">", Cmd::ShiftRight, cmd_shift, RANGE),
+    c(b"=", Cmd::Equal, cmd_file, RANGE),
+    c(b"&", Cmd::SubAgain, cmd_substitute, RANGE),
+    c(b"args", Cmd::Args, cmd_args, EXRCOK | NAMEDFS),
+    c(b"cd", Cmd::Cd, cmd_cd, EXRCOK | NAMEDF),
+    c(b"copy", Cmd::Copy, cmd_move, RANGE | EXTRA),
+    c(b"ex", Cmd::Edit, cmd_edit, BANG | FILE1),
+    c(b"map", Cmd::Map, cmd_map, EXRCOK | BANG | EXTRA),
+    c(b"number", Cmd::Number, cmd_print, RANGE | NL),
+    c(b"put", Cmd::Put, cmd_put, FROM | ZERO | WORD1),
+    c(b"set", Cmd::Set, cmd_set, EXRCOK | EXTRA),
+    c(b"shell", Cmd::Shell, cmd_shell, NL),
+    c(b"source", Cmd::Source, cmd_source, EXRCOK | NAMEDF),
+    c(b"tag", Cmd::Tag, cmd_tag, BANG | WORD1),
+    c(b"version", Cmd::Version, cmd_version, EXRCOK | NONE),
+    c(b"visual", Cmd::Visual, cmd_visual, NONE),
+    c(b"wq", Cmd::WriteQuit, cmd_xit, NL),
+    c(b"chdir", Cmd::Cd, cmd_cd, EXRCOK | NAMEDF),
+    c(b"mark", Cmd::Mark, cmd_mark, FROM | WORD1),
+    c(b"previous", Cmd::Previous, cmd_next, BANG),
+    c(b"rewind", Cmd::Rewind, cmd_next, BANG),
+    c(b"unmap", Cmd::Unmap, cmd_map, EXRCOK | BANG | EXTRA),
 ];
 
 /// Index of the first command whose name starts with `word`, as the C
@@ -276,7 +281,7 @@ pub fn ex(ed: &mut Editor) -> R<()> {
             ed.ex.ex_oldline = markline(ed.vars.cursor);
             if ed.opts.on(Opt::Autoprint) && ed.vars.mode == MODE_EX {
                 let cur = ed.vars.cursor;
-                cmd_print(ed, cur, cur, CMD_PRINT, false, b"")?;
+                cmd_print(ed, cur, cur, Cmd::Print, false, b"")?;
             }
         }
     }
@@ -423,9 +428,9 @@ pub fn doexcmd(ed: &mut Editor, cmdbuf: &[u8]) -> R<()> {
             ed.vars.tmpblk.c[build] = 0;
 
             let t0 = ed.vars.tmpblk.c[0];
-            if cmd == CMD_BANG
-                || (cmd == CMD_READ && t0 == b'!')
-                || (cmd == CMD_WRITE && t0 == b'!')
+            if cmd == Cmd::Bang
+                || (cmd == Cmd::Read && t0 == b'!')
+                || (cmd == Cmd::Write && t0 == b'!')
             {
                 if didsub {
                     if ed.vars.mode != MODE_EX {
@@ -494,7 +499,7 @@ pub fn doexcmd(ed: &mut Editor, cmdbuf: &[u8]) -> R<()> {
         );
         return Ok(());
     }
-    if argt & NOSPC != 0 && !(cmd == CMD_READ && (forceit || ch(&extra, 0) == b'!')) {
+    if argt & NOSPC != 0 && !(cmd == Cmd::Read && (forceit || ch(&extra, 0) == b'!')) {
         for &b in &extra {
             if isspace(schar(b)) {
                 let what: &[u8] = if argt & XFILE != 0 {

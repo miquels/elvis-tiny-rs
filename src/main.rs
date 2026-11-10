@@ -36,9 +36,10 @@ mod vi;
 mod vi_h;
 
 use crate::opts::Opt;
+use crate::vi_h::Cmd;
 use std::os::unix::ffi::OsStrExt;
 
-use vi_h::{CMD_TAG, MARK_FIRST, MODE_EX, MODE_QUIT, MODE_VI, WHEN_INMV, WHEN_VICMD, ch};
+use vi_h::{MARK_FIRST, MODE_EX, MODE_QUIT, MODE_VI, WHEN_INMV, WHEN_VICMD, ch};
 
 // C: main.c:main
 fn main() {
@@ -209,7 +210,7 @@ fn main() {
 
     blk::blkinit(ed);
     if let Some(tag) = &tag {
-        let _ = cmd1::cmd_tag(ed, MARK_FIRST, MARK_FIRST, CMD_TAG, false, tag);
+        let _ = cmd1::cmd_tag(ed, MARK_FIRST, MARK_FIRST, Cmd::Tag, false, tag);
     }
 
     if ed.vars.tmpfd.is_none() && tmp::tmpstart(ed, &firstarg) == 0 && ch(&ed.vars.origname, 0) != 0

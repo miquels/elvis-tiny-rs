@@ -19,9 +19,8 @@ use crate::vars::Editor;
 use crate::vi_h::LINEMASK;
 use crate::vi_h::atol;
 use crate::vi_h::{
-    BLKSIZE, CMD_EDIT, CMD_FILE, CMD_JOIN, CMD_SHIFTL, CMD_SHIFTR, CMD_SUBAGAIN, CMD_TAG, CMD_XIT,
-    Cmd, Interrupted, MARK_UNSET, MODE_COLON, MODE_EX, MODE_VI, Mark, R, WHEN_VIINP, WHEN_VIREP,
-    ch, cstr, default, mark_at_line, markidx, markline,
+    BLKSIZE, Cmd, Interrupted, MARK_UNSET, MODE_COLON, MODE_EX, MODE_VI, Mark, R, WHEN_VIINP,
+    WHEN_VIREP, ch, cstr, default, mark_at_line, markidx, markline,
 };
 
 #[derive(Default)]
@@ -371,7 +370,7 @@ pub fn v_join(ed: &mut Editor, m: Mark, cnt: i64) -> R<Mark> {
         ed,
         m,
         m.saturating_add(mark_at_line(cnt.min(i64::MAX / BLKSIZE as i64))),
-        CMD_JOIN,
+        Cmd::Join,
         false,
         b"",
     )?;
@@ -391,12 +390,12 @@ fn shift_help(ed: &mut Editor, m: Mark, n: Mark, excmd: Cmd) -> R<Mark> {
 
 // C: vcmd.c:v_lshift
 pub fn v_lshift(ed: &mut Editor, m: Mark, n: Mark) -> R<Mark> {
-    shift_help(ed, m, n, CMD_SHIFTL)
+    shift_help(ed, m, n, Cmd::ShiftLeft)
 }
 
 // C: vcmd.c:v_rshift
 pub fn v_rshift(ed: &mut Editor, m: Mark, n: Mark) -> R<Mark> {
-    shift_help(ed, m, n, CMD_SHIFTR)
+    shift_help(ed, m, n, Cmd::ShiftRight)
 }
 
 // C: vcmd.c:v_filter
@@ -417,13 +416,13 @@ pub fn v_filter(ed: &mut Editor, m: Mark, n: Mark) -> R<Mark> {
 // C: vcmd.c:v_status
 pub fn v_status(ed: &mut Editor) -> R<Mark> {
     let cursor = ed.vars.cursor;
-    cmd_file(ed, cursor, cursor, CMD_FILE, false, b"")?;
+    cmd_file(ed, cursor, cursor, Cmd::File, false, b"")?;
     Ok(ed.vars.cursor)
 }
 
 // C: vcmd.c:v_again
 pub fn v_again(ed: &mut Editor, m: Mark, n: Mark) -> R<Mark> {
-    cmd_substitute(ed, m, n - BLKSIZE as Mark, CMD_SUBAGAIN, true, b"")?;
+    cmd_substitute(ed, m, n - BLKSIZE as Mark, Cmd::SubAgain, true, b"")?;
     Ok(ed.vars.cursor)
 }
 
@@ -434,7 +433,7 @@ pub fn v_switch(ed: &mut Editor) -> R<Mark> {
     } else {
         let name = cstr(&ed.vars.prevorig).to_vec();
         let cursor = ed.vars.cursor;
-        cmd_edit(ed, cursor, cursor, CMD_EDIT, false, &name)?;
+        cmd_edit(ed, cursor, cursor, Cmd::Edit, false, &name)?;
     }
     Ok(ed.vars.cursor)
 }
@@ -444,7 +443,7 @@ pub fn v_tag(ed: &mut Editor, keyword: &[u8], m: Mark, _cnt: i64) -> R<Mark> {
     ed.vars.cursor = m;
 
     let cursor = ed.vars.cursor;
-    cmd_tag(ed, cursor, cursor, CMD_TAG, false, keyword)?;
+    cmd_tag(ed, cursor, cursor, Cmd::Tag, false, keyword)?;
 
     Ok(ed.vars.cursor)
 }
@@ -515,7 +514,7 @@ pub fn v_xit(ed: &mut Editor, m: Mark, _cnt: i64, key: i32) -> R<Mark> {
 
     ed.curses.clear_last_line();
 
-    cmd_xit(ed, m, m, CMD_XIT, false, b"")?;
+    cmd_xit(ed, m, m, Cmd::Xit, false, b"")?;
 
     Ok(m)
 }

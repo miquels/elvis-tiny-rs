@@ -15,11 +15,9 @@ use crate::tio::{beep, getkey};
 use crate::vars::Editor;
 use crate::vcmd::{v_xchar, v_xit};
 use crate::vi::adjmove;
+use crate::vi_h::Cmd;
 use crate::vi_h::LINEMASK;
-use crate::vi_h::{
-    BLKSIZE, CMD_SHIFTL, CMD_SHIFTR, MARK_UNSET, Mark, R, WHEN_VIREP, botline, ctrl, markidx,
-    markline,
-};
+use crate::vi_h::{BLKSIZE, MARK_UNSET, Mark, R, WHEN_VIREP, botline, ctrl, markidx, markline};
 
 /// `key` as the C string `key[2]`: empty when the key is NUL.
 fn keystr(key: &[u8; 1]) -> &[u8] {
@@ -167,9 +165,9 @@ pub fn input(ed: &mut Editor, from: Mark, to: Mark, when: i32) -> R<Mark> {
                     }
                     ed.vars.mark[27] = cursor;
                     let cmd = if k == ctrl(b'D') {
-                        CMD_SHIFTL
+                        Cmd::ShiftLeft
                     } else {
-                        CMD_SHIFTR
+                        Cmd::ShiftRight
                     };
                     cmd_shift(ed, cursor, cursor, cmd, true, b"")?;
                     if ed.vars.mark[27] != 0 {

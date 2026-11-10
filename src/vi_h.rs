@@ -264,63 +264,54 @@ pub type R<T> = Result<T, Interrupted>;
 /*------------------------------------------------------------------------*/
 /* EX command codes                                                         */
 
-pub type Cmd = i32;
-pub const CMD_NULL: Cmd = 0;
-pub const CMD_ABBR: Cmd = 1;
-pub const CMD_ARGS: Cmd = 2;
-pub const CMD_APPEND: Cmd = 3;
-pub const CMD_AT: Cmd = 4;
-pub const CMD_BANG: Cmd = 5;
-pub const CMD_CC: Cmd = 6;
-pub const CMD_CD: Cmd = 7;
-pub const CMD_CHANGE: Cmd = 8;
-pub const CMD_COPY: Cmd = 9;
-pub const CMD_DELETE: Cmd = 10;
-pub const CMD_DIGRAPH: Cmd = 11;
-pub const CMD_EDIT: Cmd = 12;
-pub const CMD_EQUAL: Cmd = 13;
-pub const CMD_ERRLIST: Cmd = 14;
-pub const CMD_FILE: Cmd = 15;
-pub const CMD_GLOBAL: Cmd = 16;
-pub const CMD_INSERT: Cmd = 17;
-pub const CMD_JOIN: Cmd = 18;
-pub const CMD_LIST: Cmd = 19;
-pub const CMD_MAKE: Cmd = 20;
-pub const CMD_MAP: Cmd = 21;
-pub const CMD_MARK: Cmd = 22;
-pub const CMD_MKEXRC: Cmd = 23;
-pub const CMD_MOVE: Cmd = 24;
-pub const CMD_NEXT: Cmd = 25;
-pub const CMD_NUMBER: Cmd = 26;
-pub const CMD_PRESERVE: Cmd = 27;
-pub const CMD_PREVIOUS: Cmd = 28;
-pub const CMD_PRINT: Cmd = 29;
-pub const CMD_PUT: Cmd = 30;
-pub const CMD_QUIT: Cmd = 31;
-pub const CMD_READ: Cmd = 32;
-pub const CMD_RECOVER: Cmd = 33;
-pub const CMD_REWIND: Cmd = 34;
-pub const CMD_SET: Cmd = 35;
-pub const CMD_SHELL: Cmd = 36;
-pub const CMD_SHIFTL: Cmd = 37;
-pub const CMD_SHIFTR: Cmd = 38;
-pub const CMD_SOURCE: Cmd = 39;
-pub const CMD_STOP: Cmd = 40;
-pub const CMD_SUBAGAIN: Cmd = 41;
-pub const CMD_SUBSTITUTE: Cmd = 42;
-pub const CMD_SUSPEND: Cmd = 43;
-pub const CMD_TR: Cmd = 44;
-pub const CMD_TAG: Cmd = 45;
-pub const CMD_UNABBR: Cmd = 46;
-pub const CMD_UNDO: Cmd = 47;
-pub const CMD_UNMAP: Cmd = 48;
-pub const CMD_VERSION: Cmd = 49;
-pub const CMD_VGLOBAL: Cmd = 50;
-pub const CMD_VISUAL: Cmd = 51;
-pub const CMD_WQUIT: Cmd = 52;
-pub const CMD_WRITE: Cmd = 53;
-pub const CMD_XIT: Cmd = 54;
-pub const CMD_YANK: Cmd = 55;
+/// An ex command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// `i32` because a narrower representation makes the binary larger.
+#[repr(i32)]
+pub enum Cmd {
+    Append,
+    Args,
+    Bang,
+    Cd,
+    Change,
+    Copy,
+    Delete,
+    Edit,
+    Equal,
+    File,
+    Global,
+    Insert,
+    Join,
+    List,
+    Map,
+    Mark,
+    Move,
+    Next,
+    Number,
+    Previous,
+    Print,
+    Put,
+    Quit,
+    Read,
+    Rewind,
+    Set,
+    Shell,
+    ShiftLeft,
+    ShiftRight,
+    Source,
+    SubAgain,
+    Substitute,
+    Tag,
+    Undo,
+    Unmap,
+    Version,
+    VGlobal,
+    Visual,
+    WriteQuit,
+    Write,
+    Xit,
+    Yank,
+}
 
 /*------------------------------------------------------------------------*/
 /* These describe what mode we're in                                        */

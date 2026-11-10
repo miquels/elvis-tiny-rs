@@ -16,10 +16,9 @@ use crate::tio::{Arg, dumpkey, exrefresh, mapkey, msg};
 use crate::tmp::{elvis_access, tmpabort, tmpend, tmpsave, tmpstart};
 use crate::vars::{ARGS_SIZE, Editor, NAME_SIZE};
 use crate::vi_h::{
-    BLKSIZE, CMD_BANG, CMD_FILE, CMD_GLOBAL, CMD_NEXT, CMD_PREVIOUS, CMD_QUIT, CMD_REWIND,
-    CMD_SHELL, CMD_VGLOBAL, CMD_WQUIT, COPYING, Cmd, Interrupted, MARK_FIRST, MARK_UNSET,
-    MODE_COLON, MODE_EX, MODE_QUIT, MODE_VI, MODIFIED, Mark, R, READONLY, VERSION, WHEN_VICMD,
-    WHEN_VIINP, WHEN_VIREP, ch, cstr, isspace, mark_at_line, markline, schar,
+    BLKSIZE, COPYING, Cmd, Interrupted, MARK_FIRST, MARK_UNSET, MODE_COLON, MODE_EX, MODE_QUIT,
+    MODE_VI, MODIFIED, Mark, R, READONLY, VERSION, WHEN_VICMD, WHEN_VIINP, WHEN_VIREP, ch, cstr,
+    isspace, mark_at_line, markline, schar,
 };
 
 /// Capacity of `prevextra[80]`.
@@ -135,7 +134,7 @@ pub fn cmd_shell(
     let mut interactive = false;
     let mut extra = extra.to_vec();
 
-    if cmd == CMD_SHELL {
+    if cmd == Cmd::Shell {
         extra = ed.opts.shell().to_vec();
         interactive = true;
         frommark = 0;
@@ -149,7 +148,7 @@ pub fn cmd_shell(
         }
         extra = ed.cmd1.cmd_shell_prevextra.clone();
         interactive = false;
-    } else if cmd == CMD_BANG && extra.len() < PREVEXTRA_SIZE - 1 {
+    } else if cmd == Cmd::Bang && extra.len() < PREVEXTRA_SIZE - 1 {
         ed.cmd1.cmd_shell_prevextra = extra.clone();
     }
 
@@ -183,9 +182,9 @@ pub fn cmd_global(
     }
 
     if bang {
-        cmd = CMD_VGLOBAL;
+        cmd = Cmd::VGlobal;
     }
-    let gv = if cmd == CMD_GLOBAL { b'g' } else { b'v' };
+    let gv = if cmd == Cmd::Global { b'g' } else { b'v' };
 
     if ch(extra, 0) != b'/' && ch(extra, 0) != b'?' {
         msg(ed, b"Usage: %c /regular expression/ command", &[Arg::C(gv)]);
@@ -224,7 +223,7 @@ pub fn cmd_global(
         }
         let line = fetchline(ed, ed.vars.nlines - l);
 
-        if regexec(ed, &mut re, &line, true) == (cmd == CMD_GLOBAL) {
+        if regexec(ed, &mut re, &line, true) == (cmd == Cmd::Global) {
             ed.vars.cursor = mark_at_line(ed.vars.nlines - l);
             ed.vars.rptlines = 0;
             if let Err(e) = doexcmd(ed, cmdln) {
@@ -252,7 +251,7 @@ pub fn cmd_file(
     _bang: bool,
     _extra: &[u8],
 ) -> R<()> {
-    if cmd == CMD_FILE {
+    if cmd == Cmd::File {
         let name = if ed.vars.origname.is_empty() {
             b"[NO FILE]".to_vec()
         } else {
@@ -336,19 +335,19 @@ pub fn cmd_next(
     bang: bool,
     extra: &[u8],
 ) -> R<()> {
-    if cmd == CMD_NEXT && !extra.is_empty() {
+    if cmd == Cmd::Next && !extra.is_empty() {
         cmd_args(ed, frommark, tomark, cmd, bang, extra)?;
     }
 
-    let i = if cmd == CMD_NEXT {
+    let i = if cmd == Cmd::Next {
         ed.vars.argno + 1
-    } else if cmd == CMD_PREVIOUS {
+    } else if cmd == Cmd::Previous {
         ed.vars.argno - 1
     } else {
         0
     };
     if i < 0 || i >= ed.vars.nargs {
-        let more: &[u8] = if cmd == CMD_REWIND { b"" } else { b"more " };
+        let more: &[u8] = if cmd == Cmd::Rewind { b"" } else { b"more " };
         msg(ed, b"No %sfiles to edit", &[Arg::S(more)]);
         return Ok(());
     }
@@ -373,9 +372,9 @@ pub fn cmd_next(
         tmpstart(ed, &build);
         ed.vars.argno = i;
     } else {
-        let name: &[u8] = if cmd == CMD_NEXT {
+        let name: &[u8] = if cmd == Cmd::Next {
             b"next"
-        } else if cmd == CMD_PREVIOUS {
+        } else if cmd == Cmd::Previous {
             b"previous"
         } else {
             b"rewind"
@@ -400,7 +399,7 @@ pub fn cmd_xit(
 ) -> R<()> {
     if ed.vars.argno + 1 < ed.vars.nargs
         && ed.cmd1.cmd_xit_whenwarned != ed.vars.changes
-        && (!bang || cmd != CMD_QUIT)
+        && (!bang || cmd != Cmd::Quit)
     {
         msg(
             ed,
@@ -411,7 +410,7 @@ pub fn cmd_xit(
         return Ok(());
     }
 
-    if cmd == CMD_QUIT {
+    if cmd == Cmd::Quit {
         if tmpabort(ed, bang) {
             ed.vars.mode = MODE_QUIT;
         } else {
@@ -419,7 +418,7 @@ pub fn cmd_xit(
         }
     } else {
         let oldflag = ed.vars.viflags.tstflag(MODIFIED);
-        if cmd == CMD_WQUIT {
+        if cmd == Cmd::WriteQuit {
             ed.vars.viflags.setflag(MODIFIED);
         }
         if tmpend(ed, bang) {
@@ -760,7 +759,7 @@ mod tests {
     #[test]
     fn cmd_mark_sets_mark() {
         let mut ed = Editor::new();
-        cmd_mark(&mut ed, 0, 5 * 1024, crate::vi_h::CMD_MARK, false, b"c").unwrap();
+        cmd_mark(&mut ed, 0, 5 * 1024, crate::vi_h::Cmd::Mark, false, b"c").unwrap();
         assert_eq!(ed.vars.mark[2], 5 * 1024);
     }
 }
