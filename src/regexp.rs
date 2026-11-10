@@ -392,22 +392,23 @@ fn shadow_of(re: &Regexp) -> [u8; SHADOW] {
 }
 
 // C: regexp.c:match1
-fn match1(re: &Regexp, ic: bool, chr: u8, token: i32) -> i32 {
+/// Whether `chr` matches the single-character `token`.
+fn match1(re: &Regexp, ic: bool, chr: u8, token: i32) -> bool {
     let c = schar(chr);
     if c == 0 {
-        return 1;
+        return false;
     }
     if token == M_ANY {
-        return 0;
+        return true;
     } else if is_class(token) {
         let idx = 1 + 32 * (token - m_class(0)) as isize + (c >> 3) as isize;
         if vbyte(re, &shadow_of(re), idx) & (1 << (c & 7)) != 0 {
-            return 0;
+            return true;
         }
     } else if c == token || (ic && isupper(c) && tolower(c) == token) {
-        return 0;
+        return true;
     }
-    1
+    false
 }
 
 fn get_meta(program: &[u8], p: &mut usize) -> i32 {
@@ -420,27 +421,28 @@ fn get_meta(program: &[u8], p: &mut usize) -> i32 {
 }
 
 // C: regexp.c:match
-fn match_(re: &mut Regexp, ic: bool, s: &[u8], mut prog: usize, mut here: isize) -> i32 {
+/// Whether the program at `prog` matches `s` at `here`.
+fn match_(re: &mut Regexp, ic: bool, s: &[u8], mut prog: usize, mut here: isize) -> bool {
     let mut token = get_meta(&re.program, &mut prog);
     while !is_closure(token) {
         match token {
             M_ENDLINE => {
                 if ch(s, here as usize) != 0 {
-                    return 1;
+                    return false;
                 }
             }
             M_BEGWORD => {
                 if here != 0 {
                     let p = schar(ch(s, here as usize - 1));
                     if p == b'_' as i32 || (isascii(p) && isalnum(p)) {
-                        return 1;
+                        return false;
                     }
                 }
             }
             M_ENDWORD => {
                 let p = schar(ch(s, here as usize));
                 if p == b'_' as i32 || (isascii(p) && isalnum(p)) {
-                    return 1;
+                    return false;
                 }
             }
             t if (m_start(0)..=m_start(9)).contains(&t) => {
@@ -449,12 +451,12 @@ fn match_(re: &mut Regexp, ic: bool, s: &[u8], mut prog: usize, mut here: isize)
             t if (m_end(0)..=m_end(9)).contains(&t) => {
                 re.endp[(t - m_end(0)) as usize] = Some(here as usize);
                 if t == m_end(0) {
-                    return 0;
+                    return true;
                 }
             }
             _ => {
-                if match1(re, ic, ch(s, here as usize), token) != 0 {
-                    return 1;
+                if !match1(re, ic, ch(s, here as usize), token) {
+                    return false;
                 }
                 here += 1;
             }
@@ -471,21 +473,18 @@ fn match_(re: &mut Regexp, ic: bool, s: &[u8], mut prog: usize, mut here: isize)
     let mut nmatched: i32 = 0;
     while (closure != M_QMARK || nmatched < 1)
         && ch(s, here as usize) != 0
-        && match1(re, ic, ch(s, here as usize), token) == 0
+        && match1(re, ic, ch(s, here as usize), token)
     {
         nmatched += 1;
         here += 1;
     }
 
-    while nmatched >= 0 && match_(re, ic, s, prog, here) != 0 {
+    while nmatched >= 0 && !match_(re, ic, s, prog, here) {
         nmatched -= 1;
         here -= 1;
     }
 
-    if nmatched >= if closure == M_PLUS { 1 } else { 0 } {
-        return 0;
-    }
-    1
+    nmatched >= if closure == M_PLUS { 1 } else { 0 }
 }
 
 // C: regexp.c:regexec
@@ -509,16 +508,16 @@ pub fn regexec(ed: &mut Editor, prog: &mut Regexp, string: &[u8], bolflag: bool)
     let entry = entry as usize;
 
     if re.bol {
-        if (re.first != 0 && match1(re, ic, ch(string, 0), schar(re.first)) != 0)
+        if (re.first != 0 && !match1(re, ic, ch(string, 0), schar(re.first)))
             || len < re.minlen as i64
-            || match_(re, ic, string, entry, 0) != 0
+            || !match_(re, ic, string, entry, 0)
         {
             return false;
         }
     } else {
         let mut here: usize = 0;
-        while (re.first != 0 && match1(re, ic, ch(string, here), schar(re.first)) != 0)
-            || match_(re, ic, string, entry, here as isize) != 0
+        while (re.first != 0 && !match1(re, ic, ch(string, here), schar(re.first)))
+            || !match_(re, ic, string, entry, here as isize)
         {
             if len < re.minlen as i64 {
                 return false;
