@@ -216,3 +216,52 @@ Loading a file that needs more (for example 974 lines of 513 bytes, under
 The macOS build runs the same code with the same limits, so it is
 expected to fail the same way there; that has not been tried (Appendix B,
 B21).
+
+### Regular expressions (M5)
+
+`tests/tools/redriver.c` links the reference build's `regexp.o` and
+`regsub.o` and runs `tests/fixtures/regexp/cases.txt` (320 cases from
+`tests/tools/retable.py`: literals, `.`, closures, anchors, word
+boundaries, classes, ten subexpressions, nested closures, the empty
+pattern, `magic` off, `ignorecase`, bytes 128 to 255, 1001-byte subjects,
+every compile error, and `regsub` with `&`, `\1`…`\9`, `~`, `\U`/`\L`/`\u`/`\l`/`\E`).
+Report: `tests/golden/linux/regexp/report.txt`, identical in three runs.
+
+- Groups of cases run in separate processes, because some inputs make C
+  write outside its buffers: case 107 (`[%E0-%EF]`, B14) crashes; error
+  paths such as "Too many []s" corrupt the heap for later cases in the
+  same process.
+- A B14 class writes `bmap[-4..-1]`, which with this struct layout lands
+  in the top byte of `minlen`, `first`, `bol` and `program[0]` (the class
+  count). The port reproduces those bytes; `bol` is compared as a truth
+  value because C only tests it that way.
+- Cases 157, 212 and 248 (a B14 class, then `\(…\)` and one more token)
+  report "Mismatched \)" in the driver only, depending on the pattern's
+  length. The C editor compiles the same patterns and reports "Not found",
+  as the port does.
+
+### Random sequences (M9)
+
+`tests/harness/fuzz.py` with the default seeds (400 ex-mode and 150 vi-key
+sequences): the vi sequences all match; the 14 ex sequences that differ
+fall into three families, and a minimal reproduction of each family is a
+memory error in an AddressSanitizer build of the reference
+(`-O0 -fsanitize=address`, outside `elvis-tiny-c/`). In each of the 14 C
+also crashes, leaves its temporary file, or differs between its `-O0` and
+`-O2` builds. They are kept as `tests/scenarios/regress/` scenarios with the
+reviewed Rust result as reference.
+
+- `:s` with `g` and a pattern that can match the empty string (`a*`, `$`):
+  global-buffer-overflow in `regsub` (B11).
+- `co`, `t` or `m` with a destination past the last line, e.g. `1t2` in a
+  one-line file: stack-buffer-overflow in `add` (B22). `1m2` works.
+- A failed `pu` sets the cursor to `MARK_UNSET`. The autoprint of line 0
+  leaves `fetchline`'s next-line shortcut one line off (`1p` then prints
+  line 2, and `q!` does not quit). A later command that walks to the last
+  line reads past it: global-buffer-overflow in `fetchline` (B23). C then
+  crashes, stops reading its input, or leaves its temporary file; the
+  `-O0` and `-O2` builds differ.
+
+The same sequences found two port bugs, both fixed: lines past the end were
+returned with their NUL bytes (now empty, as C's callers see them; B13), and
+the first B22 check also refused `1m2`.

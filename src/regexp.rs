@@ -631,4 +631,120 @@ mod tests {
         let re = comp(&mut ed, b"[\xd0]");
         assert_eq!(re.minlen, 1 + 256);
     }
+
+    /// `%HH` and `%%` escapes of tests/fixtures/regexp/cases.txt.
+    fn decode(s: &str) -> Vec<u8> {
+        let b = s.as_bytes();
+        let mut v = Vec::new();
+        let mut i = 0;
+        while i < b.len() {
+            if b[i] == b'%' && b.get(i + 1) == Some(&b'%') {
+                v.push(b'%');
+                i += 2;
+            } else if b[i] == b'%' && i + 2 < b.len() {
+                v.push(u8::from_str_radix(&s[i + 1..i + 3], 16).unwrap());
+                i += 3;
+            } else {
+                v.push(b[i]);
+                i += 1;
+            }
+        }
+        v
+    }
+
+    fn put(o: &mut String, s: &[u8]) {
+        for &c in s {
+            if (0x20..0x7f).contains(&c) && c != b'%' {
+                o.push(c as char);
+            } else {
+                o.push_str(&format!("%{c:02X}"));
+            }
+        }
+    }
+
+    /// One report line, as tests/tools/redriver.c prints it.
+    fn run_case(ed: &mut Editor, n: usize, f: &[&str]) -> String {
+        ed.opts.set(Opt::Magic, f[0].contains('m'));
+        ed.opts.set(Opt::Ignorecase, f[0].contains('i'));
+        let (pat, subj) = (decode(f[1]), decode(f[2]));
+        let mut o = format!("{n} ");
+        ed.tio.pmsg.clear();
+        let Some(mut re) = regcomp(ed, &pat) else {
+            ed.tio.manymsgs = false;
+            o.push_str("err ");
+            put(&mut o, ed.tio.pmsg.strip_prefix(b"RE error: ").unwrap());
+            return o;
+        };
+        o.push_str(&format!(
+            "ok {} {} {}",
+            re.minlen, re.first as i8, re.bol as i32
+        ));
+        if regexec(ed, &mut re, &subj, f[0].contains('b')) {
+            o.push_str(" match");
+            for i in 0..NSUBEXP {
+                if let (Some(s), Some(e)) = (re.startp[i], re.endp[i]) {
+                    o.push_str(&format!(" {i}:{s}-{e}"));
+                }
+            }
+            if f[3] != "-" {
+                let mut out = Vec::new();
+                crate::regsub::regsub(ed, &re, &subj, &decode(f[3]), &mut out);
+                o.push_str(" sub=");
+                put(&mut o, &out);
+            }
+        } else {
+            o.push_str(" nomatch");
+        }
+        o
+    }
+
+    /// M5: the whole table against the C driver's report for this host
+    /// (tests/tools/redriver.c).  Cases that crash C (B14) are only run.
+    #[test]
+    fn c_driver_table() {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let cases = std::fs::read_to_string(root.join("tests/fixtures/regexp/cases.txt")).unwrap();
+        let golden = root
+            .join("tests/golden")
+            .join(crate::os::GOLDEN_OS)
+            .join("regexp/report.txt");
+        let want = std::fs::read_to_string(&golden)
+            .unwrap_or_else(|_| panic!("{} missing: run tests/tools/redriver.c", golden.display()));
+        let want: Vec<&str> = want.lines().collect();
+        let mut ed = Editor::new();
+        ed.vars.mode = crate::types::Mode::Vi;
+        let mut diffs = Vec::new();
+        let mut compared = 0;
+        for (i, line) in cases.lines().enumerate() {
+            let f: Vec<&str> = line.split('\t').collect();
+            assert_eq!(f.len(), 4, "case {}", i + 1);
+            if !f[0].starts_with('+') {
+                ed = Editor::new();
+                ed.vars.mode = crate::types::Mode::Vi;
+            }
+            let got = run_case(&mut ed, i + 1, &f);
+            let w = want[i];
+            // C crashed, or (157, 212, 248) the driver's heap layout turned a
+            // B14 class into "Mismatched \)"; the C editor compiles these
+            // three like the port does (c-behavior.md, "Regular expressions").
+            if w.ends_with(" skipped")
+                || w.contains(" crash ")
+                || [157, 212, 248].contains(&(i + 1))
+            {
+                continue;
+            }
+            compared += 1;
+            if got != w {
+                diffs.push(format!("got  {got}\nwant {w}"));
+            }
+        }
+        assert_eq!(want.len(), cases.lines().count());
+        assert!(compared >= 200, "only {compared} cases compared");
+        assert!(
+            diffs.is_empty(),
+            "{} differences:\n{}",
+            diffs.len(),
+            diffs.join("\n")
+        );
+    }
 }

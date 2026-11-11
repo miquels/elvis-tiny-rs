@@ -1,0 +1,12 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": " tab\there a*b beta\n\naab alpha Abc ab\nalpha delta\nAbc tab\there Abc a.b\n",
+  "other.txt": "x beta ab\na*b aab gamma beta tab\there\n"
+ },
+ "stdin": "g/a.b/s/a/Z/g\n1,3<\ng/a.b/d\n/a/,/b/d\nw! result.txt\nq!\n",
+ "description": "fuzz.py --only ex:20261411. Rust printed the NUL bytes of a line past the end (fetchline fix)"
+}

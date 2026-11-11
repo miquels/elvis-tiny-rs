@@ -632,6 +632,20 @@ pub fn cmd_move(
         msg(ed, b"invalid destination address", &[]);
         return Ok(());
     }
+    // C does not check that the destination exists and crashes when it is
+    // past the last line, after `m` has subtracted the deleted lines (`1t2`
+    // or `1m3` in a one-line file; `1m2` and `1,3m4` work).  B22.
+    let mut dest = markline(destmark);
+    let mut last = ed.vars.nlines;
+    if dest > last && cmd != Cmd::Copy {
+        let count = markline(tomark) - markline(frommark) + 1;
+        dest -= count;
+        last = (last - count).max(1);
+    }
+    if dest > last {
+        msg(ed, b"invalid destination address", &[]);
+        return Ok(());
+    }
 
     let frommark = frommark & !(BLK - 1);
     let tomark = (tomark & !(BLK - 1)) + BLK;

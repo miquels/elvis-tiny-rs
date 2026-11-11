@@ -413,7 +413,13 @@ pub fn fetchline(ed: &mut Editor, line: i64) -> Vec<u8> {
     while scan < BLKSIZE && c[scan] != b'\n' {
         scan += 1;
     }
-    let text = c[start..scan].to_vec();
+    // C copies up to the newline into a string, so its callers stop at the
+    // first NUL: a line past the end (zero-filled block) reads as empty.
+    let end = c[start..scan]
+        .iter()
+        .position(|&b| b == 0)
+        .map_or(scan, |p| start + p);
+    let text = c[start..end].to_vec();
 
     if line < ed.blk.fetch.nextlnum {
         ed.blk.fetch.nextline = line + 1;

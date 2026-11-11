@@ -1,0 +1,320 @@
+mb	abc	xxabcxx	-
+mb	abc	ab	-
+mb	a.c	abc a.c	-
+mb	^abc	abcabc	-
+m	^abc	abcabc	-
+mb	abc$	abcabc	-
+mb	^$		-
+mb	^$	x	-
+mb	$	abc	-
+mb	^	abc	-
+mb	a^b	a^b	-
+mb	a$b	a$b	-
+mb	x		-
+mb	ab*c	ac abc abbbc	-
+mb	ab\+c	ac abc	-
+mb	ab\?c	abbc abc	-
+mb	a*	bbb	-
+mb	a*	aaab	-
+mb	.*	anything	-
+mb	a.*b	axxbyyb	-
+mb	x\+	aaa	-
+mb	\(ab\)*c	ababc	-
+mb	a**	aaa	-
+mb	*a	a	-
+mb	\+a	a	-
+mb	a\(*\)	a	-
+mb	\<the	other the	-
+mb	the\>	the theme	-
+mb	\<a\>	ba a ab	-
+mb	\<	  x	-
+mb	\>	x  	-
+mb	\<_x	a _x	-
+mb	[abc]	xxbxx	-
+mb	[^abc]	abcd	-
+mb	[a-c]*	abcabd	-
+mb	[]a]	x]a	-
+mb	[^]a]	]ab	-
+mb	[a-]	x-	-
+mb	[-a]	x-	-
+mb	[z-a]	m	-
+mb	[abc	a	-
+mb	[	a	-
+mb	[0-9][0-9]*	abc 123 x	-
+mb	[A-Za-z_][A-Za-z0-9_]*	 _id9 	-
+mb	[.*]	a*b	-
+mb	[\]]	a]b	-
+mb	[\\]	a\b	-
+mb	\(a\)\(b\)\(c\)	xabc	-
+mb	\(a*\)\(b\)	xaab	-
+mb	\(\(a\)b\)	ab	-
+mb	\(1\)\(2\)\(3\)\(4\)\(5\)\(6\)\(7\)\(8\)\(9\)	123456789	\9\8\7\6\5\4\3\2\1
+mb	\(1\)\(2\)\(3\)\(4\)\(5\)\(6\)\(7\)\(8\)\(9\)\(0\)	1234567890	-
+mb	\(a	a	-
+mb	a\)	a	-
+mb	\(\)	x	-
+mb	\(x\)*y	xxy	-
+mb	\(a*\)*	aaa	-
+mb	\(ab*\)*c	abbabc	-
+mb	\(a\+\)\+b	aaab	-
+b	a.c	abc a.c	-
+b	a\.c	abc a.c	-
+b	a*	a*	-
+b	a\*	aaa	-
+b	[ab]	x[ab]	-
+b	\[ab]	xb	-
+b	^a$	a	-
+b	\(a\)	a	&\1
+b	a	a	x
++b	a	a	&~
+mib	abc	xABCx	-
+mib	[a-c]*	AbC	-
+mib	\<THE\>	in the end	-
+mib	x	X	<&>
+mb	ABC	abc	-
+mib	[^a]	Ab	-
+mb		x	-
+mb	abc	abc	-
++mb		zzabcz	-
++mb	q	q	-
++mb		aqa	-
++mib		AQA	-
+mb	\(	x	-
++mb		x	-
+mb	b	abc	[&]
+mb	b	abc	\&
+mb	b	abc	~~
+mb	\(b\)	abc	\1\1
+mb	\(b\)	abc	\2
+mb	b	abc	x\ny
+mb	b	abc	\u&
+mb	b	abc	\U&x
+mb	b	abc	\L&
+mb	b	abc	\l&
+mb	\(b\)\(c\)	abc	\u\1\U\2\Ex
+mb	b	abc	%5C
+mb	b	abc	a\
+mb	b	abc	\\
+mb	b	abc	~
+mb	b	abc	<&>
++mb	c	abc	~-~
++mb	c	abc	
++mb	c	abc	~
++b	c	abc	~&
++mb	c	abc	\~
++mb	c	abc	~\1~
+mb	%E9	caf%E9	-
+mb	[%E0-%EF]	x%E5y	-
+mb	[^%80-%FF]*	ab%FFc	-
+mb	.%FF	a%FF	-
+mib	%C9	%E9	-
+mb	\<%E9	a %E9	-
+mb	[%80%FF]	%7F%FF	-
+mb	%80*	%80%80x	-
+mb	x	%80x%FF	<&>
+mb	[a%E9]\+	%E9a%E9b	-
+mb	\	a	-
+mb	a\	a	-
+mb	\(\(\(\(\(\(\(\(\(\(\(a\)\)\)\)\)\)\)\)\)\)\)	a	-
+mb	[a][b][c][d][e][f][g][h][i][j][k]	abcdefghijk	-
+mb	\q	q	-
+mb	\{	{	-
+mb	a\|b	a|b	-
+mb	z$	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaz	-
+mb	\(a*\)z	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaz	-
+mb	[b-y]	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaam	<&>
+mb	.	b babab bab 	&
+mb	\(a\)[a-c]*	bxa 	-
+mb	^[a-c]\<	xa%E9axaabb	[\1&]
+mb	x\?[ab]	bab b%E9a	[\1&]
+mb	\(b*\)	%E9a bab xa %E9a  aab	&
+m	[^a]\+.	%E9abab%E9a	<&>
+mb	.[ab]	aabbab xa	[\1&]
+mb	\(b*\)\(b*\)	 bab ab	~
+mb	\(b*\)a\?[^a]*	%E9a%E9a bab %E9a%E9a 	&
+mb	ax\+[^a]\?	ab xa aab bxa	~
+mb	a\(a\)	bab%E9a xa	~
+mb	^%E9b*	%E9abb 	-
+mb	^.\?$	 aab 	~
+m	^x*$	xaxa bab 	<&>
+mb	a[%E0-%FF]$	xa	[\1&]
+mib	[%E0-%FF]	bab%E9a bab	\u&
+mb	\(a\)\(a\|b\)	%E9a	-
+mb	^\(a\)*	aababxa	<&>
+mb	\(a\|b\)$	%E9a	<&>
+m	a*[a-c]\?\(a\)\(a\|b\)	abaab	<&>
+mib	%E9	b 	<&>
+mb	x[ab]$	bab	&
+mb	\(a\|b\)*a	b %E9a abb 	<&>
+mb	[a-c]\?x\(a\)	%E9a b 	[\1&]
+mb	a\?.\+\(a\)[%E0-%FF]\+$	 aabab  xa	\1
+mb	.*%E9\+\>*$	baabbab%E9a xa  	-
+mb	a\(b*\)b\+	%E9a %E9a 	\1
+mb	x[a-c]%E9\?x\+$	xaaab	&
+mb	^x.\+\<[ab]*	aab ab ab 	<&>
+mib	a[ab]\?	 aab baab 	\u&
+mb	x\?a[%E0-%FF]a	%E9a 	~
+mi	b\?[%E0-%FF]*[a-c]\(b*\)$	ab xa xa %E9a b	<&>
+mb	^[^a]\?[%E0-%FF]x*.	xaxabab%E9a ab 	-
+m	[ab][%E0-%FF]\?	b b xab abaab 	&
+m	^\(a\)x\>	%E9a  aab xa abab 	&
+mb	.\+b[%E0-%FF][%E0-%FF]*$	bab b  	[\1&]
+m	.\+[ab]\?	xa	~
+mib	xxa\(b*\)	%E9a bb 	<&>
+mib	[a-c][a-c]\(a\|b\)*%E9	bab%E9aaab aab 	-
+mb	%E9\(b*\)\(a\)*$	babbabbab xa 	-
+mb	[a-c]\<$	%E9a%E9a%E9a	[\1&]
+mb	[%E0-%FF]\+	aab aab xa	&
+mib	[ab]\+[a-c][ab]*	baab %E9a	&
+mb	a	 b %E9a	&
+mib	^a\+[a-c]*	aab	\u&
+mb	a\?[a-c]$	xabbabxa	\1
+m	[^a][^a]\?[%E0-%FF]\+%E9\?	b xa xa bab 	[\1&]
+mb	%E9\>[a-c]a	b%E9a%E9a abb	\u&
+mb	[%E0-%FF]\?	b bab b 	&
+mb	\<	bab 	<&>
+mb	xa.*\(b*\)	ab	&
+mib	\<%E9\+x\?.	ab 	<&>
+mb	\<	xa 	-
+mib	\(a\|b\)	xa bab b 	\u&
+mb	[%E0-%FF][^a][^a]*	abb bab b 	&
+mb	^\<%E9	b	\u&
+mib	[a-c]\?[^a]*\<\(b*\)	bab b %E9a 	\u&
+mb	\(a\|b\)\(a\|b\)\(b*\)[%E0-%FF]\+$	b %E9axab 	<&>
+mb	.*[^a]\+.*x\?$	xa bab ab b bab xa	<&>
+mb	%E9*\(b*\)*	%E9a abxa b	-
+mb	^\>[^a]\+	ab ab 	-
+mb	%E9[ab]\+%E9\(b*\)	aab  bab  aabb 	\u&
+mib	^b$	%E9a %E9a abab 	-
+mb	^\>[^a]\(a\)	abaab xab %E9a	\1
+mb	%E9	aab%E9a bab xaab	\u&
+mb	^[ab][a-c]b\+	aabaab %E9aab 	-
+mb	^[a-c]$	bab aab b	\u&
+mb	%E9\?a\+\(a\|b\)*\<	abb %E9a 	\1
+mb	.%E9[ab]\?$	%E9a ababxa 	<&>
+mb	[a-c]\>	%E9abab b xa 	-
+m	[^a]\+	%E9axabab 	&
+mb	\(a\|b\)x\+\(a\)[%E0-%FF]	aabab xa bab xa xa 	[\1&]
+mib	a*[%E0-%FF]\+.	aab 	\u&
+mib	%E9\+	 	-
+mib	\<%E9\+$	aab 	\1
+m	^\(b*\)\<[a-c]\+a\+	aab	\1
+mb	^a\+[^a]\+[^a]\+b*	ab ab ab 	\u&
+mb	%E9x\+b\+[%E0-%FF]	aab %E9a  b 	\1
+mb	xb\+b\+	b xa%E9a babb 	<&>
+mb	\<a*[a-c]	aab b babxa %E9a xa 	[\1&]
+mb	a[^a]*[a-c]*	b 	-
+mb	\(b*\)[ab]	xaabxa aabbabxa 	&
+mb	b*\>*	aab	-
+m	.\?\>%E9	 %E9a  b aabxa	-
+mb	\(a\)	ab ab	~
+mb	b\+a\?\<%E9\?	ab%E9a xabab aabxa	[\1&]
+m	x*[%E0-%FF]\?\(a\|b\)$	 aab 	[\1&]
+mib	^[ab][%E0-%FF]xa	 aabbxa 	[\1&]
+mb	a	xa babab	&
+mb	b[^a]\?\(a\|b\)\(a\|b\)	babxa bab b %E9a 	-
+mb	b[%E0-%FF]$	ab 	~
+mib	\(a\|b\)*\<x*x\+	abbab	-
+mb	x\>	bab aabbabxa	\u&
+mi	[a-c]*\<b\?	bababab ab%E9a 	\u&
+mib	.\?\(a\|b\)\<*	bbab 	<&>
+mib	[^a]\?%E9\+[%E0-%FF]$	%E9a aab 	[\1&]
+mb	\(a\|b\)	bbabbab %E9a aab bab 	-
+m	%E9b\?\>	aab bab	-
+mib	\(a\|b\)a\+\(b*\)*$	xa 	-
+mb	x\+	%E9a ab aab	~
+mb	\(a\|b\)\(a\)*%E9\?	%E9a ab %E9axaab%E9a 	\u&
+mb	^%E9\+[ab]*\(b*\)	%E9aab bab %E9a	\1
+mb	[^a]	abaab	<&>
+mib	[%E0-%FF]	bab%E9a	-
+mb	^\>\<xx*$	bab aabaab 	~
+mb	\>	abxa 	<&>
+mb	\(a\|b\)\(a\|b\)	xababbab ab 	\u&
+m	^[^a][ab]%E9[ab]	%E9a xa ab 	&
+mib	x*	%E9axa   abab	-
+mb	[^a]*\>[%E0-%FF]$	b%E9a babab  	~
+mb	x\>	xa aab 	\1
+mb	a[ab]\+\<\(a\)	aab%E9a bab	~
+mib	\(a\)	xaaabaabbabbab 	-
+mb	%E9.\(b*\)*b\?	%E9a 	\1
+mb	^a*[^a]\?.*[^a]\?	ab aab  	\u&
+mb	[ab][a-c]\+b\+b	xa aab  	&
+m	\>\>ab	xa aab%E9aabxa%E9a	\u&
+mib	[ab]*%E9\+\>	ab	-
+mb	\(a\|b\)[%E0-%FF]\?	aabxaxa	<&>
+mi	^\>$	bab%E9a%E9a aab xa b 	\u&
+mib	%E9\+\>	aab  	~
+mib	\(b*\)\<	aab%E9abab 	[\1&]
+m	^[%E0-%FF]\?\<\(b*\)x	aab bab aab 	<&>
+mb	^[^a]	%E9a  abaab	&
+mib	\(b*\)%E9\?	%E9a%E9axa b	&
+m	[ab][ab]\+%E9\?\>	ab	-
+mb	[a-c]\+[a-c]*x.	aab 	[\1&]
+mb	ab.\+	xa%E9a 	-
+mb	\(b*\)\(b*\)	b 	-
+mb	^a*$	bab b %E9a b aab 	-
+mb	^.\+x\(a\)*[%E0-%FF]	xa%E9a 	\1
+mb	[^a]	aabaabbab	&
+mib	[a-c]\?a	bxa%E9a aab b 	&
+mb	^[a-c]b\<[^a]\+	xa bab	~
+mb	.\+.	bab xaxabab aab 	\1
+mb	^[ab]\(b*\)	bababaabaab bab	\u&
+mb	%E9*	bab aabbab 	~
+mb	\(a\|b\).a	abaab abxa   	-
+mb	\(a\|b\).[ab]\?\>	 %E9a%E9a 	&
+mb	x[%E0-%FF]x\(a\)	ab ab 	-
+mb	\>b	%E9a b%E9aab %E9a	-
+mb	[ab]*x*[^a]%E9	aab	[\1&]
+mb	\>\>x	aab 	-
+mb	[%E0-%FF][^a]\?[ab]*[^a]	aab 	&
+mb	\(b*\)	bab  xababaab 	&
+m	^[%E0-%FF]\(a\|b\)\<	aabbab ab	-
+mb	a.\?	xa %E9aaab aab 	\u&
+m	[%E0-%FF]%E9*[%E0-%FF]a\?$	b%E9a aab aab 	[\1&]
+mb	[a-c]	%E9a aab xa 	~
+m	x\?[a-c][a-c]\?x	%E9axaaab 	-
+mb	[a-c]\?\>	xa bababbb 	\1
+m	%E9*	%E9a 	&
+mib	%E9\(b*\)[ab]*	bbab b ab	-
+mb	[%E0-%FF]\?%E9.*	babaab 	<&>
+mib	ba\?[^a]	xaxa aabaab aab 	[\1&]
+mi	\(a\)[a-c]*	abbabaabxa 	[\1&]
+mb	x\+.\+x	bab	&
+mb	x*a$	bab %E9ab 	-
+mb	\<b\>.	ab%E9a  xaab	[\1&]
+mb	[^a]	%E9ab%E9aab 	&
+mb	.\+		[\1&]
+mb	%E9\>*	xa ab 	-
+mb	^%E9*	aab baab %E9a 	~
+mb	a*	%E9abab	-
+mib	\(a\|b\)x	b b bab 	\u&
+mb	\(b*\)	b 	-
+mb	[a-c]\+\(b*\)	bab babbabbabaab bab 	\1
+mb	[%E0-%FF]*	 ab	&
+mb	%E9*	xa ab b 	&
+m	[%E0-%FF]\<\<	%E9aaab %E9axa 	\u&
+mb	x[ab][a-c]*	bxa%E9a 	-
+m	[a-c]\<	 b abb bab 	-
+mb	^.	%E9a abxa 	\u&
+m	^\<\<%E9\+	%E9a	\u&
+mib	[ab]\?%E9\+b[^a]\?	xaxa ab	&
+mb	^%E9*xb[^a]*	 ab 	\1
+m	%E9$	aab babaab	<&>
+mb	..\+a*a\+		-
+m	x\?.[%E0-%FF]	xaabb  	\1
+mb	[ab][^a]x\+	b  bab bab 	&
+m	\(a\|b\)[%E0-%FF][a-c][a-c]\+	baab	&
+mb	\(b*\)	xa abaababaab 	-
+mb	b	b xa %E9a%E9a	-
+mb	x*	%E9a aab 	&
+mb	x*[ab]	aab aabb b 	-
+mb	b$	 b%E9aab%E9a 	[\1&]
+m	[%E0-%FF]\+a	b %E9a 	\u&
+m	[a-c]*..\?	 bab bab	-
+mb	b	b aab	-
+mb	\<.*\>	%E9aab 	<&>
+mb	\(a\)%E9	bab ab %E9aaabaab	<&>
+mib	^[ab]\?[^a]\?$	xa%E9a b 	[\1&]
+mb	[%E0-%FF]\?\>[a-c]a\+	bab bab  aab	&
+m	%E9	xabab b aabaab	<&>
+m	^[a-c]\>\>[a-c]\?	bab  aab %E9a 	~

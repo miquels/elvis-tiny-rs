@@ -1,0 +1,46 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "beta tab\\x09here a.b Abc Abc\\n",
+   "\\n",
+   "ba x ba x aab\\n"
+  ],
+  "other.txt": [
+   " tab\\x09here beta aab gamma\\n",
+   "ba\\n"
+  ],
+  "result.txt": [
+   "\\n",
+   "\\n",
+   "\\n",
+   "ba x ba x aab\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  3 lines, 41 chars\\n",
+  "\\r\\e[24;1H:\\e[K<\\e[K\\n",
+  "\\r\\e[24;1H:\\e[Kpu\\e[K\\n",
+  "\\rCut buffer is empty\\n",
+  "\\rbeta tab        here a.b Abc Abc\\n",
+  "\\r\\e[24;1H:\\e[K%!sort\\e[K\\n",
+  "\\r\\e[?1l\\e>\\e[?1h\\e=\\n",
+  "\\r\\e[24;1H:\\e[K.,.+2t1\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K1co2\\e[K\\n",
+  "\\r\\n",
+  "\\r\\e[24;1H:\\e[K/gamma/r !echo hi\\e[K\\n",
+  "\\rNot found\\n",
+  "\\r\\e[24;1H:\\e[K.=\\e[K\\n",
+  "\\r3\\n",
+  "\\r\\e[24;1H:\\e[K$-1\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K/gamma/i\\e[K\\n",
+  "\\rNot found\\n",
+  "\\r\\e[24;1H:\\e[K\\e[K\\r\\e[Kba x ba x aab\\n",
+  "\\r\\e[24;1H:\\e[K.\\e[K\\n",
+  "\\r\\e[24;1H:\\e[Kw! result.txt\\e[K\\n",
+  "\\rWrote \"result.txt\"  4 lines, 17 characters\\n",
+  "\\r\\e[24;1H:\\e[Kq!\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

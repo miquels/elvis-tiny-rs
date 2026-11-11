@@ -1,0 +1,16 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "beta tab\there a.b Abc Abc\n\nba x ba x aab\n",
+  "other.txt": " tab\there beta aab gamma\nba\n"
+ },
+ "stdin": "<\npu\n%!sort\n.,.+2t1\n1co2\n/gamma/r !echo hi\n.=\n$-1\n/gamma/i\n\n.\nw! result.txt\nq!\n",
+ "description": "fuzz.py --only ex:20261344. A failed put leaves cursor at MARK_UNSET; C's fetchline shortcut then reads past the last line (ASan: global-buffer-overflow in fetchline)",
+ "divergences": [
+  "B23"
+ ],
+ "reference": "rust"
+}

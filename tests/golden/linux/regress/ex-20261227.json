@@ -1,0 +1,55 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "aab ba\\n",
+   "\\n",
+   "ab a*b ba aab ab\\n",
+   "delta aab  beta\\n",
+   "a*b ab\\n",
+   "x  Abc\\n",
+   "gamma beta Abc\\n",
+   "beta Abc x delta\\n",
+   "\\n",
+   "ab ba delta aab delta\\n",
+   "ab\\n",
+   "x ab\\n",
+   "delta a.b Abc x delta\\n"
+  ],
+  "other.txt": [
+   "\\n",
+   "ab alpha Abc a.b\\n"
+  ],
+  "result.txt": [
+   "aab ba\\n",
+   "\\n",
+   "a a*b ba aab ab\\n",
+   "delta aa  beta\\n",
+   "a* ab\\n",
+   "x  Ac\\n",
+   "gamma eta Abc\\n",
+   "eta Abc x delta\\n",
+   "\\n",
+   "a ba delta aab delta\\n",
+   "a\\n",
+   "x a\\n",
+   "delta a. Abc x delta\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  13 lines, 140 chars\\n",
+  "\\r\\e[24;1H:\\e[K?b?pu\\e[K\\n",
+  "\\r(wrapped)\\n",
+  "\\rCut buffer is empty\\n",
+  "\\r\\n",
+  "\\r\\e[24;1H:\\e[K%<\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K2,$&\\e[K\\n",
+  "\\r10 substitutions on 10 lines\\n",
+  "\\rdelta a. Abc x delta\\n",
+  "\\r\\e[24;1H:\\e[Kw! result.txt\\e[K\\n",
+  "\\rWrote \"result.txt\"  13 lines, 130 characters\\n",
+  "\\r\\e[24;1H:\\e[Kq!\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

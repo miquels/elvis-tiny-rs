@@ -1,0 +1,16 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": " aab aab Abc\nAbc ba a*b\n\nbeta\ntab\there Abc Abc\n\ngamma\naab aab ab gamma\n",
+  "other.txt": "\nbeta ba a*b\n"
+ },
+ "stdin": "v/x/d\nw out.txt\nu\n2,$m0\n$t2\n2,$p\n.i\ngamma\n.\n1,3!sort\nt2\nw! result.txt\nq!\n",
+ "description": "fuzz.py --only ex:20261443. co/t/m destination past the last line: C overflows in add (ASan: stack-buffer-overflow)",
+ "divergences": [
+  "B22"
+ ],
+ "reference": "rust"
+}

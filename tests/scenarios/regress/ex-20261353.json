@@ -1,0 +1,16 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "beta alpha aab\naab tab\there\n\nalpha Abc tab\there\ntab\there gamma ab\ntab\there aab\ndelta\n ab a*b a*b\nba  alpha a*b \n\nab\naab aab ab\ngamma a.b\n",
+  "other.txt": "delta  a.b ab\nx\n"
+ },
+ "stdin": "%s/x/<&>/g\n%p\n/a/,/b/s/a*/<&>/g\nc\n\n.\nu\n1,3&\n'a,.l\nu\nw! result.txt\nq!\n",
+ "description": "fuzz.py --only ex:20261353. Substitution with a pattern that can match the empty string and g: C loops in regsub and overflows tmpblk (ASan: global-buffer-overflow in regsub)",
+ "divergences": [
+  "B11"
+ ],
+ "reference": "rust"
+}

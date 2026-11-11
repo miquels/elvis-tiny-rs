@@ -26,6 +26,9 @@ Scenario keys (all optional except one of "stdin"/"keys"):
   divergences   list of Appendix B IDs this scenario depends on
   os            list of host OS names ("linux", "macos") the scenario runs on;
                 default all
+  reference     "c" (default) or "rust": where C's behavior is undefined (an
+                Appendix B entry), the golden file is the reviewed Rust result,
+                C runs are skipped and --update-golden takes the Rust result
   leftover      expected list of leftover temporary-file kinds
   description   free text
 """
@@ -248,8 +251,8 @@ def main():
     a = ap.parse_args()
     if not os.path.isdir(TERMINFO):
         sys.exit("run tests/tools/build-terminfo.sh first")
-    if a.update_golden and not a.c:
-        sys.exit("--update-golden needs --c")
+    if a.update_golden and not (a.c or a.rust):
+        sys.exit("--update-golden needs --c (or --rust for reference: rust)")
     bins = [(n, p) for n, p in (("C", a.c), ("Rust", a.rust)) if p]
     if not bins:
         sys.exit("give --c and/or --rust")
@@ -271,11 +274,16 @@ def main():
             if os.path.exists(gpath):
                 with open(gpath) as f:
                     want = json.load(f)
+            ref = "Rust" if sc.get("reference") == "rust" else "C"
             for label, binary in bins:
+                if ref == "Rust" and label == "C":
+                    print("skip %s/%s [C: reference is Rust, %s]"
+                          % (suite, name, ", ".join(sc.get("divergences", []))))
+                    continue
                 for rep in range(a.repeat):
                     total += 1
                     got = run_one(binary, sc)
-                    if a.update_golden and label == "C" and rep == 0:
+                    if a.update_golden and label == ref and rep == 0:
                         os.makedirs(os.path.dirname(gpath), exist_ok=True)
                         with open(gpath, "w") as f:
                             json.dump(got, f, indent=1)

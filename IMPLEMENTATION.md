@@ -1275,6 +1275,14 @@ and substitution output with the C driver.
 **Exit criteria:** every table entry matches the C driver, and the M5 ledger
 rows are `done`.
 
+**Result (2026-11-11, Linux).** `tests/tools/retable.py` writes the 320-case
+table `tests/fixtures/regexp/cases.txt`; `tests/tools/redriver.c` runs it
+through the reference objects into `tests/golden/<os>/regexp/report.txt`, and
+`regexp::tests::c_driver_table` compares the port with it line by line: 316
+cases identical, one skipped because it crashes C (B14), three where only the
+driver's heap layout turns a B14 class into an error (`tests/golden/c-behavior.md`,
+"Regular expressions"). The macOS report still has to be generated there.
+
 ### M6: Options, ex parsing and commands, shell filters, and startup
 
 **Prerequisites:** M5.
@@ -1388,6 +1396,26 @@ exit test. The M8 ledger rows are `done`.
 
 **Exit criteria:** the definition of done (section 7.3) holds.
 
+**Results (2026-11-11, Linux).**
+
+1. Ledger: 167 rows `done`, the rest `excluded` with reasons; tests per
+   section in Appendix D.
+2. Enforcement checks pass; no `todo!` or `unimplemented!`.
+3. `run.py --suite all --repeat 3` for C and the release build: 588 runs,
+   only `startup/small-screen` (B4) differs; `cargo test` 80 passed, three
+   runs.
+4. `tests/harness/fuzz.py` (seed 20261111): 400 ex-mode and 150 vi-key
+   sequences. All vi sequences match. 14 ex sequences differ, all where C
+   has a memory error (B11, B22, B23; c-behavior.md "Random sequences"); they
+   are `tests/scenarios/regress/` scenarios with the Rust result as
+   reference. The run found and fixed two port bugs (B13 `fetchline`, the
+   first B22 check), also kept as regression scenarios.
+5. Measurements: section 7.2.
+6. Appendix B reviewed with the user for B1–B21 (approved 2026-11-11); B22
+   and B23 are new and pending.
+
+On macOS, steps 3–5 have not been run on this code.
+
 ---
 
 ## 6. Testing instructions
@@ -1433,7 +1461,14 @@ expects them (for example, a crash simulation).
 - Scenarios are files in `tests/scenarios/<suite>/` with the input files,
   the keystrokes or script, the expected divergences (Appendix B IDs), and the
   timeout. An `os` list limits a scenario to some hosts (`files/write-dev-full`
-  runs only on Linux).
+  runs only on Linux). `"reference": "rust"` marks a scenario where C's
+  behavior is undefined (an Appendix B entry, shown with AddressSanitizer):
+  its golden file is the reviewed Rust result, `--update-golden` takes it
+  from `--rust`, and C runs are skipped (`tests/scenarios/regress/`).
+- `tests/harness/fuzz.py` (M9 step 4) generates ex-mode and vi-key sequences
+  from fixed seeds, runs both binaries and compares them as above (vi
+  sequences without screen output); `--only kind:seed` reruns one sequence
+  and `--save DIR` writes failing ones as scenarios.
 
 ### 6.4 Seed scenario categories
 
@@ -1544,8 +1579,8 @@ Implications:
   | Build | File | `.text` |
   |---|---|---|
   | C reference (`target/c-ref/src/elvis`, gcc 14.2 `-O2`) | 108664 | 62992 |
-  | `cargo build --release` | 494096 | 347799 |
-  | `scripts/build-tiny.sh` | 133480 | 102975 |
+  | `cargo build --release` | 494096 | 347927 |
+  | `scripts/build-tiny.sh` | 133480 | 103119 |
 
   The tiny build drops `.eh_frame` (43440 bytes in the stable build) and
   packs the relocations (`.rela.dyn` 28512 → 1632 plus a 136-byte
@@ -1667,32 +1702,68 @@ user asks.
 
 | ID | C location | C behavior | Rust behavior | Reason | Tests | User approved |
 |----|------------|------------|---------------|--------|-------|---------------|
-| B1 | curses.c `starttcap` | Capability strings copied into an 800-byte buffer without a bound | No limit | D7 | M2 | pending |
-| B2 | main.c `trapint` | Interrupt handled immediately by `siglongjmp` | Interrupt handled at the next checkpoint | D5 | M8 | pending |
-| B3 | opts.c `setopts` | A string value longer than its option array (`directory` 30 bytes) overflows into the next option | Reject the value (message chosen in M6 per section 6.7) | D7 | options/directory-overflow | pending |
-| B4 | curses.c `getsize` at startup | "Screen too small", then SIGSEGV (macOS and Linux): `endwin()` writes through `stdscr` before `initscr()` sets it | Same message, restore the terminal, exit 2 | D7 | startup/small-screen | pending |
-| B5 | tio.c `getkey` | On macOS and Linux the `alarm(keytime)` read never times out (`SA_RESTART` from both C libraries' `signal()`), so an ambiguous map prefix waits for more keys | Timed read with `keytime` seconds (section 3.7) | 3.7 | c-behavior.md "Key timeout" | pending |
-| B6 | ncurses `tgetstr("me")` | Returns `sgr0` trimmed by `_nc_trim_sgr0` (e.g. xterm `\E(B\E[m` → `\E[0m`). Linux libtinfo 6.5 also strips delays from the `sgr` expansions first (vt100 `\E[0m`, macOS `\E[0m$<2>`) | Same trimming reimplemented in `terminfo.rs`, delay stripping when `os::TRIM_SGR0_STRIPS_PADDING` | 4.2 parity | `curses::tests::capprobe_golden`, `terminfo::tests::trim_sgr0_matches_libtinfo` | pending |
-| B7 | curses.c `starttcap` | `tgetent` = -1 prints `Can't read /etc/termcap`, exit 2 | Never produced: every lookup or parse failure is `Unrecognized TERM type`, exit 3 (neither the macOS ncurses nor Linux libtinfo 6.5 returns -1, even without a database) | 4.4 | `curses::tests::exit_paths` | pending |
-| B8 | tgoto/tparm | Expansion errors produce `OOPS` | Nothing is output for that move; a literal `$` in `cup` is kept via re-encoding | 4.5 | `curses::tests::tgoto_order_and_padding` | pending |
-| B9 | tio.c `msg`, `mapkey`, `vgets` | `pmsg[80]`, `rawin[10]`, `cooked[80]`, `widths[132]` overflow | Message cut at 79 bytes, raw keys at 10, mapped text at 79; `widths` sized to the buffer | D7 | — | pending |
-| B10 | tio.c `msg` in vi mode | ^C at `[More...]` longjmps immediately | Interrupt re-armed and handled at the next checkpoint | D5 | — | pending |
-| B11 | cmd2.c `cmd_substitute`, cmd1.c `cmd_global` | Line over 1024 bytes or `:g` command over 100 bytes overflows `tmpblk`/`cmdln` | New messages `Substitution would make a line too long` and `Global command too long` | D7 | — | pending |
-| B12 | cmd1.c `cmd_global` | `doingglobal` stays set after an interrupted `:g` | Reset on interrupt | D5 | — | pending |
-| B13 | misc.c/move3.c/move5.c line scans | Reading past a line's NUL sees the next line in the cache block | Treated as end of line (`e` on empty line, `2fx`/`;` past end differ) | D7 | — | pending |
-| B14 | regexp.c `[…]` with bytes ≥ 128 | Signed index writes before the class bitmap | Same bytes reproduced in the program, `minlen`, `first`; `bol`/`endp` kept in a 10-byte tail | D7 | `regexp::tests` | pending |
-| B15 | cut.c `cutneeds` | Overflows `need[512]` for cut buffers over ~450000 bytes | Stops at 512 entries | D7 | — | pending |
-| B16 | modify.c `add` | Lines over 1023 bytes corrupt memory (KNOWN.BUGS); crashes with SIGBUS on macOS | `add` refuses text that would make any line longer than `BLKSIZE - 1` bytes (newline included): shows "Line too long", changes nothing, sets `vars.toolong`. Input mode does not advance the cursor and a counted insert stops repeating. In `change`, the delete has already happened (undo restores it); a multi-block paste can be partly applied | D7 | `tmp::tests::modify_and_undo` | pending |
-| B17 | various loops | Interrupt only via longjmp | Extra `take_sigint` checkpoints in `:s` (per match), `:g`, `:w`/`:r`, `<`/`>`, `:p`, searches, `9999a` | D5 | — | pending |
-| B18 | ex.c, vcmd.c, cmd1.c buffers | `%`/`#` expansion, `wildcard`, `v_keyword` `cmdline[130]`, `prevorig`, `args`, `v_increment` `newval[12]` overflow | Truncated to the C buffer size or unbounded where no observable limit exists | D7 | — | pending |
-| B19 | ncurses `delay_output` with `npc` (Linux) | Flushes ncurses's own buffer and sleeps for each padded delay (xterm `flash` `$<100/>` sleeps 100 ms; elvis's `kbuf` is not flushed) | No pad characters and no sleep; output bytes are the same | 4.6 | `curses::tests::capprobe_golden` (xterm) | pending |
-| B20 | ncurses `_nc_trim_sgr0` final `strstr` branch | `chop_out(tmp, i, strlen(off))` with `strlen(off) < i` copies past the end of the string | `sgr0` is kept unchanged in that case; otherwise bytes `i..strlen(off)` are removed as in C (the port used to truncate at `i`) | D7 | `terminfo::tests::trim_sgr0_matches_libtinfo` | pending |
-| B21 | tmp.c `tmpstart`, modify.c `add`, blk.c `blkadd` | No check of the header's 511 text blocks: a file needing more (974 lines of 513 bytes, under 500000 bytes) writes past `hdr.n[]`/`lnum[]`; `:%s/a/b/g` on a 400000-byte file of 80-byte lines makes `blkadd` drop the last block and `add` read past `lnum[]`. Both SIGSEGV on Linux | Loading stops with `"name" is too big` and falls back to `[NO FILE]` like the 500000-byte check (loading keeps one spare slot, so at most 510 blocks). `add` and `change` count the blocks the change would add and refuse with `File too big` before changing anything (`change` checks before its delete); `:s` stops at the first refusal without its report. Up to 511 blocks behaves as C | D7 | `tmp::tests::block_table_limits` | pending |
+| B1 | curses.c `starttcap` | Capability strings copied into an 800-byte buffer without a bound | No limit | D7 | M2 | yes (2026-11-11) |
+| B2 | main.c `trapint` | Interrupt handled immediately by `siglongjmp` | Interrupt handled at the next checkpoint | D5 | M8 | yes (2026-11-11) |
+| B3 | opts.c `setopts` | A string value longer than its option array (`directory` 30 bytes) overflows into the next option | Reject the value (message chosen in M6 per section 6.7) | D7 | options/directory-overflow | yes (2026-11-11) |
+| B4 | curses.c `getsize` at startup | "Screen too small", then SIGSEGV (macOS and Linux): `endwin()` writes through `stdscr` before `initscr()` sets it | Same message, restore the terminal, exit 2 | D7 | startup/small-screen | yes (2026-11-11) |
+| B5 | tio.c `getkey` | On macOS and Linux the `alarm(keytime)` read never times out (`SA_RESTART` from both C libraries' `signal()`), so an ambiguous map prefix waits for more keys | Timed read with `keytime` seconds (section 3.7) | 3.7 | c-behavior.md "Key timeout" | yes (2026-11-11) |
+| B6 | ncurses `tgetstr("me")` | Returns `sgr0` trimmed by `_nc_trim_sgr0` (e.g. xterm `\E(B\E[m` → `\E[0m`). Linux libtinfo 6.5 also strips delays from the `sgr` expansions first (vt100 `\E[0m`, macOS `\E[0m$<2>`) | Same trimming reimplemented in `terminfo.rs`, delay stripping when `os::TRIM_SGR0_STRIPS_PADDING` | 4.2 parity | `curses::tests::capprobe_golden`, `terminfo::tests::trim_sgr0_matches_libtinfo` | yes (2026-11-11) |
+| B7 | curses.c `starttcap` | `tgetent` = -1 prints `Can't read /etc/termcap`, exit 2 | Never produced: every lookup or parse failure is `Unrecognized TERM type`, exit 3 (neither the macOS ncurses nor Linux libtinfo 6.5 returns -1, even without a database) | 4.4 | `curses::tests::exit_paths` | yes (2026-11-11) |
+| B8 | tgoto/tparm | Expansion errors produce `OOPS` | Nothing is output for that move; a literal `$` in `cup` is kept via re-encoding | 4.5 | `curses::tests::tgoto_order_and_padding` | yes (2026-11-11) |
+| B9 | tio.c `msg`, `mapkey`, `vgets` | `pmsg[80]`, `rawin[10]`, `cooked[80]`, `widths[132]` overflow | Message cut at 79 bytes, raw keys at 10, mapped text at 79; `widths` sized to the buffer | D7 | — | yes (2026-11-11) |
+| B10 | tio.c `msg` in vi mode | ^C at `[More...]` longjmps immediately | Interrupt re-armed and handled at the next checkpoint | D5 | — | yes (2026-11-11) |
+| B11 | cmd2.c `cmd_substitute`, cmd1.c `cmd_global` | Line over 1024 bytes or `:g` command over 100 bytes overflows `tmpblk`/`cmdln`; a `g` substitution whose pattern can match the empty string (`a*`, `$`) never advances and overflows `tmpblk` (ASan: global-buffer-overflow in `regsub`) | New messages `Substitution would make a line too long` and `Global command too long` | D7 | `tests/scenarios/regress/ex-{20261142,20261255,20261353,20261367}` | yes (2026-11-11) |
+| B12 | cmd1.c `cmd_global` | `doingglobal` stays set after an interrupted `:g` | Reset on interrupt | D5 | — | yes (2026-11-11) |
+| B13 | misc.c/move3.c/move5.c line scans | Reading past a line's NUL sees the next line in the cache block | Treated as end of line (`e` on empty line, `2fx`/`;` past end differ). `fetchline` stops at the first NUL, as C's string copy does for its callers: a line past the end (a zero-filled block, e.g. the cursor left past the end by `/a/,/b/d` wrapping) reads as empty; until 2026-11-11 the port returned the NUL bytes | D7 | `tests/scenarios/regress/ex-20261411` | yes (2026-11-11) |
+| B14 | regexp.c `[…]` with bytes ≥ 128 | Signed index writes before the class bitmap | Same bytes reproduced in the program, `minlen`, `first`; `bol`/`endp` kept in a 10-byte tail | D7 | `regexp::tests` | yes (2026-11-11) |
+| B15 | cut.c `cutneeds` | Overflows `need[512]` for cut buffers over ~450000 bytes | Stops at 512 entries | D7 | — | yes (2026-11-11) |
+| B16 | modify.c `add` | Lines over 1023 bytes corrupt memory (KNOWN.BUGS); crashes with SIGBUS on macOS | `add` refuses text that would make any line longer than `BLKSIZE - 1` bytes (newline included): shows "Line too long", changes nothing, sets `vars.toolong`. Input mode does not advance the cursor and a counted insert stops repeating. In `change`, the delete has already happened (undo restores it); a multi-block paste can be partly applied | D7 | `tmp::tests::modify_and_undo` | yes (2026-11-11) |
+| B17 | various loops | Interrupt only via longjmp | Extra `take_sigint` checkpoints in `:s` (per match), `:g`, `:w`/`:r`, `<`/`>`, `:p`, searches, `9999a` | D5 | — | yes (2026-11-11) |
+| B18 | ex.c, vcmd.c, cmd1.c buffers | `%`/`#` expansion, `wildcard`, `v_keyword` `cmdline[130]`, `prevorig`, `args`, `v_increment` `newval[12]` overflow | Truncated to the C buffer size or unbounded where no observable limit exists | D7 | — | yes (2026-11-11) |
+| B19 | ncurses `delay_output` with `npc` (Linux) | Flushes ncurses's own buffer and sleeps for each padded delay (xterm `flash` `$<100/>` sleeps 100 ms; elvis's `kbuf` is not flushed) | No pad characters and no sleep; output bytes are the same | 4.6 | `curses::tests::capprobe_golden` (xterm) | yes (2026-11-11) |
+| B20 | ncurses `_nc_trim_sgr0` final `strstr` branch | `chop_out(tmp, i, strlen(off))` with `strlen(off) < i` copies past the end of the string | `sgr0` is kept unchanged in that case; otherwise bytes `i..strlen(off)` are removed as in C (the port used to truncate at `i`) | D7 | `terminfo::tests::trim_sgr0_matches_libtinfo` | yes (2026-11-11) |
+| B21 | tmp.c `tmpstart`, modify.c `add`, blk.c `blkadd` | No check of the header's 511 text blocks: a file needing more (974 lines of 513 bytes, under 500000 bytes) writes past `hdr.n[]`/`lnum[]`; `:%s/a/b/g` on a 400000-byte file of 80-byte lines makes `blkadd` drop the last block and `add` read past `lnum[]`. Both SIGSEGV on Linux | Loading stops with `"name" is too big` and falls back to `[NO FILE]` like the 500000-byte check (loading keeps one spare slot, so at most 510 blocks). `add` and `change` count the blocks the change would add and refuse with `File too big` before changing anything (`change` checks before its delete); `:s` stops at the first refusal without its report. Up to 511 blocks behaves as C | D7 | `tmp::tests::block_table_limits` | yes (2026-11-11) |
+| B22 | cmd2.c `cmd_move` (`co`, `t`, `m`) | The destination line is not checked: when it is past the last line (after `m` subtracts the moved lines), `add` overflows a stack buffer (ASan) and C crashes, e.g. `1t2` or `1m3` in a one-line file; `1m2` works | `invalid destination address` (C's message for a bad destination in the same function), nothing changes; where C works the result is the same | D7 | `tests/scenarios/regress/ex-20261340`, `ex-20261443`, `ex-20261171` | pending |
+| B23 | cmd2.c `cmd_put`, misc.c `fetchline` | A failed put (`Cut buffer is empty`) sets `cursor` to `MARK_UNSET`; the autoprint then fetches line 0, which leaves fetchline's next-line shortcut one line off (`1p` prints line 2, `q!` does not quit), and a command that walks to the last line reads past it (ASan: global-buffer-overflow in `fetchline`): C crashes, exits early with input unread, or leaves its temporary file, differently in `-O0` and `-O2` builds | The same cursor and off-by-one shortcut (deterministic in C); reading stops at the block end (B13), so the command completes and the temporary file is removed on exit | D7 | `tests/scenarios/regress/ex-{20261227,20261235,20261250,20261268,20261344,20261385,20261423,20261458}` | pending |
 
 Add entries as they are found. Candidate entries to evaluate: line length over
 `BLKSIZE - 1` (`KNOWN.BUGS`), `msg()` formatting longer than 79 bytes into
 `pmsg`, `regsub` output overflow, cut buffers over about 450000 bytes
 (`cutneeds`), and the key timeout.
+
+### Appendix D: Tests per ledger section
+
+M9 step 1 asks each `done` row to name its test. The ledger has no test
+column (adding one needs approval, section 2.3), so this table names the
+tests per C source file; every `done` row of that file's ledger section is
+covered by them. Unit tests are `module::tests::name`; suites are directories
+of `tests/scenarios/` run by `tests/harness/run.py` against the C goldens of
+the host (and `tests/harness/fuzz.py` for random sequences, M9 step 4).
+
+| C source | Unit tests | Harness suites and tools |
+|----------|------------|--------------------------|
+| `main.c` | — | `startup`, `signals`, `exrc`, `tags` |
+| `vars.c` | `vars::initial_values_match_c` | all suites |
+| `config.h`, `vi.h` | `types::*`, `config::name_formats_match_c`, `config::tread_twrite_return_counts` | `files` |
+| `curses.h`, `curses.c` | `curses::capprobe_golden`, `curses::exit_paths`, `terminfo::*` (padding, `tgoto`, `tparm`, sgr0 trimming, parsing) | `caps`, `resize`, `startup/term-*`, `startup/small-screen`, `tests/tools/sttycheck.py` |
+| `blk.c` | `tmp::modify_and_undo`, `tmp::tmpstart_loads_and_fetches`, `tmp::block_table_limits` | `longlines`, `ex/undo`, `regress` |
+| `recycle.c` | `recycle::bitmap_ops`, `recycle::allocate_takes_first_free_block` | `tests/tools/tmpimage.py` |
+| `tmp.c` | `tmp::tmp_file_layout_matches_c`, `tmp::tmpname_checksum`, `tmp::tmpsave_round_trip_and_append`, `tmp::nul_and_long_lines`, `tmp::block_table_limits` | `files`, `bytes`, `tests/tools/tmpimage.py` |
+| `misc.c` | `tmp::tmpstart_loads_and_fetches`, `regexp::errors` | `regress/ex-20261411`, all suites |
+| `modify.c` | `tmp::modify_and_undo`, `tmp::block_table_limits` | `ex`, `vi`, `longlines`, `regress` |
+| `cut.c` | `tmp::cut_and_paste`, `tmp::named_cut_survives_file_switch` | `cutbuf`, `regress` (B23) |
+| `regexp.c`, `regsub.c` | `regexp::c_driver_table` (320 cases against `tests/tools/redriver.c`), `regexp::*`, `regsub::substitutions` | `ex/substitute`, `ex/global`, `vi/search` |
+| `opts.c` | `opts::*`, `opts::setopts_tests::*` | `options` |
+| `ex.c` | `ex::*` | `ex`, `regress` |
+| `cmd1.c` | `cmd1::*` | `ex`, `shell`, `tags`, `files` |
+| `cmd2.c` | `cmd2::octal_escape_matches_c_signed_char` | `ex`, `regress` (B11, B22) |
+| `system.c` | `system::*`, `os::spawn_with_pipe_and_input`, `os::wait_status_codes`, `os::exec_failure_writes_message_and_exits_1`, `os::child_closes_descriptors_3_to_59` | `shell` |
+| `tio.c` | `tio::*`, `fmt::sprintf_matches_c`, `os::read_timeout_on_pipe` | `maps`, `messages`, `tests/tools/keytime.py` |
+| `input.c` | — | `vi/insert-append-open`, `vi/showmatch-ai`, `vi/wrapmargin`, `vi/ctrl-v-erase` |
+| `move1.c` … `move5.c` | `motion::*` | `vi`, fuzz vi sequences |
+| `vcmd.c` | `vcmd::*` | `vi`, `cutbuf`, `shell/keywordprg` |
+| `vi.c` | `vi::*` | `vi`, `maps/map-visual`, fuzz vi sequences |
+| `redraw.c` | `redraw::*` | every pty scenario (byte-exact screen output) |
 
 ### Appendix C: Checkpoint log
 
@@ -1807,3 +1878,25 @@ Add entries as they are found. Candidate entries to evaluate: line length over
 - New Appendix B entries: none.
 - Open problems: M0–M8 exit criteria now all hold on Linux. They count as complete on both systems once macOS reruns `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` and `tests/harness/run.py --suite all --repeat 3` on this code.
 - Next step: the macOS reruns above; user review of Appendix B (B1–B21); M9.
+
+### Checkpoint 2026-11-11 (3) — M5 C driver and M9 on Linux
+
+- Host OS and version: as in checkpoint 2026-11-11.
+- Milestone and step: M5 required tests (the C driver, which earlier sessions had not built); M9 steps 1–6 on Linux.
+- Ledger rows changed: none (all `done` or `excluded`); Appendix D added.
+- Files changed:
+  - `src/blk.rs`: `fetchline` stops at the first NUL (B13).
+  - `src/cmd2.rs`: `cmd_move` refuses a destination past the last line (B22).
+  - `src/regexp.rs`: `c_driver_table` test.
+  - `tests/tools/{retable.py,redriver.c}`, `tests/fixtures/regexp/cases.txt`, `tests/golden/linux/regexp/report.txt`.
+  - `tests/harness/fuzz.py`; `tests/harness/run.py` (`reference` key); `tests/scenarios/regress/` (16 scenarios) and their Linux goldens.
+  - `tests/golden/c-behavior.md` ("Regular expressions", "Random sequences"); Appendix B: B1–B21 approved, B11 and B13 extended, B22 and B23 added.
+- Commands run and results:
+  - `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` → pass; `cargo test` → 80 passed, three runs.
+  - `run.py --c … --rust target/release/elvis-tiny-rs --suite all --repeat 3` → 588 runs, 3 failures (`startup/small-screen`, B4). Tiny build → 105 runs, the same single failure.
+  - `fuzz.py` → 550 sequences, 14 failures, all classified (B11, B22, B23). Tiny build, ex sequences → the same 14 seeds.
+  - AddressSanitizer build of the C reference (scratch copy): global-buffer-overflow in `regsub` (B11) and in `fetchline` (B23), stack-buffer-overflow in `add` (B22).
+- Commands not run, and why: nothing on macOS (no host). Needed there: `tests/tools/redriver.c` → `tests/golden/macos/regexp/report.txt` (until then `regexp::tests::c_driver_table` fails on macOS); `run.py --c … --rust … --update-golden --suite regress` (C goldens for two scenarios, Rust goldens to review for 14), then the macOS reruns from checkpoint 2026-11-11 (2); `fuzz.py`; the M9 measurements.
+- New Appendix B entries: B22, B23 (pending approval).
+- Open problems: M0–M9 hold on Linux. The definition of done (section 7.3) also needs the macOS runs above and the approval of B22 and B23.
+- Next step: approve or change B22 and B23; the macOS runs.

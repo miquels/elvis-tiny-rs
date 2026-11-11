@@ -1,0 +1,12 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "tab\there Abc\n",
+  "other.txt": "Abc\nAbc a*b a*b Abc alpha\n"
+ },
+ "stdin": "$l\n1m2\n.,.+2l\nw! result.txt\nq!\n",
+ "description": "fuzz.py --only ex:20261171. 1m2 in a one-line file works in C; the B22 check must allow it"
+}
