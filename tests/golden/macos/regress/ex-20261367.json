@@ -1,0 +1,59 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "\\n",
+   "aab  a.b delta\\n",
+   "a.b ab a.b\\n",
+   "x\\n",
+   "Abc aab tab\\x09here delta alpha\\n",
+   "alpha\\n",
+   "\\n",
+   "alpha\\n"
+  ],
+  "other.txt": [
+   "\\n",
+   "Abc gamma x\\n"
+  ],
+  "result.txt": [
+   "\\x09a.b <ab> a.b\\n",
+   "\\x09x\\n",
+   "\\x09Abc aab tab\\x09here delta alpha\\n",
+   "\\x09alpha\\n",
+   "\\n",
+   "\\x09alpha\\n",
+   "\\n",
+   "\\n",
+   "\\x09aab  a.b delta\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  8 lines, 71 chars\\n",
+  "\\r\\e[24;1H:\\e[K1&\\e[K\\n",
+  "\\rRE error: No previous RE\\n",
+  "\\r\\e[24;1H:\\e[K$j\\e[K\\n",
+  "\\rNothing to join with this line\\n",
+  "\\r\\e[24;1H:\\e[K%>\\e[K\\n",
+  "\\r\\n",
+  "\\r\\e[24;1H:\\e[K1a\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[K\\n",
+  "\\r\\e[24;1H\\e[K.\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K.,.+2m$\\e[K\\n",
+  "\\r        aab  a.b delta\\n",
+  "\\r\\e[24;1H:\\e[K1s/\\x5c<ab/<&>/g\\e[K\\n",
+  "\\r        a.b <ab> a.b\\n",
+  "\\r\\e[24;1H:\\e[Kv/a*/d\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K1&\\e[K\\n",
+  "\\rSubstitution would make a line too long\\n",
+  "\\r\\e[24;1H:\\e[Kv/a.b/d\\e[K\\n",
+  "\\r        aab  a.b delta\\n",
+  "\\r\\e[24;1H:\\e[Ku\\e[K\\n",
+  "\\r        a.b <ab> a.b\\n",
+  "\\r\\e[24;1H:\\e[Kw! result.txt\\e[K\\n",
+  "\\rWrote \"result.txt\"  9 lines, 80 characters\\n",
+  "\\r\\e[24;1H:\\e[Kq!\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

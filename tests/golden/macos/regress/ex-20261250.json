@@ -1,0 +1,58 @@
+{
+ "status": 1,
+ "files": {
+  "f.txt": [
+   "x aab alpha\\n",
+   "\\n",
+   "x  gamma tab\\x09here a.b\\n",
+   "alpha tab\\x09here alpha\\n",
+   "beta ba alpha\\n",
+   "gamma x aab alpha\\n",
+   "ba alpha a.b aab x\\n",
+   "a*b ba\\n",
+   "ab Abc\\n",
+   "gamma delta delta delta\\n",
+   "ab ba delta\\n",
+   "gamma x\\n"
+  ],
+  "other.txt": [
+   "beta a*b Abc\\n",
+   "\\n"
+  ],
+  "out.txt": [
+   "x aab alpha\\n",
+   "\\n",
+   "x  gamma tab\\x09here a.b\\n",
+   "alpha tab\\x09here alpha\\n",
+   "beta ba alpha\\n",
+   "gamma x aab alpha\\n",
+   "ba alpha a.b aab x\\n",
+   "a*b ba\\n",
+   "ab Abc\\n",
+   "gamma delta delta delta\\n",
+   "ab ba delta\\n",
+   "gamma x\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  12 lines, 165 chars\\n",
+  "\\r\\e[24;1H:\\e[Kw out.txt\\e[K\\n",
+  "\\rWrote \"out.txt\"  12 lines, 165 characters\\n",
+  "\\r\\e[24;1H:\\e[Kpu\\e[K\\n",
+  "\\rCut buffer is empty\\n",
+  "\\rx aab alpha\\n",
+  "\\r\\e[24;1H:\\e[K/a/,/b/j\\e[K\\n",
+  "\\rx aab alpha\\n",
+  "\\r\\e[24;1H:\\e[K%!sort\\e[K\\n",
+  "\\r\\e[?1l\\e>\\e[?1h\\e=\\n",
+  "\\r\\e[24;1H:\\e[K$c\\e[K\\n",
+  "\\r\\e[24;1H\\e[Ktab     here Abc\\e[K\\n",
+  "\\r\\e[24;1H\\e[K.\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K.+1ka\\e[K\\n",
+  "\\r\\e[24;1H:\\e[Kw! result.txt\\e[K\\n",
+  "\\r\\e[24;1H:\\e[Kq!\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

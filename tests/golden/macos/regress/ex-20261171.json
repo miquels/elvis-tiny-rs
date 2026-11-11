@@ -1,0 +1,29 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "tab\\x09here Abc\\n"
+  ],
+  "other.txt": [
+   "Abc\\n",
+   "Abc a*b a*b Abc alpha\\n"
+  ],
+  "result.txt": [
+   "\\n",
+   "tab\\x09here Abc\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  1 line, 13 chars\\n",
+  "\\r\\e[24;1H:\\e[K$l\\e[K\\n",
+  "\\rtab^Ihere Abc$\\n",
+  "\\r\\e[24;1H:\\e[K1m2\\e[K\\n",
+  "\\rtab     here Abc\\n",
+  "\\r\\e[24;1H:\\e[K.,.+2l\\e[K\\n",
+  "\\r\\e[24;1H:\\e[Kw! result.txt\\e[K\\n",
+  "\\rWrote \"result.txt\"  2 lines, 14 characters\\n",
+  "\\r\\e[24;1H:\\e[Kq!\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

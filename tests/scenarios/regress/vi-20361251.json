@@ -1,0 +1,32 @@
+{
+ "mode": "pty",
+ "args": [
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "\ntab\there ab\nx a.b\n\n"
+ },
+ "keys": [
+  [
+   0.6,
+   "\"apFa3xFacwnew\u001bN1Gd'aaapp\u001b^My$c$tail\u001bM\u0007Nddcc line\u001bFaM"
+  ],
+  [
+   0.8,
+   "\u001b\u001b:w! result.txt\r"
+  ],
+  [
+   0.4,
+   ":q!\r"
+  ]
+ ],
+ "compare": {
+  "output": false
+ },
+ "timeout": 8,
+ "description": "fuzz.py --only vi:20361251. A change on a line past the end: C's redraw during input reads past fetchline's buffer (ASan: global-buffer-overflow in fetchline, from redraw in v_change). It happens to work on Linux; on macOS C does not write result.txt and leaves its temporary file",
+ "divergences": [
+  "B13"
+ ],
+ "reference": "rust"
+}

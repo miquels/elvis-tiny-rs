@@ -1,0 +1,52 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "alpha aab \\n",
+   "\\n",
+   "a.b beta Abc\\n"
+  ],
+  "other.txt": [
+   "a*b a.b\\n",
+   "ba x x x\\n"
+  ],
+  "result.txt": [
+   "\\n",
+   "\\x09delta gamma beta\\n",
+   "\\x09delta gamma beta  a.b beta Abc\\n",
+   "a.b beta Abc\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  3 lines, 25 chars\\n",
+  "\\r\\e[24;1H:\\e[K2,$p\\e[K\\n",
+  "\\r\\n",
+  "\\ra.b beta Abc\\n",
+  "\\r\\e[24;1H:\\e[Ku\\e[K\\n",
+  "\\rYou haven't modified this file yet.\\n",
+  "\\r\\e[24;1H:\\e[Kc\\e[K\\n",
+  "\\r\\e[24;1H\\e[Kdelta gamma beta\\e[K\\n",
+  "\\r\\e[24;1H\\e[K.\\e[K\\n",
+  "\\r\\e[24;1H\\e[Kdelta gamma beta\\n",
+  "\\r\\e[24;1H:\\e[K.,.+2co$\\e[K\\n",
+  "\\ra.b beta Abc\\n",
+  "\\r\\e[24;1H:\\e[K1<\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K/a/,/b/j\\e[K\\n",
+  "\\r(wrapped)\\n",
+  "\\ra.b beta Abc\\n",
+  "\\r\\e[24;1H:\\e[Kset nolist\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K/a/,/b/s/a*/\\x5cU&/g\\e[K\\n",
+  "\\r(wrapped)\\n",
+  "\\rSubstitution would make a line too long\\n",
+  "\\r\\e[24;1H:\\e[K/a/,/b/>\\e[K\\n",
+  "\\r(wrapped)\\n",
+  "\\ra.b beta Abc\\n",
+  "\\r\\e[24;1H:\\e[K1,3!sort\\e[K\\n",
+  "\\r\\e[?1l\\e>\\e[?1h\\e=a.b beta Abc\\n",
+  "\\r\\e[24;1H:\\e[Kw! result.txt\\e[K\\n",
+  "\\rWrote \"result.txt\"  4 lines, 64 characters\\n",
+  "\\r\\e[24;1H:\\e[Kq!\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

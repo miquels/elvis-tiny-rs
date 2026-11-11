@@ -1,0 +1,38 @@
+{
+ "status": 1,
+ "files": {
+  "f.txt": [
+   "gamma a*b\\n"
+  ],
+  "other.txt": [
+   "a*b alpha aab\\n",
+   "alpha ba delta ba\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  1 line, 10 chars\\n",
+  "\\r\\e[24;1H:\\e[K.,.+2co1\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K1,3l\\e[K\\n",
+  "\\rthere are only 1 lines in the file\\n",
+  "\\r\\e[24;1H:\\e[K?b?pu\\e[K\\n",
+  "\\r(wrapped)\\n",
+  "\\rCut buffer is empty\\n",
+  "\\rgamma a*b\\n",
+  "\\r\\e[24;1H:\\e[K/a/,/b/nu\\e[K\\n",
+  "\\r(wrapped)\\n",
+  "\\r(wrapped)\\n",
+  "\\r     1  gamma a*b\\n",
+  "\\r\\e[24;1H:\\e[Kg/a.b/s/gamma//g\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K$-1a\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K\\e[K\\r\\e[K\\e[24;1H:\\e[K.\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K1,3t2\\e[K\\n",
+  "\\rthere are only 1 lines in the file\\n",
+  "\\r\\e[24;1H:\\e[K1<\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K1,3!sort\\e[K\\n",
+  "\\rthere are only 1 lines in the file\\n",
+  "\\r\\e[24;1H:\\e[Kw! result.txt\\e[K\\n",
+  "\\r\\e[24;1H:\\e[Kq!\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

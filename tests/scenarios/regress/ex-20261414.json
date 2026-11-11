@@ -1,0 +1,16 @@
+{
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "Abc a.b\na*b\nab tab\there\n\na.b x gamma ab alpha\n\nba ab\n\ngamma\nalpha x aab\n\n\nbeta a*b beta\nbeta\n",
+  "other.txt": "ab a*b\ndelta gamma ab\n"
+ },
+ "stdin": "g/\\<ab/d\n/gamma/r other.txt\n2,$!sort\nnu\nw out.txt\n2,$d\ns/./\\U&/g\n/a/,/b/<\n.=\n2,$y\nw! result.txt\nq!\n",
+ "description": "fuzz.py --only ex:20261414. 2,$d leaves the cursor past the last line; C's autoprint reads past fetchline's buffer (ASan: global-buffer-overflow in fetchline). It happens to work on Linux and crashes (SIGBUS) on macOS",
+ "divergences": [
+  "B13"
+ ],
+ "reference": "rust"
+}

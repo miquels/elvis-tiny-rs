@@ -1281,7 +1281,8 @@ through the reference objects into `tests/golden/<os>/regexp/report.txt`, and
 `regexp::tests::c_driver_table` compares the port with it line by line: 316
 cases identical, one skipped because it crashes C (B14), three where only the
 driver's heap layout turns a B14 class into an error (`tests/golden/c-behavior.md`,
-"Regular expressions"). The macOS report still has to be generated there.
+"Regular expressions"). The macOS report (2026-11-11) is identical to the
+Linux one.
 
 ### M6: Options, ex parsing and commands, shell filters, and startup
 
@@ -1412,7 +1413,24 @@ exit test. The M8 ledger rows are `done`.
    first B22 check), also kept as regression scenarios.
 5. Measurements: section 7.2.
 6. Appendix B reviewed with the user for B1–B21 (approved 2026-11-11); B22
-   and B23 are new and pending.
+   and B23, and the macOS extensions of B13 and B21, approved 2026-11-11.
+
+**Results (2026-11-11, macOS).**
+
+1–2. As on Linux; enforcement checks pass, also clippy with
+   `--cfg elvis_immediate_abort` and `--cfg elvis_test_panic`.
+3. `run.py --suite all --repeat 3` for C and the release build: 579 runs
+   (no `files/write-dev-full`), only `startup/small-screen` (B4) differs;
+   tiny build 104 runs, the same single failure; `cargo test` 80 passed,
+   three runs.
+4. `fuzz.py` (same seeds): 17 of 550 differ, the Linux 14 plus three where
+   C writes past `fetchline`'s buffer for a line past the end (B13;
+   c-behavior.md, macOS "Random sequences"); Linux C happens to work on
+   them. One is `regress/ex-20261411`, now Rust-referenced (its Linux golden
+   is unchanged and equals the macOS one); the new ones are
+   `regress/ex-20261414` and `regress/vi-20361251`. Tiny build, ex
+   sequences → the same 16 ex seeds.
+5. Measurements: section 7.2.
 
 On macOS, steps 3–5 have not been run on this code.
 
@@ -1602,6 +1620,32 @@ Implications:
   `libtinfo.so.6` and `libc.so.6`; both Rust builds `libgcc_s.so.1` and
   `libc.so.6`.
 
+  macOS arm64 (macOS 27.0.1, Apple clang 21, rustc 1.93.0, 2026-11-11), as
+  file size / `__TEXT` / `__text`; the Rust builds are stripped by the
+  profile, the C binary is shown as built and after `strip`:
+
+  | Build | File | `__TEXT` | `__text` |
+  |---|---|---|---|
+  | C reference (`target/c-ref/elvis`) | 132904 (stripped 123488) | 81920 | 65864 |
+  | `cargo build --release` | 403936 | 344064 | 280408 |
+  | `scripts/build-tiny.sh` | 153808 | 114688 | 92448 |
+
+  macOS M9 run-time measurements, peak resident memory from
+  `/usr/bin/time -l` in KiB (five runs, same two files and scripts as on
+  Linux), and startup from fork to the file message on a 24x80 pty (median
+  of 20, timed by a Python pty script, so not comparable with the Linux
+  figure):
+
+  | Build | Load and `q` | `:%s/a/b/g` | `:%s/x/y/g` | Startup |
+  |---|---|---|---|---|
+  | C reference | 1824–1840 | SIGBUS (B21), 1872–1904 | SIGSEGV (B21), 1872–1904 | 7.00 ms |
+  | `cargo build --release` | 1952 | 2000–2016 | 2016–2032 | 6.60 ms |
+  | `scripts/build-tiny.sh` | 1840–1856 | 1872–1888 | 1888–1936 | 6.40 ms |
+
+  On macOS C crashes on both substitutions; the Rust builds exit 0. Linked
+  libraries: C `libncurses.5.4.dylib` and `libSystem.B.dylib`; both Rust
+  builds `libiconv.2.dylib` (linked by std on macOS) and `libSystem.B.dylib`.
+
   Most of the stable build's extra size is std's panic printing and
   backtrace code (gimli, addr2line, rustc_demangle), which the prebuilt std
   always links. Neither replacing the panic hook nor codegen or linker flags
@@ -1714,7 +1758,7 @@ user asks.
 | B10 | tio.c `msg` in vi mode | ^C at `[More...]` longjmps immediately | Interrupt re-armed and handled at the next checkpoint | D5 | — | yes (2026-11-11) |
 | B11 | cmd2.c `cmd_substitute`, cmd1.c `cmd_global` | Line over 1024 bytes or `:g` command over 100 bytes overflows `tmpblk`/`cmdln`; a `g` substitution whose pattern can match the empty string (`a*`, `$`) never advances and overflows `tmpblk` (ASan: global-buffer-overflow in `regsub`) | New messages `Substitution would make a line too long` and `Global command too long` | D7 | `tests/scenarios/regress/ex-{20261142,20261255,20261353,20261367}` | yes (2026-11-11) |
 | B12 | cmd1.c `cmd_global` | `doingglobal` stays set after an interrupted `:g` | Reset on interrupt | D5 | — | yes (2026-11-11) |
-| B13 | misc.c/move3.c/move5.c line scans | Reading past a line's NUL sees the next line in the cache block | Treated as end of line (`e` on empty line, `2fx`/`;` past end differ). `fetchline` stops at the first NUL, as C's string copy does for its callers: a line past the end (a zero-filled block, e.g. the cursor left past the end by `/a/,/b/d` wrapping) reads as empty; until 2026-11-11 the port returned the NUL bytes | D7 | `tests/scenarios/regress/ex-20261411` | yes (2026-11-11) |
+| B13 | misc.c/move3.c/move5.c line scans | Reading past a line's NUL sees the next line in the cache block | Treated as end of line (`e` on empty line, `2fx`/`;` past end differ). `fetchline` stops at the first NUL, as C's string copy does for its callers: a line past the end (a zero-filled block, e.g. the cursor left past the end by `/a/,/b/d` wrapping) reads as empty; until 2026-11-11 the port returned the NUL bytes. C's own copy of such a line has no `'\n'` to stop at and writes past `fetchline`'s `buf` (ASan): it happens to work on Linux; on macOS C crashes (SIGBUS) or leaves its temporary file | D7 | `tests/scenarios/regress/ex-20261411`, `ex-20261414`, `vi-20361251` | yes (2026-11-11) |
 | B14 | regexp.c `[…]` with bytes ≥ 128 | Signed index writes before the class bitmap | Same bytes reproduced in the program, `minlen`, `first`; `bol`/`endp` kept in a 10-byte tail | D7 | `regexp::tests` | yes (2026-11-11) |
 | B15 | cut.c `cutneeds` | Overflows `need[512]` for cut buffers over ~450000 bytes | Stops at 512 entries | D7 | — | yes (2026-11-11) |
 | B16 | modify.c `add` | Lines over 1023 bytes corrupt memory (KNOWN.BUGS); crashes with SIGBUS on macOS | `add` refuses text that would make any line longer than `BLKSIZE - 1` bytes (newline included): shows "Line too long", changes nothing, sets `vars.toolong`. Input mode does not advance the cursor and a counted insert stops repeating. In `change`, the delete has already happened (undo restores it); a multi-block paste can be partly applied | D7 | `tmp::tests::modify_and_undo` | yes (2026-11-11) |
@@ -1722,9 +1766,9 @@ user asks.
 | B18 | ex.c, vcmd.c, cmd1.c buffers | `%`/`#` expansion, `wildcard`, `v_keyword` `cmdline[130]`, `prevorig`, `args`, `v_increment` `newval[12]` overflow | Truncated to the C buffer size or unbounded where no observable limit exists | D7 | — | yes (2026-11-11) |
 | B19 | ncurses `delay_output` with `npc` (Linux) | Flushes ncurses's own buffer and sleeps for each padded delay (xterm `flash` `$<100/>` sleeps 100 ms; elvis's `kbuf` is not flushed) | No pad characters and no sleep; output bytes are the same | 4.6 | `curses::tests::capprobe_golden` (xterm) | yes (2026-11-11) |
 | B20 | ncurses `_nc_trim_sgr0` final `strstr` branch | `chop_out(tmp, i, strlen(off))` with `strlen(off) < i` copies past the end of the string | `sgr0` is kept unchanged in that case; otherwise bytes `i..strlen(off)` are removed as in C (the port used to truncate at `i`) | D7 | `terminfo::tests::trim_sgr0_matches_libtinfo` | yes (2026-11-11) |
-| B21 | tmp.c `tmpstart`, modify.c `add`, blk.c `blkadd` | No check of the header's 511 text blocks: a file needing more (974 lines of 513 bytes, under 500000 bytes) writes past `hdr.n[]`/`lnum[]`; `:%s/a/b/g` on a 400000-byte file of 80-byte lines makes `blkadd` drop the last block and `add` read past `lnum[]`. Both SIGSEGV on Linux | Loading stops with `"name" is too big` and falls back to `[NO FILE]` like the 500000-byte check (loading keeps one spare slot, so at most 510 blocks). `add` and `change` count the blocks the change would add and refuse with `File too big` before changing anything (`change` checks before its delete); `:s` stops at the first refusal without its report. Up to 511 blocks behaves as C | D7 | `tmp::tests::block_table_limits` | yes (2026-11-11) |
-| B22 | cmd2.c `cmd_move` (`co`, `t`, `m`) | The destination line is not checked: when it is past the last line (after `m` subtracts the moved lines), `add` overflows a stack buffer (ASan) and C crashes, e.g. `1t2` or `1m3` in a one-line file; `1m2` works | `invalid destination address` (C's message for a bad destination in the same function), nothing changes; where C works the result is the same | D7 | `tests/scenarios/regress/ex-20261340`, `ex-20261443`, `ex-20261171` | pending |
-| B23 | cmd2.c `cmd_put`, misc.c `fetchline` | A failed put (`Cut buffer is empty`) sets `cursor` to `MARK_UNSET`; the autoprint then fetches line 0, which leaves fetchline's next-line shortcut one line off (`1p` prints line 2, `q!` does not quit), and a command that walks to the last line reads past it (ASan: global-buffer-overflow in `fetchline`): C crashes, exits early with input unread, or leaves its temporary file, differently in `-O0` and `-O2` builds | The same cursor and off-by-one shortcut (deterministic in C); reading stops at the block end (B13), so the command completes and the temporary file is removed on exit | D7 | `tests/scenarios/regress/ex-{20261227,20261235,20261250,20261268,20261344,20261385,20261423,20261458}` | pending |
+| B21 | tmp.c `tmpstart`, modify.c `add`, blk.c `blkadd` | No check of the header's 511 text blocks: a file needing more (974 lines of 513 bytes, under 500000 bytes) writes past `hdr.n[]`/`lnum[]`; `:%s/a/b/g` on a 400000-byte file of 80-byte lines makes `blkadd` drop the last block and `add` read past `lnum[]`. Both SIGSEGV on Linux; on macOS the substitution stops with SIGBUS or SIGSEGV | Loading stops with `"name" is too big` and falls back to `[NO FILE]` like the 500000-byte check (loading keeps one spare slot, so at most 510 blocks). `add` and `change` count the blocks the change would add and refuse with `File too big` before changing anything (`change` checks before its delete); `:s` stops at the first refusal without its report. Up to 511 blocks behaves as C | D7 | `tmp::tests::block_table_limits` | yes (2026-11-11) |
+| B22 | cmd2.c `cmd_move` (`co`, `t`, `m`) | The destination line is not checked: when it is past the last line (after `m` subtracts the moved lines), `add` overflows a stack buffer (ASan) and C crashes, e.g. `1t2` or `1m3` in a one-line file; `1m2` works | `invalid destination address` (C's message for a bad destination in the same function), nothing changes; where C works the result is the same | D7 | `tests/scenarios/regress/ex-20261340`, `ex-20261443`, `ex-20261171` | yes (2026-11-11) |
+| B23 | cmd2.c `cmd_put`, misc.c `fetchline` | A failed put (`Cut buffer is empty`) sets `cursor` to `MARK_UNSET`; the autoprint then fetches line 0, which leaves fetchline's next-line shortcut one line off (`1p` prints line 2, `q!` does not quit), and a command that walks to the last line reads past it (ASan: global-buffer-overflow in `fetchline`): C crashes, exits early with input unread, or leaves its temporary file, differently in `-O0` and `-O2` builds | The same cursor and off-by-one shortcut (deterministic in C); reading stops at the block end (B13), so the command completes and the temporary file is removed on exit | D7 | `tests/scenarios/regress/ex-{20261227,20261235,20261250,20261268,20261344,20261385,20261423,20261458}` | yes (2026-11-11) |
 
 Add entries as they are found. Candidate entries to evaluate: line length over
 `BLKSIZE - 1` (`KNOWN.BUGS`), `msg()` formatting longer than 79 bytes into
@@ -1749,7 +1793,7 @@ the host (and `tests/harness/fuzz.py` for random sequences, M9 step 4).
 | `blk.c` | `tmp::modify_and_undo`, `tmp::tmpstart_loads_and_fetches`, `tmp::block_table_limits` | `longlines`, `ex/undo`, `regress` |
 | `recycle.c` | `recycle::bitmap_ops`, `recycle::allocate_takes_first_free_block` | `tests/tools/tmpimage.py` |
 | `tmp.c` | `tmp::tmp_file_layout_matches_c`, `tmp::tmpname_checksum`, `tmp::tmpsave_round_trip_and_append`, `tmp::nul_and_long_lines`, `tmp::block_table_limits` | `files`, `bytes`, `tests/tools/tmpimage.py` |
-| `misc.c` | `tmp::tmpstart_loads_and_fetches`, `regexp::errors` | `regress/ex-20261411`, all suites |
+| `misc.c` | `tmp::tmpstart_loads_and_fetches`, `regexp::errors` | `regress/ex-20261411`, `ex-20261414`, `vi-20361251`, all suites |
 | `modify.c` | `tmp::modify_and_undo`, `tmp::block_table_limits` | `ex`, `vi`, `longlines`, `regress` |
 | `cut.c` | `tmp::cut_and_paste`, `tmp::named_cut_survives_file_switch` | `cutbuf`, `regress` (B23) |
 | `regexp.c`, `regsub.c` | `regexp::c_driver_table` (320 cases against `tests/tools/redriver.c`), `regexp::*`, `regsub::substitutions` | `ex/substitute`, `ex/global`, `vi/search` |
@@ -1900,3 +1944,29 @@ the host (and `tests/harness/fuzz.py` for random sequences, M9 step 4).
 - New Appendix B entries: B22, B23 (pending approval).
 - Open problems: M0–M9 hold on Linux. The definition of done (section 7.3) also needs the macOS runs above and the approval of B22 and B23.
 - Next step: approve or change B22 and B23; the macOS runs.
+
+### Checkpoint 2026-11-11 (4) — macOS M5 report, regress goldens and M9
+
+- Host OS and version: macOS 27.0.1 (26A434), arm64; Apple clang 21.0.0 (clang-2100.4.1.1); system `libncurses.5.4.dylib`; rustc 1.93.0.
+- Milestone and step: the macOS runs from checkpoint 2026-11-11 (3): M5 C driver report, regress goldens, the M0–M8 reruns from checkpoint 2026-11-11 (2), and M9 steps 2–5.
+- Ledger rows changed: none.
+- Files changed:
+  - `tests/golden/macos/regexp/report.txt` (identical to the Linux report).
+  - `tests/golden/macos/regress/` (18 goldens; the 16 that Linux has are byte-identical to Linux's).
+  - `tests/scenarios/regress/ex-20261411.json`: now `"reference": "rust"`, divergence B13 (C writes past `fetchline`'s buffer and crashes with SIGBUS on macOS; ASan confirms). The Linux golden is unchanged.
+  - New `tests/scenarios/regress/{ex-20261414,vi-20361251}.json` (B13, Rust reference) and their macOS goldens.
+  - `tests/golden/c-behavior.md` (macOS "Regular expressions", "Random sequences", "Block table limits"; the Linux B21 note); this file: M5 and M9 results, section 7.2 macOS figures, Appendix B B13 and B21 (C column and tests only; the port behavior is unchanged), Appendix D.
+- Commands run and results:
+  - C reference `-O2` with the section 1.6 overrides → 132904 bytes as in checkpoint 1; `-O0 -g` and `-O1 -fsanitize=address` copies under `target/c-ref/`.
+  - `tests/tools/redriver.c` → `tests/golden/macos/regexp/report.txt`, 320 lines, identical to Linux.
+  - `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` (also with `--cfg elvis_immediate_abort` and `--cfg elvis_test_panic`) → pass; `cargo test` → 80 passed, three runs (`c_driver_table` included).
+  - `run.py --c … --rust … --update-golden --suite regress`, then `--repeat 3` → 57 runs, 0 failures; tiny build → 18 runs, 0 failures.
+  - `run.py --c target/c-ref/elvis --rust target/release/elvis-tiny-rs --suite all --repeat 3` → 579 runs, 3 failures (`startup/small-screen`, B4). Tiny build → 104 runs, the same single failure.
+  - `fuzz.py` → 550 sequences, 17 failures: the Linux 14 and three B13 (all regress scenarios now). Tiny build, ex sequences → the same 16.
+  - Enforcement checks → nothing printed; `cargo tree -e normal` → `libc` only.
+  - M9 step 5 measurements → section 7.2.
+- Commands not run, and why: `tests/tools/sttycheck.py`, `tmpimage.py` and `capprobe` were not rerun (not part of the listed macOS runs). Nothing on Linux (no host).
+- New Appendix B entries: none; B13 and B21 extended with the macOS C behavior.
+- Open problems: the Linux goldens for `regress/ex-20261414` and `regress/vi-20361251` do not exist yet, so `run.py --suite regress` reports `NOGOLD` for them on Linux until they are generated. M0–M9 otherwise hold on both systems.
+- Approvals (after this checkpoint's runs): the user approved B13 and B21 as extended here, and B22 and B23 (2026-11-11). Appendix B is now fully reviewed.
+- Next step: on Linux, `run.py --rust target/release/elvis-tiny-rs --update-golden --suite regress --only ex-20261414` and `--only vi-20361251`, compare them with the macOS goldens, then `--suite regress --repeat 3`. After that, the definition of done (section 7.3) holds on both systems.

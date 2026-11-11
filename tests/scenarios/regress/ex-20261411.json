@@ -8,5 +8,9 @@
   "other.txt": "x beta ab\na*b aab gamma beta tab\there\n"
  },
  "stdin": "g/a.b/s/a/Z/g\n1,3<\ng/a.b/d\n/a/,/b/d\nw! result.txt\nq!\n",
- "description": "fuzz.py --only ex:20261411. Rust printed the NUL bytes of a line past the end (fetchline fix)"
+ "description": "fuzz.py --only ex:20261411. /a/,/b/d leaves the cursor past the last line; Rust printed the NUL bytes of that line (fetchline fix). C's autoprint reads past fetchline's buffer (ASan: global-buffer-overflow in fetchline); it happens to work on Linux and crashes on macOS",
+ "divergences": [
+  "B13"
+ ],
+ "reference": "rust"
 }

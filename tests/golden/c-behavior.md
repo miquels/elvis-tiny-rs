@@ -120,6 +120,34 @@ with status 1.
 uses short `/tmp/eh.*` work directories so ordinary scenarios stay under the
 limit.
 
+### Regular expressions (M5)
+
+`tests/tools/redriver.c` built against the macOS reference objects (Apple
+clang 21, `-O2 -fsigned-char`) gives a `tests/golden/macos/regexp/report.txt`
+identical to the Linux report, including case 107's crash (SIGSEGV) and the
+driver-only "Mismatched \)" of cases 157, 212 and 248 (see the Linux section).
+
+### Random sequences (M9)
+
+`tests/harness/fuzz.py` with the default seeds: 17 of the 550 sequences
+differ, the Linux 14 plus three. The three are one family, a line past the
+end of the buffer (B13): after `/a/,/b/d` or `2,$d` wraps the cursor past the
+last line, or a vi change on such a line, C's `fetchline` copies the
+zero-filled block up to a `'\n'` that is not there and writes past its
+1024-byte `buf` (ASan, `-O1 -fsanitize=address`: global-buffer-overflow at
+`misc.c:60`, called from `cmd_print`, or from `redraw` in `v_change`). On
+Linux a `'\n'` follows in memory and C works. On macOS the `-O2` build stops
+with SIGBUS in the ex sequences and leaves its temporary file, and in the vi
+sequence it exits 0 without writing `result.txt` and leaves its temporary
+file. They are `tests/scenarios/regress/ex-20261411`, `ex-20261414` and
+`vi-20361251`, with the reviewed Rust result as reference.
+
+### Block table limits
+
+As on Linux (B21): `:%s/a/b/g` on a 400000-byte file of 80-byte lines with
+8 `a`s stops with SIGBUS, and `:%s/x/y/g` on 76-byte lines with 16 `x`s with
+SIGSEGV. On macOS both substitutions crash.
+
 ## Linux
 
 Recorded 2026-11-11.
@@ -213,9 +241,8 @@ Loading a file that needs more (for example 974 lines of 513 bytes, under
 500000 bytes) writes past `hdr.n[]` and `lnum[]` and crashes (SIGSEGV).
 `:%s/a/b/g` on a 400000-byte file of 80-byte lines splits blocks until
 `blkadd` drops the last block and `add` reads past `lnum[]` (SIGSEGV).
-The macOS build runs the same code with the same limits, so it is
-expected to fail the same way there; that has not been tried (Appendix B,
-B21).
+The macOS build fails the same way (macOS section, "Block table limits";
+Appendix B, B21).
 
 ### Regular expressions (M5)
 
