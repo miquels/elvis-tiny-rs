@@ -1970,3 +1970,19 @@ the host (and `tests/harness/fuzz.py` for random sequences, M9 step 4).
 - Open problems: the Linux goldens for `regress/ex-20261414` and `regress/vi-20361251` do not exist yet, so `run.py --suite regress` reports `NOGOLD` for them on Linux until they are generated. M0–M9 otherwise hold on both systems.
 - Approvals (after this checkpoint's runs): the user approved B13 and B21 as extended here, and B22 and B23 (2026-11-11). Appendix B is now fully reviewed.
 - Next step: on Linux, `run.py --rust target/release/elvis-tiny-rs --update-golden --suite regress --only ex-20261414` and `--only vi-20361251`, compare them with the macOS goldens, then `--suite regress --repeat 3`. After that, the definition of done (section 7.3) holds on both systems.
+
+### Checkpoint 2026-11-11 (5) — Linux regress goldens
+
+- Host OS and version: as in checkpoint 2026-11-11.
+- Milestone and step: the Linux runs from checkpoint 2026-11-11 (4): goldens for the two new regress scenarios.
+- Ledger rows changed: none.
+- Files changed: `tests/golden/linux/regress/{ex-20261414,vi-20361251}.json` (new); this file.
+- Commands run and results:
+  - `run.py --c target/c-ref/elvis --rust target/release/elvis-tiny-rs --update-golden --suite regress --only ex-20261414`, and the same with `--only vi-20361251` → C skipped (Rust reference, B13), goldens written.
+  - Compared with the macOS goldens: `ex-20261414` is byte-identical. `vi-20361251` differs in pad NULs (as everywhere) and in where the bells land: Linux writes 6 before `Cut buffer "a is empty` and 2 later, at the `^M`/`^G` moves on line 2, while macOS writes all 8 in the first place. The total is the same. The scenario has `"compare": {"output": false}`, so this has no effect on pass/fail; the file result and exit status match.
+  - `run.py --c … --rust target/release/elvis-tiny-rs --suite regress --repeat 3` → 57 runs, 0 failures. Tiny build (`scripts/build-tiny.sh`) → 19 runs, 0 failures.
+  - `run.py --c … --rust target/release/elvis-tiny-rs --suite all` → 197 runs, 1 failure (`startup/small-screen`, B4).
+- Commands not run, and why: the other Linux reruns (`cargo test`, `fuzz.py`, M9 measurements) were not repeated, because the port source has not changed since checkpoint 2026-11-11 (3).
+- New Appendix B entries: none.
+- Open problems: none. Both systems now have goldens for all 18 regress scenarios.
+- Next step: the definition of done (section 7.3) holds on Linux and macOS.
