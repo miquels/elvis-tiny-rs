@@ -1492,7 +1492,7 @@ Implications:
   | `scripts/build-tiny.sh` | 153936 | 114688 | 97512 |
 
   After the idiomatic cleanup (checkpoint 5) the `__text` sections are
-  281356 (`cargo build --release`) and 91792 (`scripts/build-tiny.sh`); the
+  281356 (`cargo build --release`) and 91456 (`scripts/build-tiny.sh`); the
   file and `__TEXT` sizes of the tiny build are 153872 and 114688.
 
   On arm64 macOS the `__TEXT` segment, and so the file size, grows in 16K
@@ -1687,5 +1687,5 @@ Add entries as they are found. Candidate entries to evaluate: line length over
   - Test fix: `os::tests::child_closes_descriptors_3_to_59` failed whenever the kept descriptor was fd 10, because `sh` saves stdout on fd 10 for `if …; fi > file`. The command now uses `exec > file`.
 - Tried and rejected because of size: `Option` for `prevkey`/`firstkey` (+12…+100), `KeyMap::rawin` as `Vec` (+1064), `usize` lengths in `KeyMap` (+190) and `Tio` (+1500), `Option` from `countmaps` (+28) and `allocate`, an `ExArgs` struct for the `cmd_*` signature (+412). Kept as they are: tables over `match`, `#[inline(never)]` on `vi`/`initscr`/`initopts`/`cutend`, no `core::fmt`, `Mark` as `i64`, the regex program bytes.
 - Commands and results: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` → pass; `cargo test` → 76 passed (12 consecutive full runs after the fd 10 fix); `tests/harness/run.py --suite all` on the stable and the tiny binary → 88 runs each, only `startup/small-screen` (B4) differs.
-- Sizes: section 7.2 (tiny `__text` 97512 → 91792, stable 286732 → 281356).
+- Sizes: section 7.2 (tiny `__text` 97512 → 91456, stable 286732 → 281356).
 - Next step: user review of B1–B18; Linux verification; M9.

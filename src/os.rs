@@ -11,6 +11,7 @@ use std::io;
 use std::os::fd::OwnedFd;
 use std::os::fd::{AsFd, AsRawFd, FromRawFd};
 use std::os::unix::fs::MetadataExt;
+#[cfg(not(panic = "immediate-abort"))]
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -27,6 +28,7 @@ pub const ENOENT: i32 = libc::ENOENT;
 
 static SIGINT_FLAG: AtomicBool = AtomicBool::new(false);
 static SIGWINCH_FLAG: AtomicBool = AtomicBool::new(false);
+#[cfg(not(panic = "immediate-abort"))]
 static RESTORE: Mutex<Option<(Termios, Vec<u8>)>> = Mutex::new(None);
 
 /*------------------------------------------------------------------------*/
@@ -53,18 +55,24 @@ fn install_panic_hook() {
 
 /// Records what the panic hook must do to restore the terminal: write
 /// `bytes` (for example `rmcup`/`rmkx`) and reinstate `saved` on fd 2.
+/// Without a panic hook (immediate-abort panics) there is nothing to record.
 pub fn save_restore_state(saved: &Termios, bytes: &[u8]) {
+    #[cfg(not(panic = "immediate-abort"))]
     if let Ok(mut g) = RESTORE.lock() {
         *g = Some((*saved, bytes.to_vec()));
     }
+    #[cfg(panic = "immediate-abort")]
+    let _ = (saved, bytes);
 }
 
 pub fn clear_restore_state() {
+    #[cfg(not(panic = "immediate-abort"))]
     if let Ok(mut g) = RESTORE.lock() {
         *g = None;
     }
 }
 
+#[cfg(not(panic = "immediate-abort"))]
 fn restore_terminal() {
     if let Ok(g) = RESTORE.try_lock()
         && let Some((t, bytes)) = g.as_ref()
