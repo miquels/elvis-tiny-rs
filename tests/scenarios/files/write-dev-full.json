@@ -1,0 +1,12 @@
+{
+ "description": "Write to a device that is always full (section 6.6; /dev/full exists only on Linux)",
+ "os": ["linux"],
+ "args": [
+  "-e",
+  "f.txt"
+ ],
+ "files": {
+  "f.txt": "one\ntwo\nthree\n"
+ },
+ "stdin": "w! /dev/full\nw >> /dev/full\nq\n"
+}

@@ -17,6 +17,22 @@ The porting instructions can be found in IMPLEMENTATION.md. The elvis-1.4 source
 including the patches that were carried in the debian version can be found in the
 elvis-tiny-c subdirectory.
 
+# Building on Debian
+
+When building on Debian with the system cargo and rust, you need to install
+the following packages as well:
+
+- cargo
+- rust-src
+- librust-libc-dev
+
+For development you might want to add:
+
+- rustfmt
+- rust-clippy
+- unifdef
+- time
+
 # C version license.
 
 The original license can be found in elvis-tiny-c/README and is as follows:

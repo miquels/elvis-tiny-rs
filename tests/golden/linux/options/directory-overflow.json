@@ -1,0 +1,18 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "x\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  1 line, 2 chars\\n",
+  "\\r\\e[24;1H:\\e[Kset directory=/tmp/0123456789012345678901234567890123456789\\e[K\\n",
+  "\\roption \"directory\" can only be set in a .exrc file\\n",
+  "\\r\\e[24;1H:\\e[Kset kp?\\e[K\\n",
+  "\\roption \"kp\" must be given a value\\n",
+  "\\r\\e[24;1H:\\e[Kq\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

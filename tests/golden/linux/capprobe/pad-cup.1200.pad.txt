@@ -1,0 +1,100 @@
+tgetent=1
+ospeed=9 PC=0
+str up="\x1b[A$<2>"
+str vb="\x1b[?5h$<100/>\x1b[?5l"
+str cm="\x1b[%i%p1%d;%p2%dH$<5>"
+str so="\x1b[7m$<2/>"
+str se="\x1b[m"
+str ti="\x1b[?1049h$<10>"
+str te="\x1b[?1049l$<10>"
+str us=(null)
+str ue=(null)
+str md=(null)
+str me=(null)
+str as=(null)
+str ae=(null)
+str al="\x1b[L$<2*>"
+str dl="\x1b[M$<2*/>"
+str ce="\x1b[K$<3>"
+str cd="\x1b[J$<50>"
+str sr="\x1bM$<5"
+str im=(null)
+str ei=(null)
+str ic=(null)
+str dc="\x1b[P$<1.5*>"
+str ks=(null)
+str ke=(null)
+str ku="\x1bOA"
+str kd=(null)
+str kl=(null)
+str kr=(null)
+str kP=(null)
+str kN=(null)
+str kh=(null)
+str kH=(null)
+flag am=1
+flag pt=0
+flag xo=0
+flag nx=0
+num ug=-1
+num li=24
+num co=80
+num pb=9600
+cm row=0 col=0 "\x1b[1;1H"
+cm row=0 col=1 "\x1b[1;2H"
+cm row=0 col=7 "\x1b[1;8H"
+cm row=0 col=79 "\x1b[1;80H"
+cm row=0 col=132 "\x1b[1;133H"
+cm row=1 col=0 "\x1b[2;1H"
+cm row=1 col=1 "\x1b[2;2H"
+cm row=1 col=7 "\x1b[2;8H"
+cm row=1 col=79 "\x1b[2;80H"
+cm row=1 col=132 "\x1b[2;133H"
+cm row=9 col=0 "\x1b[10;1H"
+cm row=9 col=1 "\x1b[10;2H"
+cm row=9 col=7 "\x1b[10;8H"
+cm row=9 col=79 "\x1b[10;80H"
+cm row=9 col=132 "\x1b[10;133H"
+cm row=10 col=0 "\x1b[11;1H"
+cm row=10 col=1 "\x1b[11;2H"
+cm row=10 col=7 "\x1b[11;8H"
+cm row=10 col=79 "\x1b[11;80H"
+cm row=10 col=132 "\x1b[11;133H"
+cm row=23 col=0 "\x1b[24;1H"
+cm row=23 col=1 "\x1b[24;2H"
+cm row=23 col=7 "\x1b[24;8H"
+cm row=23 col=79 "\x1b[24;80H"
+cm row=23 col=132 "\x1b[24;133H"
+cm row=99 col=0 "\x1b[100;1H"
+cm row=99 col=1 "\x1b[100;2H"
+cm row=99 col=7 "\x1b[100;8H"
+cm row=99 col=79 "\x1b[100;80H"
+cm row=99 col=132 "\x1b[100;133H"
+tputs up aff=1 "\x1b[A"
+tputs up aff=24 "\x1b[A"
+tputs vb aff=1 "\x1b[?5h\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1b[?5l"
+tputs vb aff=24 "\x1b[?5h\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1b[?5l"
+tputs cm aff=1 "\x1b[%i%p1%d;%p2%dH"
+tputs cm aff=24 "\x1b[%i%p1%d;%p2%dH"
+tputs so aff=1 "\x1b[7m"
+tputs so aff=24 "\x1b[7m"
+tputs se aff=1 "\x1b[m"
+tputs se aff=24 "\x1b[m"
+tputs ti aff=1 "\x1b[?1049h\x00"
+tputs ti aff=24 "\x1b[?1049h\x00"
+tputs te aff=1 "\x1b[?1049l\x00"
+tputs te aff=24 "\x1b[?1049l\x00"
+tputs al aff=1 "\x1b[L"
+tputs al aff=24 "\x1b[L\x00\x00\x00\x00\x00\x00"
+tputs dl aff=1 "\x1b[M"
+tputs dl aff=24 "\x1b[M\x00\x00\x00\x00\x00\x00"
+tputs ce aff=1 "\x1b[K"
+tputs ce aff=24 "\x1b[K"
+tputs cd aff=1 "\x1b[J\x00\x00\x00\x00\x00\x00"
+tputs cd aff=24 "\x1b[J\x00\x00\x00\x00\x00\x00"
+tputs sr aff=1 "\x1bM$<5"
+tputs sr aff=24 "\x1bM$<5"
+tputs dc aff=1 "\x1b[P"
+tputs dc aff=24 "\x1b[P\x00\x00\x00\x00"
+tputs ku aff=1 "\x1bOA"
+tputs ku aff=24 "\x1bOA"

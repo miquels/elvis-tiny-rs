@@ -1,0 +1,21 @@
+{
+ "status": 0,
+ "files": {
+  ".exrc": [
+   "set ts=5\\n"
+  ],
+  "f.txt": [
+   "one\\n",
+   "two\\n",
+   "three\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  3 lines, 14 chars\\n",
+  "\\r\\e[24;1H:\\e[Kset ts?\\e[K\\n",
+  "\\roption \"ts\" must be given a value\\n",
+  "\\r\\e[24;1H:\\e[Kq\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

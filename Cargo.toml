@@ -2,10 +2,15 @@
 name = "elvis-tiny-rs"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.85"
 
 [dependencies]
 libc = "0.2.191"
+
+[lints.rust]
+# elvis_immediate_abort: set by scripts/build-tiny.sh when std is built with
+# immediate-abort panics.  elvis_test_panic: a test build in which ^_ panics.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(elvis_immediate_abort)', 'cfg(elvis_test_panic)'] }
 
 [profile.release]
 opt-level = "z"

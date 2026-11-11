@@ -122,4 +122,97 @@ limit.
 
 ## Linux
 
-Not yet characterized. Every item above must be repeated on Linux.
+Recorded 2026-11-11.
+
+- Host: Debian 13.7 (trixie), x86_64, kernel 6.12.116.
+- Compiler: gcc 14.2.0 (Debian 14.2.0-19).
+- C library: glibc 2.41 (2.41-12+deb13u4).
+- Terminal library: `libtinfo.so.6.5` (ncurses 6.5+20250216).
+- Build: `make -f Makefile.mix elvis` with the unchanged Linux settings in a
+  copy at `target/c-ref/src/` (no warnings, no errors). The `-O0 -g`
+  inventory build is in `target/c-ref/src-O0/`.
+
+Everything below that is not listed here behaves as on macOS (same
+messages, exit statuses, signal handling, option overflow and piped mode).
+Apart from the padding NULs, the Linux golden outputs equal the macOS ones
+byte for byte, except `signals/sigint-global`, whose output depends on
+when the signal lands (only the status is compared).
+
+### Terminal library (capability probe)
+
+Reports: `tests/golden/linux/capprobe/<term>.<speed>.txt` (`capprobe` with
+`ospeed` 0, as on macOS) and `<term>.<speed>.pad.txt` (`ospeed` set to the
+pty's `B*` code: 9 for 1200, 15 for 38400). Fixtures compiled by the host
+`tic` use the `x/xterm` directory layout (macOS: `78/xterm`).
+
+- **Interposition.** The program's own `ospeed` and `PC` globals replace
+  libtinfo's (ELF copy relocation; libtinfo exports both as data symbols).
+  `tgetent` writes them: `ospeed` becomes the tty's `B*` code and `PC` the
+  first byte of `pad` (0 for every fixture). elvis then sets `ospeed` from
+  `cfgetospeed()` in `resume_curses`. So the C reference pads at the tty's
+  line speed: at 38400 baud on `vt100` every cursor move (`cup=…$<5>`) is
+  followed by 21 NULs. In piped mode `tcgetattr(2)` fails, `ospeed` is 0
+  and nothing is padded.
+- **Padding.** Without a `SCREEN` (the termcap interface never creates
+  one), ncurses 6.5 pads every well-formed `$<…>` delay whatever `xon` and
+  `pb` say, and `NCURSES_NO_PADDING` has no effect. Measured with
+  `tests/tools/padprobe.c`, which counts pad characters for each `ospeed`: the
+  count is `(tenths / 10) * baud / 9000` in C `int` arithmetic, where
+  `tenths` is the delay in tenths of a millisecond (times `affcnt` for `*`).
+  `$<.5>` gives 0. The product wraps at `B4000000` (`$<1000>` gives 0).
+  Unknown codes (16, 4096, 4112, negative) give no padding; the `B*` table
+  runs from `B0` to `B4000000`. `npc` (xterm) emits no pad characters and
+  sleeps instead. There is no BSD-style leading-digit padding (`tputs("50")`
+  outputs "50"). Malformed directives are output as on macOS.
+- **`me` (sgr0 trimming).** ncurses 6.5's `_nc_trim_sgr0` strips the
+  delays from the `sgr` expansions before comparing (`strip_padding` in
+  `set_attribute_9`), so `vt100` gives `me=\E[0m`, not macOS's
+  `\E[0m$<2>`. Checked with crafted entries (results in
+  `terminfo::tests::trim_sgr0_matches_libtinfo`): trailing delays of every
+  form vanish, a delay in the middle keeps `sgr0` unchanged, an `rmacs`
+  with its own delay is not found, and the final `strstr` branch removes
+  the first `strlen(off)` bytes (`chop_out(tmp, i, j)` takes a length).
+- **`tgoto` order, `pt`, `ic`/`kH`, `ug`.** As on macOS.
+- **Lookup.** The search order is `TERMINFO`, `$HOME/.terminfo`,
+  `TERMINFO_DIRS`, then `/etc/terminfo`, `/lib/terminfo`,
+  `/usr/share/terminfo`. Even with every database directory hidden (bind
+  mounts in a user namespace), `tgetent` returns 0 (exit 3, "Unrecognized
+  TERM type"), never -1, so "Can't read /etc/termcap" (exit 2) cannot be
+  produced on Linux either.
+
+### Exit statuses and messages
+
+As on macOS, including the startup crash: "Screen too small" is followed
+by SIGSEGV (status -11 in the harness, 139 from a shell). `stty -a` after
+every exit path equals `stty -a` before it (quit, `:wq`, `ZZ`, `:!`,
+ex-mode quit, `-r`, unknown terminal, missing `cm`, unwritable temporary
+directory, and the crash; `tests/tools/sttycheck.py`).
+
+`:w! /dev/full` reports `Wrote "/dev/full"  3 lines, 14 characters`: C
+ignores the `ENOSPC` from `write()` (`files/write-dev-full`).
+
+### Key timeout
+
+As on macOS: glibc's `signal()` also installs `SIGALRM` with `SA_RESTART`,
+so with `keytime=1`, `:map QA x` and `:map QB dd` (`tests/tools/keytime.py`), typing `Q`, waiting 3
+seconds and typing `A` still runs the `QA` mapping (Appendix B, B5).
+
+### Temporary files
+
+Name, mode, header and text blocks as on macOS, with the Linux `st_dev`
+(for example `elv91330029`: sum 9, inode low digits, device 0x029 on this
+host's file system). C and Rust produce identical names and byte-identical
+images (`tests/tools/tmpimage.py`) for: a small file, NUL bytes, no trailing newline, lines of 1022
+bytes, a 1500-byte line, a 3000-line file over many blocks, exactly 500000
+bytes, bytes 1 to 255, and an empty file.
+
+### Block table limits
+
+The header holds `MAXBLKS - 1` = 511 text blocks, and C never checks it.
+Loading a file that needs more (for example 974 lines of 513 bytes, under
+500000 bytes) writes past `hdr.n[]` and `lnum[]` and crashes (SIGSEGV).
+`:%s/a/b/g` on a 400000-byte file of 80-byte lines splits blocks until
+`blkadd` drops the last block and `add` reads past `lnum[]` (SIGSEGV).
+The macOS build runs the same code with the same limits, so it is
+expected to fail the same way there; that has not been tried (Appendix B,
+B21).

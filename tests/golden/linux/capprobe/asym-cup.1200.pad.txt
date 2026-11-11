@@ -1,0 +1,78 @@
+tgetent=1
+ospeed=9 PC=0
+str up="\x1b[A"
+str vb=(null)
+str cm="\x1b[%p1%{3}%+%d;%p2%'2'%+%dH"
+str so=(null)
+str se=(null)
+str ti=(null)
+str te=(null)
+str us=(null)
+str ue=(null)
+str md=(null)
+str me=(null)
+str as=(null)
+str ae=(null)
+str al=(null)
+str dl=(null)
+str ce="\x1b[K"
+str cd=(null)
+str sr=(null)
+str im=(null)
+str ei=(null)
+str ic=(null)
+str dc=(null)
+str ks=(null)
+str ke=(null)
+str ku=(null)
+str kd=(null)
+str kl=(null)
+str kr=(null)
+str kP=(null)
+str kN=(null)
+str kh=(null)
+str kH=(null)
+flag am=1
+flag pt=0
+flag xo=0
+flag nx=0
+num ug=-1
+num li=24
+num co=80
+num pb=-1
+cm row=0 col=0 "\x1b[3;50H"
+cm row=0 col=1 "\x1b[3;51H"
+cm row=0 col=7 "\x1b[3;57H"
+cm row=0 col=79 "\x1b[3;129H"
+cm row=0 col=132 "\x1b[3;182H"
+cm row=1 col=0 "\x1b[4;50H"
+cm row=1 col=1 "\x1b[4;51H"
+cm row=1 col=7 "\x1b[4;57H"
+cm row=1 col=79 "\x1b[4;129H"
+cm row=1 col=132 "\x1b[4;182H"
+cm row=9 col=0 "\x1b[12;50H"
+cm row=9 col=1 "\x1b[12;51H"
+cm row=9 col=7 "\x1b[12;57H"
+cm row=9 col=79 "\x1b[12;129H"
+cm row=9 col=132 "\x1b[12;182H"
+cm row=10 col=0 "\x1b[13;50H"
+cm row=10 col=1 "\x1b[13;51H"
+cm row=10 col=7 "\x1b[13;57H"
+cm row=10 col=79 "\x1b[13;129H"
+cm row=10 col=132 "\x1b[13;182H"
+cm row=23 col=0 "\x1b[26;50H"
+cm row=23 col=1 "\x1b[26;51H"
+cm row=23 col=7 "\x1b[26;57H"
+cm row=23 col=79 "\x1b[26;129H"
+cm row=23 col=132 "\x1b[26;182H"
+cm row=99 col=0 "\x1b[102;50H"
+cm row=99 col=1 "\x1b[102;51H"
+cm row=99 col=7 "\x1b[102;57H"
+cm row=99 col=79 "\x1b[102;129H"
+cm row=99 col=132 "\x1b[102;182H"
+tputs up aff=1 "\x1b[A"
+tputs up aff=24 "\x1b[A"
+tputs cm aff=1 "\x1b[%p1%{3}%+%d;%p2%'2'%+%dH"
+tputs cm aff=24 "\x1b[%p1%{3}%+%d;%p2%'2'%+%dH"
+tputs ce aff=1 "\x1b[K"
+tputs ce aff=24 "\x1b[K"

@@ -109,6 +109,7 @@ pub fn cmd_substitute(
     }
 
     let mut toolong = false;
+    ed.vars.toolong = false;
     beforedo(ed, false);
     let mut chline: i64 = 0;
     let mut chsub: i64 = 0;
@@ -163,6 +164,10 @@ pub fn cmd_substitute(
                 break 'lines;
             }
             change(ed, mark_at_line(l), mark_at_line(l + 1), &d);
+            // `change` refused and said why (B21).
+            if ed.vars.toolong {
+                break 'lines;
+            }
 
             if optp {
                 ed.curses.addstr(&d);
@@ -179,6 +184,10 @@ pub fn cmd_substitute(
 
     if toolong {
         msg(ed, b"Substitution would make a line too long", &[]);
+        return Ok(());
+    }
+    // `change` refused with its own message (B21)
+    if ed.vars.toolong {
         return Ok(());
     }
 
@@ -340,9 +349,7 @@ pub fn cmd_join(
             return Ok(());
         }
 
-        if let Some(&last) = text.last()
-            && (last == b'.' || last == b'?' || last == b'!')
-        {
+        if matches!(text.last(), Some(&(b'.' | b'?' | b'!'))) {
             text.push(b' ');
         }
         text.push(b' ');

@@ -27,6 +27,8 @@ const NSTRS: usize = 414;
 const TI_SMACS: usize = 25;
 const TI_RMACS: usize = 38;
 const TI_SGR: usize = 131;
+/// `pad_char`, which ncurses `tgetent()` copies into `PC`.
+pub const TI_PAD: usize = 104;
 
 impl Terminfo {
     /// `tgetent()`: the entry if it is readable and parseable.  C also has a
@@ -104,6 +106,7 @@ impl Terminfo {
             "am" => 1,
             "xo" => 20, // xon
             "nx" => 21, // nxon
+            "npc" => 25, // no_pad_char
             "pt" => 42, // OTpt
             _ => return false,
         };
@@ -127,12 +130,11 @@ impl Terminfo {
     pub fn screensize(&self) -> (i32, i32) {
         let mut lines = getenv_num("LINES");
         let mut cols = getenv_num("COLUMNS");
-        if (lines <= 0 || cols <= 0)
-            && io::stdout().is_terminal()
-            && let Some((r, c)) = os::window_size(io::stdout())
-        {
-            lines = r as i32;
-            cols = c as i32;
+        if (lines <= 0 || cols <= 0) && io::stdout().is_terminal() {
+            if let Some((r, c)) = os::window_size(io::stdout()) {
+                lines = r as i32;
+                cols = c as i32;
+            }
         }
         if lines <= 0 {
             lines = self.num("li");
@@ -198,15 +200,23 @@ impl Terminfo {
             }
         }
         let mut result = off;
-        if !found
-            && let Some(i) = end
+        if !found {
+            if let Some(i) = end
                 .windows(result.len().max(1))
                 .position(|w| w == &result[..])
-            && end != result
-        {
-            let mut tmp = end.clone();
-            tmp.truncate(i);
-            result = tmp;
+            {
+                // C: chop_out(tmp, i, strlen(off)), which removes bytes
+                // i..strlen(off) (the second index is a length, not an end).
+                // With strlen(off) < i its copy runs past the string (B20);
+                // sgr0 is then kept.
+                if end != result {
+                    let j = result.len();
+                    result = end.clone();
+                    if j >= i {
+                        result.drain(i..j);
+                    }
+                }
+            }
         }
         result
     }
@@ -242,14 +252,10 @@ fn read_terminfo(term: &[u8]) -> Option<Vec<u8>> {
         None
     };
     let try_sys = || SYSDIRS.iter().find_map(|d| try_dir(d, b""));
-    if let Some(d) = os::getenv("TERMINFO")
-        && let Some(buf) = try_dir(d.as_bytes(), b"")
-    {
+    if let Some(buf) = os::getenv("TERMINFO").and_then(|d| try_dir(d.as_bytes(), b"")) {
         return Some(buf);
     }
-    if let Some(d) = os::getenv("HOME")
-        && let Some(buf) = try_dir(d.as_bytes(), b"/.terminfo")
-    {
+    if let Some(buf) = os::getenv("HOME").and_then(|d| try_dir(d.as_bytes(), b"/.terminfo")) {
         return Some(buf);
     }
     let mut sys_tried = false;
@@ -303,9 +309,55 @@ fn getenv_num(name: &str) -> i32 {
 /*------------------------------------------------------------------------*/
 /* Helpers for `trim_sgr0`                                                 */
 
+/// `sgr` with only `p9` (alternate character set) set to `flag`.  Newer
+/// ncurses (the Linux 6.5 reference) strips its delays, older ones (macOS)
+/// keep them.
 fn set_attribute_9(sgr: &[u8], flag: i32) -> Option<Vec<u8>> {
-    let v = tparm(&mut [0; 26], sgr, &[0, 0, 0, 0, 0, 0, 0, 0, flag])?;
+    let mut v = tparm(&mut [0; 26], sgr, &[0, 0, 0, 0, 0, 0, 0, 0, flag])?;
+    if os::TRIM_SGR0_STRIPS_PADDING {
+        strip_padding(&mut v);
+    }
     if v.is_empty() { None } else { Some(v) }
+}
+
+/// ncurses 6.5 `skip_padding()`: the end of a `$<…>` token starting at
+/// `at` (an integer, at most one `.` and one digit after it, then `*` or
+/// `/` in any order), or `None` if it is not one.
+fn skip_padding(v: &[u8], at: usize) -> Option<usize> {
+    if v.get(at) != Some(&b'$') || v.get(at + 1) != Some(&b'<') {
+        return None;
+    }
+    let mut i = at + 2;
+    // 1 = integer, 2 = decimal point, 3 = fraction digit
+    let mut state = 0;
+    while let Some(&ch) = v.get(i) {
+        i += 1;
+        match ch {
+            b'*' | b'/' if state == 0 => return None,
+            b'*' | b'/' => {}
+            b'>' => return (state != 0).then_some(i),
+            b'.' if state < 2 => state = 2,
+            b'0'..=b'9' if state < 2 => state = 1,
+            b'0'..=b'9' if state == 2 => state = 3,
+            _ => return None,
+        }
+    }
+    None
+}
+
+/// ncurses 6.5 `strip_padding()`: removes every `$<…>` token; a backslash
+/// protects the byte after it.
+fn strip_padding(v: &mut Vec<u8>) {
+    let mut s = 0;
+    while s < v.len() {
+        if v[s] == b'\\' {
+            s += 2;
+        } else if let Some(d) = skip_padding(v, s) {
+            v.drain(s..d);
+        } else {
+            s += 1;
+        }
+    }
 }
 
 fn is_csi(s: &[u8]) -> usize {
@@ -343,12 +395,10 @@ fn skip_delay(s: &[u8], mut i: usize) -> usize {
 }
 
 fn rewrite_sgr(s: &mut [u8], attr: Option<&[u8]>) {
-    if let Some(a) = attr
-        && !a.is_empty()
-        && s.len() > a.len()
-        && s.starts_with(a)
-    {
-        s.rotate_left(a.len());
+    if let Some(a) = attr {
+        if !a.is_empty() && s.len() > a.len() && s.starts_with(a) {
+            s.rotate_left(a.len());
+        }
     }
 }
 
@@ -408,10 +458,20 @@ fn compare_part(part: &[u8], full: &[u8]) -> usize {
 /*------------------------------------------------------------------------*/
 /* tputs, tgoto, tparm                                                     */
 
-/// `tputs(cap, affcnt, faddch)` as the macOS ncurses does it: well-formed
-/// `$<…>` delays are removed without emitting pad characters, anything
-/// else is output as is.
-pub fn tputs_into(cap: &[u8], _affcnt: i32, out: &mut Vec<u8>) {
+/// How `tputs` pads a delay: the line's bit rate (`_nc_baudrate(ospeed)`)
+/// and the pad character `PC`.
+#[derive(Clone, Copy)]
+pub struct Pad {
+    pub baud: i32,
+    pub pc: u8,
+}
+
+/// `tputs(cap, affcnt, faddch)` as ncurses does it without a `SCREEN`.
+/// Well-formed `$<…>` delays are removed; anything else is output as is.
+/// With `pad`, each delay of `ms` milliseconds is followed by
+/// `ms * baud / 9000` pad characters (C `int` arithmetic), whatever the
+/// terminal's `xon` and `pb`.  `None` (macOS, or `npc`) emits no padding.
+pub fn tputs_into(cap: &[u8], affcnt: i32, pad: Option<Pad>, out: &mut Vec<u8>) {
     let n = cap.len();
     let mut i = 0;
     while i < n {
@@ -434,17 +494,37 @@ pub fn tputs_into(cap: &[u8], _affcnt: i32, out: &mut Vec<u8>) {
                     addch_into(out, b'<');
                     continue;
                 }
+                // Tenths of a millisecond.
+                let mut number: i32 = 0;
                 while i < n && cap[i].is_ascii_digit() {
+                    number = number.wrapping_mul(10).wrapping_add((cap[i] - b'0') as i32);
                     i += 1;
                 }
+                number = number.wrapping_mul(10);
                 if i < n && cap[i] == b'.' {
                     i += 1;
+                    if i < n && cap[i].is_ascii_digit() {
+                        number = number.wrapping_add((cap[i] - b'0') as i32);
+                        i += 1;
+                    }
                     while i < n && cap[i].is_ascii_digit() {
                         i += 1;
                     }
                 }
                 while i < n && (cap[i] == b'*' || cap[i] == b'/') {
+                    if cap[i] == b'*' {
+                        number = number.wrapping_mul(affcnt);
+                    }
                     i += 1;
+                }
+                if let Some(p) = pad {
+                    if number > 0 {
+                        // delay_output(): BAUDBYTE is 9 bits per character.
+                        let nulls = (number / 10).wrapping_mul(p.baud) / 9000;
+                        for _ in 0..nulls {
+                            addch_into(out, p.pc);
+                        }
+                    }
                 }
             }
         }
@@ -675,8 +755,107 @@ mod tests {
 
     fn tp(cap: &[u8], aff: i32) -> Vec<u8> {
         let mut v = Vec::new();
-        tputs_into(cap, aff, &mut v);
+        tputs_into(cap, aff, None, &mut v);
         v
+    }
+
+    /// Number of pad characters `tputs` adds at `baud`.
+    fn pads(cap: &[u8], aff: i32, baud: i32) -> usize {
+        let mut v = Vec::new();
+        tputs_into(cap, aff, Some(Pad { baud, pc: b'A' }), &mut v);
+        v.iter().filter(|&&c| c == b'A').count()
+    }
+
+    fn entry(sgr: &[u8], sgr0: &[u8], acs: Option<(&[u8], &[u8])>) -> Terminfo {
+        let mut strs = vec![None; NSTRS];
+        strs[TI_SGR] = Some(sgr.to_vec());
+        strs[39] = Some(sgr0.to_vec());
+        if let Some((smacs, rmacs)) = acs {
+            strs[TI_SMACS] = Some(smacs.to_vec());
+            strs[TI_RMACS] = Some(rmacs.to_vec());
+        }
+        Terminfo { bools: vec![], nums: vec![], strs }
+    }
+
+    /// `tgetstr("me")` results from the Linux libtinfo 6.5 for crafted
+    /// entries (tests/golden/c-behavior.md, "sgr0 trimming").
+    #[test]
+    fn trim_sgr0_matches_libtinfo() {
+        let so: Option<(&[u8], &[u8])> = Some((b"\x0e", b"\x0f"));
+        let sgr = |tail: &str| {
+            let mut v = b"\x1b[0%?%p1%t;1%;m%?%p9%t\x0e%e\x0f%;".to_vec();
+            v.extend_from_slice(tail.as_bytes());
+            v
+        };
+        let sgr0 = |tail: &str| {
+            let mut v = b"\x1b[m\x0f".to_vec();
+            v.extend_from_slice(tail.as_bytes());
+            v
+        };
+        let linux = os::TRIM_SGR0_STRIPS_PADDING;
+        let me = |ti: Terminfo| ti.trim_sgr0(ti.str(39).unwrap());
+        // vt100: the macOS ncurses keeps the delay.
+        let want: &[u8] = if linux { b"\x1b[0m" } else { b"\x1b[0m$<2>" };
+        assert_eq!(me(entry(&sgr("$<2>"), &sgr0("$<2>"), so)), want);
+        if !linux {
+            return;
+        }
+        for d in ["$<2*>", "$<2>$<3>", "$<2/>", "$<2.5>"] {
+            assert_eq!(me(entry(&sgr(d), &sgr0(d), so)), b"\x1b[0m", "{d}");
+        }
+        assert_eq!(me(entry(&sgr(" $<2>"), &sgr0(" $<2>"), so)), b"\x1b[0m ");
+        // A delay that is not trailing stops the match: sgr0 is unchanged.
+        assert_eq!(me(entry(&sgr("$<2>X"), &sgr0("$<2>X"), so)), sgr0("$<2>X"));
+        let te = entry(
+            b"\x1b[0%?%p1%t;1%;m$<2>%?%p9%t\x0e%e\x0f%;",
+            b"\x1b[m$<2>\x0f",
+            so,
+        );
+        assert_eq!(me(te), b"\x1b[m$<2>\x0f");
+        // rmacs with its own delay is longer than the stripped sgr.
+        let tg = entry(&sgr("$<2>"), &sgr0("$<2>"), Some((b"\x0e", b"\x0f$<1>")));
+        assert_eq!(me(tg), b"\x1b[0m\x0f");
+        let tf = entry(
+            b"\x1b[0%?%p1%t;1%;m%?%p9%t\x1b(0%e\x1b(B%;$<5>",
+            b"\x1b[m\x1b(B$<5>",
+            Some((b"\x1b(0", b"\x1b(B")),
+        );
+        assert_eq!(me(tf), b"\x1b[0m");
+        // chop_out(tmp, i, strlen(off)) removes the first strlen(off) bytes.
+        let tk = entry(b"\x1b[%?%p9%t1%e2%;m", b"\x1b[2m\x1b[0m", None);
+        assert_eq!(me(tk), b"\x1b[0m");
+        let tl = entry(b"\x1b[%?%p9%t1%e2%;m$<3>", b"\x1b[2m$<3>\x1b[0m", None);
+        assert_eq!(me(tl), b"$<3>\x1b[0m");
+    }
+
+    /// Counts measured from the Linux ncurses 6.5 `tputs` (padprobe in
+    /// tests/golden/c-behavior.md, "Padding").
+    #[test]
+    fn tputs_pad_counts() {
+        for (baud, counts) in [
+            (0, [0, 0, 0, 0, 0, 0]),
+            (-1, [0, 0, 0, 0, 0, 0]),
+            (50, [0, 5, 1, 5, 0, 0]),
+            (134, [0, 14, 3, 14, 0, 1]),
+            (1200, [6, 133, 32, 133, 0, 11]),
+            (38400, [213, 4266, 1024, 4266, 0, 375]),
+            (500000, [2777, 55555, 13333, 55555, 0, 4888]),
+            // 1000 ms * 4000000 overflows a C int
+            (4000000, [22222, 0, 106666, 0, 0, 39111]),
+        ] {
+            let caps: [&[u8]; 6] = [
+                b"$<50>", b"$<1000>", b"$<10*>", b"$<1000/>", b"$<.5>", b"$<3.7*>",
+            ];
+            for (cap, want) in caps.iter().zip(counts) {
+                assert_eq!(pads(cap, 24, baud), want, "{baud} {cap:?}");
+            }
+        }
+        assert_eq!(pads(b"$<5*/*>", 10, 1200), 66);
+        assert_eq!(pads(b"50", 10, 1200), 0);
+        assert_eq!(pads(b"$<50", 10, 1200), 0);
+        let mut v = Vec::new();
+        tputs_into(b"\x1b[J$<50>x", 1, Some(Pad { baud: 1200, pc: 0 }), &mut v);
+        assert_eq!(v, b"\x1b[J\0\0\0\0\0\0x");
     }
 
     #[test]

@@ -1,0 +1,19 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "two\\n",
+   "three\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=Can't open \"f.txt\"\\n",
+  "\\r\"[NO FILE]\"  1 line, 1 char\\n",
+  "\\r\\e[24;1H:\\e[Kp\\e[K\\n",
+  "\\r\\n",
+  "\\r\\e[24;1H:\\e[Kq\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

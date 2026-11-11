@@ -177,10 +177,12 @@ fn makeclass(
     }
     pos += 1;
 
-    if complement && let Some((b, base)) = bmap.as_mut() {
-        for i in 0..32 {
-            let p = &mut b.re.program[*base as usize + i];
-            *p = !*p;
+    if complement {
+        if let Some((b, base)) = bmap.as_mut() {
+            for i in 0..32 {
+                let p = &mut b.re.program[*base as usize + i];
+                *p = !*p;
+            }
         }
     }
 

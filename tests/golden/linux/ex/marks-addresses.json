@@ -1,0 +1,34 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "a\\n",
+   "b\\n",
+   "c\\n",
+   "d\\n",
+   "e\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  5 lines, 10 chars\\n",
+  "\\r\\e[24;1H:\\e[K2k x\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K4mark y\\e[K\\n",
+  "\\r\\e[24;1H:\\e[K'x,'yp\\e[K\\n",
+  "\\rb\\n",
+  "\\rc\\n",
+  "\\rd\\n",
+  "\\r\\e[24;1H:\\e[K/c/p\\e[K\\n",
+  "\\rc\\n",
+  "\\r\\e[24;1H:\\e[K?b?p\\e[K\\n",
+  "\\r(wrapped)\\n",
+  "\\rb\\n",
+  "\\r\\e[24;1H:\\e[K.+1p\\e[K\\n",
+  "\\rb\\n",
+  "\\r\\e[24;1H:\\e[K$-1,$p\\e[K\\n",
+  "\\rd\\n",
+  "\\re\\n",
+  "\\r\\e[24;1H:\\e[Kq\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

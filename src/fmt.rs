@@ -41,9 +41,7 @@ pub fn put_num(
     left: bool,
     zero: bool,
 ) {
-    if let Some(p) = prec
-        && digits.len() < p
-    {
+    if let Some(p) = prec.filter(|&p| digits.len() < p) {
         digits.splice(0..0, std::iter::repeat_n(b'0', p - digits.len()));
     }
     let pad = width.saturating_sub(prefix.len() + digits.len());

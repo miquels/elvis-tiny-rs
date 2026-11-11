@@ -1,0 +1,17 @@
+{
+ "status": 1,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "two\\n",
+   "three\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  3 lines, 14 chars\\n",
+  "\\r\\e[24;1H:\\e[Kp\\e[K\\n",
+  "\\rone\\n",
+  "\\r\\e[24;1H:\\e[K\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

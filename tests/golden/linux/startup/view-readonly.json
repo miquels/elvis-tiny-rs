@@ -1,0 +1,19 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "two\\n",
+   "three\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\" [READONLY] 3 lines, 14 chars\\n",
+  "\\r\\e[24;1H:\\e[Kset readonly?\\e[K\\n",
+  "\\r\\e[24;1H:\\e[Kw\\e[K\\n",
+  "\\r\"f.txt\" [READONLY] -- NOT WRITTEN\\n",
+  "\\r\\e[24;1H:\\e[Kq\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

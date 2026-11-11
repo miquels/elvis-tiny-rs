@@ -1,0 +1,16 @@
+{
+ "status": 9,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "two\\n",
+   "three\\n"
+  ],
+  "ro": "<dir>"
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=Can't create temporary file, errno=13\\n",
+  "\\r\\e[?1l\\e>"
+ ]
+}

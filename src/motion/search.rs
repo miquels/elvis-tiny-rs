@@ -182,9 +182,7 @@ pub fn m_bsrch(ed: &mut Editor, m: Mark, ptrn: &[u8]) -> R<Mark> {
 
         let line = fetchline(ed, l);
 
-        if let Some((mut start, mut end)) = exec_re(ed, &line, true)
-            && start < pos
-        {
+        if let Some((mut start, mut end)) = exec_re(ed, &line, true).filter(|&(s, _)| s < pos) {
             // find the last acceptable match in this line
             let mut last;
             loop {

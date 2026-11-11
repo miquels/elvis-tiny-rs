@@ -86,14 +86,15 @@ fn cutfree(ed: &mut Editor, k: usize) {
     }
     buf.phys = Vec::new();
 
-    if let Some(fd) = buf.fd
-        && !ed.cut.bufs[..ANNON]
+    if let Some(fd) = buf.fd {
+        if !ed.cut.bufs[..ANNON]
             .iter()
             .any(|b| !b.phys.is_empty() && b.fd == Some(fd))
-    {
-        ed.cut.files.retain(|f| f.as_raw_fd() != fd);
-        let cutfname = cutname_fmt(ed.opts.directory(), os::getpid(), fd);
-        let _ = os::unlink(&cutfname);
+        {
+            ed.cut.files.retain(|f| f.as_raw_fd() != fd);
+            let cutfname = cutname_fmt(ed.opts.directory(), os::getpid(), fd);
+            let _ = os::unlink(&cutfname);
+        }
     }
 }
 

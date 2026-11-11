@@ -1,0 +1,31 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "R1\\n",
+   "R2\\n",
+   "two\\n",
+   "three\\n"
+  ],
+  "r.txt": [
+   "R1\\n",
+   "R2\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  3 lines, 14 chars\\n",
+  "\\r\\e[24;1H:\\e[K1r r.txt\\e[K\\n",
+  "\\rone\\n",
+  "\\r\\e[24;1H:\\e[K%p\\e[K\\n",
+  "\\rone\\n",
+  "\\rR1\\n",
+  "\\rR2\\n",
+  "\\rtwo\\n",
+  "\\rthree\\n",
+  "\\r\\e[24;1H:\\e[Kwq\\e[K\\n",
+  "\\rWrote \"f.txt\"  5 lines, 20 characters\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

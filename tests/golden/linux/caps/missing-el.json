@@ -1,0 +1,14 @@
+{
+ "status": 1,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "two\\n",
+   "three\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "This termcap entry lacks the :ce=: capability\\n"
+ ]
+}

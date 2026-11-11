@@ -182,6 +182,8 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
     }
     ed.vars.lnum[0] = 0;
 
+    // The file needs more than the header's MAXBLKS - 1 text blocks (B21).
+    let mut toobig = false;
     match origfd.as_mut() {
         None => {
             // inode 0 marks a new file
@@ -252,6 +254,11 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
                     k as usize + 1
                 };
 
+                // C writes past hdr.n[] and lnum[] here (B21).
+                if i + 1 >= MAXBLKS {
+                    toobig = true;
+                    break;
+                }
                 i += 1;
                 next = blkget(ed, i as i32);
 
@@ -285,7 +292,9 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
                 ed.vars.lnum[i - 1] = ed.vars.nlines;
             }
 
-            if ed.vars.nlines == 0 {
+            if toobig {
+                // handled below, once origfd is no longer borrowed
+            } else if ed.vars.nlines == 0 {
                 let this = blkget(ed, 1);
                 ed.blk.blk[this].buf.c[0] = b'\n';
                 ed.blk.blk[this].buf.c[1] = 0;
@@ -295,30 +304,43 @@ pub fn tmpstart(ed: &mut Editor, filename: &[u8]) {
                 nbytes = 1;
             }
 
-            let nlines = ed.vars.nlines;
-            let ro: &[u8] = if ed.vars.viflags.tstflag(READONLY) {
-                b"[READONLY]"
-            } else {
-                b""
-            };
-            msg(
-                ed,
-                b"\"%s\" %s %ld line%s, %ld char%s",
-                &[
-                    Arg::S(filename),
-                    Arg::S(ro),
-                    Arg::D(nlines),
-                    Arg::S(if nlines == 1 { b"" } else { b"s" }),
-                    Arg::D(nbytes),
-                    Arg::S(if nbytes == 1 { b"" } else { b"s" }),
-                ],
-            );
+            if !toobig {
+                let nlines = ed.vars.nlines;
+                let ro: &[u8] = if ed.vars.viflags.tstflag(READONLY) {
+                    b"[READONLY]"
+                } else {
+                    b""
+                };
+                msg(
+                    ed,
+                    b"\"%s\" %s %ld line%s, %ld char%s",
+                    &[
+                        Arg::S(filename),
+                        Arg::S(ro),
+                        Arg::D(nlines),
+                        Arg::S(if nlines == 1 { b"" } else { b"s" }),
+                        Arg::D(nbytes),
+                        Arg::S(if nbytes == 1 { b"" } else { b"s" }),
+                    ],
+                );
+            }
         }
     }
 
-    ed.vars.cursor = MARK_FIRST;
-
     drop(origfd);
+
+    if toobig {
+        // Like the size check above, but the temporary file exists by now.
+        ed.vars.tmpfd = None;
+        let _ = os::unlink(&ed.tmp.tmpname);
+        ed.blk.init();
+        ed.vars.nlines = 0;
+        ed.vars.viflags.initflags();
+        msg(ed, b"\"%s\" is too big", &[Arg::S(filename)]);
+        return tmpstart(ed, b"");
+    }
+
+    ed.vars.cursor = MARK_FIRST;
 
     if ed.vars.viflags.tstflag(HADNUL) {
         msg(
@@ -628,6 +650,51 @@ mod tests {
         assert_eq!(lens.remove(0), 3);
         assert_eq!(lens.pop(), Some(960));
         assert_eq!(lens, vec![80; 13]);
+        cleanup(&mut ed, &dir);
+    }
+
+    #[test]
+    fn block_table_limits() {
+        // B21: 513-byte lines fill one block each; the header has room for
+        // MAXBLKS - 1 text blocks, and loading needs one spare.
+        let line = [&[b'q'; 512][..], b"\n"].concat();
+        let dir = testdir();
+        let mut ed = editor(&dir);
+        // several messages in a row would wait at [More...] in vi mode
+        ed.vars.mode = Mode::Ex;
+        start(&mut ed, &dir, &line.repeat(MAXBLKS - 2));
+        assert_eq!(ed.vars.nlines, (MAXBLKS - 2) as i64);
+        tmpabort(&mut ed, true);
+
+        start(&mut ed, &dir, &line.repeat(MAXBLKS + 100));
+        assert_eq!(ed.vars.nlines, 1, "too big: falls back to [NO FILE]");
+        assert!(ed.vars.viflags.tstflag(NOFILE));
+        tmpabort(&mut ed, true);
+
+        // Edits may use all MAXBLKS - 1 text blocks: from MAXBLKS - 3, two
+        // more one-block lines fit and the third is refused.
+        start(&mut ed, &dir, &line.repeat(MAXBLKS - 3));
+        for _ in 0..2 {
+            beforedo(&mut ed, false);
+            assert!(add(&mut ed, mark_at_line(1), &line));
+            afterdo(&mut ed);
+        }
+        let full = (MAXBLKS - 1) as i64;
+        assert_eq!(ed.vars.nlines, full);
+        ed.vars.toolong = false;
+        beforedo(&mut ed, false);
+        assert!(!add(&mut ed, mark_at_line(1), &line));
+        assert!(ed.vars.toolong);
+        afterdo(&mut ed);
+        assert_eq!(ed.vars.nlines, full);
+
+        // change() refuses before deleting anything
+        ed.vars.toolong = false;
+        let two = [&line[..], &line[..]].concat();
+        change(&mut ed, mark_at_line(3), mark_at_line(4), &two);
+        assert!(ed.vars.toolong);
+        assert_eq!(ed.vars.nlines, full);
+        assert_eq!(text_of(&mut ed), line.repeat(MAXBLKS - 1));
         cleanup(&mut ed, &dir);
     }
 

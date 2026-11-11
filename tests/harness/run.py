@@ -24,6 +24,8 @@ Scenario keys (all optional except one of "stdin"/"keys"):
   term, rows, cols, speed, timeout
   compare       {"output": bool, "files": bool, "status": bool}
   divergences   list of Appendix B IDs this scenario depends on
+  os            list of host OS names ("linux", "macos") the scenario runs on;
+                default all
   leftover      expected list of leftover temporary-file kinds
   description   free text
 """
@@ -262,6 +264,8 @@ def main():
                 continue
             with open(os.path.join(sdir, fn)) as f:
                 sc = json.load(f)
+            if OSNAME not in sc.get("os", [OSNAME]):
+                continue
             gpath = os.path.join(GOLD_DIR, suite, fn)
             want = None
             if os.path.exists(gpath):

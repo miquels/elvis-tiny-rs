@@ -11,7 +11,7 @@ use std::io;
 use std::os::fd::OwnedFd;
 use std::os::fd::{AsFd, AsRawFd, FromRawFd};
 use std::os::unix::fs::MetadataExt;
-#[cfg(not(panic = "immediate-abort"))]
+#[cfg(not(elvis_immediate_abort))]
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -28,7 +28,7 @@ pub const ENOENT: i32 = libc::ENOENT;
 
 static SIGINT_FLAG: AtomicBool = AtomicBool::new(false);
 static SIGWINCH_FLAG: AtomicBool = AtomicBool::new(false);
-#[cfg(not(panic = "immediate-abort"))]
+#[cfg(not(elvis_immediate_abort))]
 static RESTORE: Mutex<Option<(Termios, Vec<u8>)>> = Mutex::new(None);
 
 /*------------------------------------------------------------------------*/
@@ -40,11 +40,11 @@ pub fn init() {
     set_disposition(libc::SIGPIPE, libc::SIG_DFL);
     // With immediate-abort panics no hook ever runs, and taking the default
     // hook would link in std's backtrace printer.
-    #[cfg(not(panic = "immediate-abort"))]
+    #[cfg(not(elvis_immediate_abort))]
     install_panic_hook();
 }
 
-#[cfg(not(panic = "immediate-abort"))]
+#[cfg(not(elvis_immediate_abort))]
 fn install_panic_hook() {
     let prev = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -57,28 +57,28 @@ fn install_panic_hook() {
 /// `bytes` (for example `rmcup`/`rmkx`) and reinstate `saved` on fd 2.
 /// Without a panic hook (immediate-abort panics) there is nothing to record.
 pub fn save_restore_state(saved: &Termios, bytes: &[u8]) {
-    #[cfg(not(panic = "immediate-abort"))]
+    #[cfg(not(elvis_immediate_abort))]
     if let Ok(mut g) = RESTORE.lock() {
         *g = Some((*saved, bytes.to_vec()));
     }
-    #[cfg(panic = "immediate-abort")]
+    #[cfg(elvis_immediate_abort)]
     let _ = (saved, bytes);
 }
 
 pub fn clear_restore_state() {
-    #[cfg(not(panic = "immediate-abort"))]
+    #[cfg(not(elvis_immediate_abort))]
     if let Ok(mut g) = RESTORE.lock() {
         *g = None;
     }
 }
 
-#[cfg(not(panic = "immediate-abort"))]
+#[cfg(not(elvis_immediate_abort))]
 fn restore_terminal() {
-    if let Ok(g) = RESTORE.try_lock()
-        && let Some((t, bytes)) = g.as_ref()
-    {
-        let _ = tty_write(bytes);
-        let _ = tcsetattr_now(io::stderr(), t);
+    if let Ok(g) = RESTORE.try_lock() {
+        if let Some((t, bytes)) = g.as_ref() {
+            let _ = tty_write(bytes);
+            let _ = tcsetattr_now(io::stderr(), t);
+        }
     }
 }
 
@@ -141,6 +141,12 @@ fn last_errno() -> i32 {
 fn read_fd(fd: i32, buf: &mut [u8]) -> ReadOutcome {
     // SAFETY: `buf` is a valid writable region of `buf.len()` bytes.
     let n = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) };
+    // Test builds only (RUSTFLAGS="--cfg elvis_test_panic"): ^_ panics, so
+    // the panic hook's terminal restore can be checked (M8).
+    #[cfg(elvis_test_panic)]
+    if n > 0 && buf[..n as usize].contains(&0x1f) {
+        panic!("elvis_test_panic");
+    }
     match n {
         0 => ReadOutcome::Eof,
         n if n > 0 => ReadOutcome::Data(n as usize),
@@ -389,6 +395,70 @@ pub fn erase_char(t: &Termios) -> u8 {
 pub fn ospeed_short(t: &Termios) -> i16 {
     // SAFETY: `t.0` is a valid termios value.
     (unsafe { libc::cfgetospeed(&t.0) }) as i16
+}
+
+/// Whether the C reference's `tputs` pads with elvis's own `ospeed` and `PC`
+/// globals.  On Linux the executable's definitions interpose libtinfo's
+/// (ELF copy relocations), so ncurses pads at the tty's line speed.  The
+/// macOS ncurses keeps its own copies and never pads (section 4.6).
+pub const TPUTS_PADS: bool = cfg!(target_os = "linux");
+
+/// The host's directory under `tests/golden/` (IMPLEMENTATION.md 1.6).
+#[cfg(test)]
+pub const GOLDEN_OS: &str = if cfg!(target_os = "linux") { "linux" } else { "macos" };
+
+/// Whether the host's ncurses strips delays from the `sgr` expansions it
+/// compares in `_nc_trim_sgr0()` (Linux libtinfo 6.5 does, the macOS
+/// ncurses does not), which changes what `tgetstr("me")` returns.
+pub const TRIM_SGR0_STRIPS_PADDING: bool = cfg!(target_os = "linux");
+
+/// ncurses `_nc_baudrate()`: the bit rate for a `B*` code stored in
+/// `ospeed`, or -1 for an unknown code.
+#[cfg(target_os = "linux")]
+pub fn baudrate(ospeed: i16) -> i32 {
+    const SPEEDS: [(libc::speed_t, i32); 31] = [
+        (libc::B0, 0),
+        (libc::B50, 50),
+        (libc::B75, 75),
+        (libc::B110, 110),
+        (libc::B134, 134),
+        (libc::B150, 150),
+        (libc::B200, 200),
+        (libc::B300, 300),
+        (libc::B600, 600),
+        (libc::B1200, 1200),
+        (libc::B1800, 1800),
+        (libc::B2400, 2400),
+        (libc::B4800, 4800),
+        (libc::B9600, 9600),
+        (libc::B19200, 19200),
+        (libc::B38400, 38400),
+        (libc::B57600, 57600),
+        (libc::B115200, 115200),
+        (libc::B230400, 230400),
+        (libc::B460800, 460800),
+        (libc::B500000, 500000),
+        (libc::B576000, 576000),
+        (libc::B921600, 921600),
+        (libc::B1000000, 1000000),
+        (libc::B1152000, 1152000),
+        (libc::B1500000, 1500000),
+        (libc::B2000000, 2000000),
+        (libc::B2500000, 2500000),
+        (libc::B3000000, 3000000),
+        (libc::B3500000, 3500000),
+        (libc::B4000000, 4000000),
+    ];
+    SPEEDS
+        .iter()
+        .find(|&&(code, _)| code as i16 == ospeed)
+        .map_or(-1, |&(_, baud)| baud)
+}
+
+/// Never consulted: `TPUTS_PADS` is false off Linux.
+#[cfg(not(target_os = "linux"))]
+pub fn baudrate(_ospeed: i16) -> i32 {
+    -1
 }
 
 /// `TIOCGWINSZ`: `Some((rows, cols))` if the ioctl succeeds (values may be 0).

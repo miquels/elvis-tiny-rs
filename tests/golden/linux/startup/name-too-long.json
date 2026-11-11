@@ -1,0 +1,9 @@
+{
+ "status": 1,
+ "files": {},
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=file name too long\\n",
+  "\\r\\e[?1l\\e>"
+ ]
+}

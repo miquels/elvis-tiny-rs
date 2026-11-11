@@ -5,8 +5,14 @@
 # immediately, which drops std's panic printing and backtrace code.  It needs
 # unstable cargo/rustc flags, enabled here on a stable toolchain through
 # RUSTC_BOOTSTRAP=1, and the rust-src component (rustup component add
-# rust-src; Homebrew's rust ships it).  The normal `cargo build --release`
-# stays the supported build.
+# rust-src; Homebrew's rust ships it; on Debian: apt install rust-src).  The
+# normal `cargo build --release` stays the supported build.
+#
+# Toolchains that know `-Cpanic=immediate-abort` get that panic strategy.
+# Older ones (such as 1.85) get the equivalent std feature
+# `panic_immediate_abort` with `panic = "abort"`.  Either way the crate is
+# compiled with `--cfg elvis_immediate_abort`, which src/os.rs uses to leave
+# out the panic hook.
 #
 # Trade-off: a panic aborts without running the panic hook, so the terminal
 # is not restored if the editor ever panics.
@@ -27,7 +33,16 @@ cd "$(dirname "$0")/.."
 host=$(rustc -vV | sed -n 's/^host: //p')
 dir=${CARGO_TARGET_DIR:-target/tiny}
 
-flags="-Zunstable-options -Cpanic=immediate-abort"
+flags="--cfg elvis_immediate_abort"
+if RUSTC_BOOTSTRAP=1 rustc -Zunstable-options -Cpanic=immediate-abort \
+    --print cfg >/dev/null 2>&1; then
+    flags="$flags -Zunstable-options -Cpanic=immediate-abort"
+    set -- -Zpanic-immediate-abort \
+        --config 'profile.release.panic="immediate-abort"' "$@"
+else
+    set -- -Zbuild-std-features=panic_immediate_abort \
+        --config 'profile.release.panic="abort"' "$@"
+fi
 case $host in
 *-linux-*)
     flags="$flags -Cforce-unwind-tables=no"
@@ -47,8 +62,6 @@ RUSTC_BOOTSTRAP=1 \
 RUSTFLAGS="${RUSTFLAGS:-} $flags" \
 cargo build --release \
     -Zbuild-std=std,panic_abort \
-    -Zpanic-immediate-abort \
-    --config 'profile.release.panic="immediate-abort"' \
     --target "$host" \
     --target-dir "$dir" \
     "$@"

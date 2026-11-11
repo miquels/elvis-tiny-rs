@@ -1,0 +1,13 @@
+{
+ "status": 0,
+ "files": {
+  "d": "<dir>"
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"d\" is not a regular file\\n",
+  "\\r\"[NO FILE]\"  1 line, 1 char\\n",
+  "\\r\\e[24;1H:\\e[Kq\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

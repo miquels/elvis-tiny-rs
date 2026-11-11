@@ -1,0 +1,30 @@
+{
+ "status": 0,
+ "files": {
+  "f.txt": [
+   "one\\n",
+   "two\\n",
+   "three\\n"
+  ]
+ },
+ "leftover": [],
+ "output": [
+  "\\e[?1h\\e=\"f.txt\"  3 lines, 14 chars\\n",
+  "\\r\\e[24;1H:\\e[Kset all\\e[K\\n",
+  "\\rnoautoindent              autoprint                 noautowrite\\n",
+  "\\rcolumns=80                directory=\"<WORK>\"\\n",
+  "\\rnoedcompatible            errorbells                exrefresh\\n",
+  "\\rnoignorecase              noinputmode               keytime=2  \\n",
+  "\\rkeywordprg=\"ref\"          lines=24                  nolist\\n",
+  "\\rmagic                     noreadonly                report=5  \\n",
+  "\\rscroll=11                 shell=\"/bin/sh\"           noshowmatch\\n",
+  "\\rshiftwidth=8              sidescroll=8              nosync\\n",
+  "\\rtabstop=8                 term=\"vt100\"              novbell\\n",
+  "\\rwarn                      wrapmargin=0              wrapscan\\n",
+  "\\r\\e[24;1H:\\e[Kset\\e[K\\n",
+  "\\rcolumns=80                directory=\"<WORK>\"\\n",
+  "\\rlines=24                  term=\"vt100\"\\n",
+  "\\r\\e[24;1H:\\e[Kq\\e[K\\n",
+  "\\r\\e[24;1H\\e[K\\e[?1l\\e>"
+ ]
+}

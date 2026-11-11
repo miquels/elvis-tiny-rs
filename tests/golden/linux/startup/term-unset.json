@@ -1,0 +1,8 @@
+{
+ "status": 1,
+ "files": {},
+ "leftover": [],
+ "output": [
+  "Environment variable TERM must be set\\n"
+ ]
+}

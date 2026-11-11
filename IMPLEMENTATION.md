@@ -4,9 +4,11 @@ This guide tells a future implementer (human or LLM) exactly how to port the
 C editor in `elvis-tiny-c/` to Rust in this repository. It is self-contained:
 read it fully before writing code, then work through the milestones in order.
 
-Nothing in this guide has been implemented or tested yet. Every command below is
-an instruction for future work, not a record of results. All status columns start
-as `todo`.
+The guide was written before any code. The port has since been done: the
+ledger (section 2.4) records each item's status, Appendix B the approved and
+pending divergences, and Appendix C what each session ran and verified.
+Commands elsewhere in the guide are instructions; results are in the
+checkpoints.
 
 ## Contents
 
@@ -184,23 +186,31 @@ make -f Makefile.mix elvis LIBS=-lncurses EXTRA_CFLAGS="-include sys/ioctl.h -Is
   macOS does not provide.
 
 A trial build with these overrides succeeded on macOS (Apple clang 21, system
-`libncurses.5.4.dylib`), and `elvis -r` ran and exited with status 0. Nothing
-else has been tested.
+`libncurses.5.4.dylib`), and `elvis -r` ran and exited with status 0.
 
-**Known platform differences to handle and verify:**
+**Building the C reference on Linux.** No overrides: `make -f Makefile.mix
+elvis` links `-ltinfo`, which needs the ncurses development package
+(`libncurses-dev` on Debian) for the `libtinfo.so` link.
+
+**Platform differences** (measured in M0 on both systems; details in
+`tests/golden/c-behavior.md`):
 
 | Area | Linux | macOS |
 |------|-------|-------|
 | Terminal library used by C | `libtinfo` (ncurses 6.x) | system `libncurses.5.4.dylib` (old ncurses ABI) |
-| Interposition of elvis's `ospeed`/`PC` globals | possible with ELF symbol interposition | normally not, because of two-level namespaces; M0 checks |
+| Interposition of elvis's `ospeed`/`PC` globals | yes: `tgetent` writes them and `tputs` pads with them, so the C reference emits pad characters at the tty's line speed (section 4.6) | no: ncurses keeps its own copies and never pads |
+| `tgetstr("me")` sgr0 trimming | ncurses 6.5 strips delays from the `sgr` expansions it compares (`vt100`: `\E[0m`) | delays kept (`vt100`: `\E[0m$<2>`) |
+| Compiled fixture layout (`tic -o`) | `x/xterm` | `78/xterm` |
 | `cfgetospeed` value stored in `short ospeed` | `B*` code (for example `B38400` is 15) | the baud number itself, which can overflow `short` (for example 38400 becomes negative) |
 | `st_dev` type | `u64` | `i32` |
 | Terminfo database | `/usr/share/terminfo`, `/lib/terminfo`, `/etc/terminfo` | `/usr/share/terminfo` |
 | `/dev/full` | available | not available |
 | Symbol listing | `nm --defined-only` | `nm -U` |
 | Linked libraries | `ldd` | `otool -L` |
-| Peak memory | `/usr/bin/time -v` | `/usr/bin/time -l` |
+| Peak memory | `/usr/bin/time -v` (Debian package `time`), or `wait4`'s `ru_maxrss` | `/usr/bin/time -l` |
 | `unifdef` | install from a package | preinstalled |
+| `tgetent` = -1 ("Can't read /etc/termcap") | never, even with no database at all | never |
+| Key timeout (`alarm` under `signal()`) | never fires (`SA_RESTART`) | never fires (`SA_RESTART`) |
 
 ---
 
@@ -279,9 +289,9 @@ ported earlier when a previous milestone needs it; record that in the
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `main` | fn | M6 (startup), M8 (loop) | macOS port 2026-11-10 | done (macOS) |
-| `trapint` | fn (signal handler) | M8 | macOS port 2026-11-10 | done (macOS) |
-| `jmpenv` | global | M8, replaced by interrupt propagation (section 3.7) | macOS port 2026-11-10 | done (macOS) |
+| `main` | fn | M6 (startup), M8 (loop) | macOS port 2026-11-10 | done |
+| `trapint` | fn (signal handler) | M8 | macOS port 2026-11-10 | done |
+| `jmpenv` | global | M8, replaced by interrupt propagation (section 3.7) | macOS port 2026-11-10 | done |
 
 #### `vars.c` → `vars.rs`
 
@@ -302,234 +312,234 @@ ported earlier when a previous milestone needs it; record that in the
 | `NEWFILE`, `READONLY`, `HADNUL`, `MODIFIED`, `NOFILE`, `ADDEDNL`; `setflag`, `clrflag`, `tstflag`, `initflags` | flags, macros | M1 | M1 | done |
 | `MARK`, `markline`, `markidx`, `MARK_UNSET`, `MARK_FIRST`, `MARK_LAST`, `MARK_AT_LINE`, `buildmark` | type, macros | M1 | M1 | done |
 | `botline`, `rightcol`, `ctrl`, `DEFAULT` | macros | M1 | M1 | done |
-| `BeforeAfter`, `ChangeText` | control macros | M4 (replaced by an explicit `beforedo`/`afterdo` pair) | macOS port 2026-11-10 | done (macOS) |
+| `BeforeAfter`, `ChangeText` | control macros | M4 (replaced by an explicit `beforedo`/`afterdo` pair) | macOS port 2026-11-10 | done |
 | `CMD_*` codes, `CMD` type | constants | M6 | M1 | done |
 | `MODE_EX`, `MODE_VI`, `MODE_COLON`, `MODE_QUIT` | constants | M1 | M1 | done |
 | `WHEN_VICMD`, `WHEN_VIINP`, `WHEN_VIREP`, `WHEN_EX`, `WHEN_MSG`, `WHEN_INMV` | constants | M7 | M1 | done |
-| `o_*` option declarations | globals (defined in `opts.c`) | M6 | macOS port 2026-11-10 | done (macOS) |
+| `o_*` option declarations | globals (defined in `opts.c`) | M6 | macOS port 2026-11-10 | done |
 
 #### `curses.h` + `curses.c` → `curses.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `initscr` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
-| `endwin` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
-| `suspend_curses` | fn | M2 (M8 verifies) | macOS port 2026-11-10 | done (macOS) |
-| `resume_curses` | fn | M2 (M8 verifies) | macOS port 2026-11-10 | done (macOS) |
-| `lacking` | static fn | M2 | macOS port 2026-11-10 | done (macOS) |
-| `starttcap` | static fn | M2 | macOS port 2026-11-10 | done (macOS) |
-| `getsize` | static fn and `SIGWINCH` handler | M2 (M8 verifies signal path) | macOS port 2026-11-10 | done (macOS) |
-| `faddch` | fn (tputs callback) | M2 | macOS port 2026-11-10 | done (macOS) |
-| `qaddstr` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
-| `attrset` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
-| `insch` | fn | M2 | macOS port 2026-11-10 | done (macOS) |
-| `MUSTHAVE`, `MAYHAVE`, `PAIR` | macros | M2 | macOS port 2026-11-10 | done (macOS) |
-| `tgoto`, `tputs`, `tgetent`, `tgetstr`, `tgetflag`, `tgetnum` | external termcap functions (`libtinfo` on Linux, `libncurses` on macOS) | M2, replaced by the terminfo reader and adapters in `curses.rs` (section 4) | macOS port 2026-11-10 | done (macOS) |
-| `ospeed`, `PC`, `stdscr`, `kbuf`, `LINES`, `COLS`, `AM`, `PT`, capability strings `VB` … `TE`, `aend`, `ERASEKEY`, `oldtermio`, `newtermio`, `capbuf`, `cbmem`, `curses_active` | globals | M2 | macOS port 2026-11-10 | done (macOS) |
-| `do_VB` … `do_aend` (all `do_*`) | macros | M2 | macOS port 2026-11-10 | done (macOS) |
-| `has_*` | macros | M2 | macOS port 2026-11-10 | done (macOS) |
-| `qaddch`, `addch`, `_addCR`, `addstr`, `move`, `mvaddch`, `refresh`, `wrefresh`, `wqrefresh`, `standout`, `standend`, `clrtoeol`, `clrtobot`, `insertln`, `deleteln`, `delch` | macros | M2 | macOS port 2026-11-10 | done (macOS) |
-| `scrollok`, `raw`, `echo`, `cbreak`, `noraw`, `noecho`, `nocbreak` | no-op macros | M2 (omit calls; note in comment) | macOS port 2026-11-10 | done (macOS) |
-| `CHECKBIOS`, `VOIDBIOS`, `KBSIZ`, `A_*` | macros, constants | M2 | macOS port 2026-11-10 | done (macOS) |
+| `initscr` | fn | M2 | macOS port 2026-11-10 | done |
+| `endwin` | fn | M2 | macOS port 2026-11-10 | done |
+| `suspend_curses` | fn | M2 (M8 verifies) | macOS port 2026-11-10 | done |
+| `resume_curses` | fn | M2 (M8 verifies) | macOS port 2026-11-10 | done |
+| `lacking` | static fn | M2 | macOS port 2026-11-10 | done |
+| `starttcap` | static fn | M2 | macOS port 2026-11-10 | done |
+| `getsize` | static fn and `SIGWINCH` handler | M2 (M8 verifies signal path) | macOS port 2026-11-10 | done |
+| `faddch` | fn (tputs callback) | M2 | macOS port 2026-11-10 | done |
+| `qaddstr` | fn | M2 | macOS port 2026-11-10 | done |
+| `attrset` | fn | M2 | macOS port 2026-11-10 | done |
+| `insch` | fn | M2 | macOS port 2026-11-10 | done |
+| `MUSTHAVE`, `MAYHAVE`, `PAIR` | macros | M2 | macOS port 2026-11-10 | done |
+| `tgoto`, `tputs`, `tgetent`, `tgetstr`, `tgetflag`, `tgetnum` | external termcap functions (`libtinfo` on Linux, `libncurses` on macOS) | M2, replaced by the terminfo reader and adapters in `curses.rs` (section 4) | macOS port 2026-11-10 | done |
+| `ospeed`, `PC`, `stdscr`, `kbuf`, `LINES`, `COLS`, `AM`, `PT`, capability strings `VB` … `TE`, `aend`, `ERASEKEY`, `oldtermio`, `newtermio`, `capbuf`, `cbmem`, `curses_active` | globals | M2 | macOS port 2026-11-10 | done |
+| `do_VB` … `do_aend` (all `do_*`) | macros | M2 | macOS port 2026-11-10 | done |
+| `has_*` | macros | M2 | macOS port 2026-11-10 | done |
+| `qaddch`, `addch`, `_addCR`, `addstr`, `move`, `mvaddch`, `refresh`, `wrefresh`, `wqrefresh`, `standout`, `standend`, `clrtoeol`, `clrtobot`, `insertln`, `deleteln`, `delch` | macros | M2 | macOS port 2026-11-10 | done |
+| `scrollok`, `raw`, `echo`, `cbreak`, `noraw`, `noecho`, `nocbreak` | no-op macros | M2 (omit calls; note in comment) | macOS port 2026-11-10 | done |
+| `CHECKBIOS`, `VOIDBIOS`, `KBSIZ`, `A_*` | macros, constants | M2 | macOS port 2026-11-10 | done |
 
 #### `blk.c` → `blk.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `blkinit` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `blkget` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `blkflush` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `blkdirty` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `blkadd` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `blksync` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `beforedo` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `afterdo` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `abortdo` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `undo` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `NBUFS` (5), `hdr`, `b4cnt`, `blk[]`, `toonew`, `newtoo`, `recycle`, `undocurs`, `oldnlines`, `oldlnum` | constant, globals | M3/M4 | macOS port 2026-11-10 | done (macOS) |
+| `blkinit` | fn | M3 | macOS port 2026-11-10 | done |
+| `blkget` | fn | M3 | macOS port 2026-11-10 | done |
+| `blkflush` | fn | M3 | macOS port 2026-11-10 | done |
+| `blkdirty` | fn | M3 | macOS port 2026-11-10 | done |
+| `blkadd` | fn | M3 | macOS port 2026-11-10 | done |
+| `blksync` | fn | M3 | macOS port 2026-11-10 | done |
+| `beforedo` | fn | M4 | macOS port 2026-11-10 | done |
+| `afterdo` | fn | M4 | macOS port 2026-11-10 | done |
+| `abortdo` | fn | M4 | macOS port 2026-11-10 | done |
+| `undo` | fn | M4 | macOS port 2026-11-10 | done |
+| `NBUFS` (5), `hdr`, `b4cnt`, `blk[]`, `toonew`, `newtoo`, `recycle`, `undocurs`, `oldnlines`, `oldlnum` | constant, globals | M3/M4 | macOS port 2026-11-10 | done |
 
 #### `recycle.c` → `recycle.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `garbage` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `allocate` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `BTST`, `BSET`, `BCLR`, `TST`, `SET`, `CLR`, `MAXBIT`, `bitmap` | macros, global | M3 | macOS port 2026-11-10 | done (macOS) |
+| `garbage` | fn | M3 | macOS port 2026-11-10 | done |
+| `allocate` | fn | M3 | macOS port 2026-11-10 | done |
+| `BTST`, `BSET`, `BCLR`, `TST`, `SET`, `CLR`, `MAXBIT`, `bitmap` | macros, global | M3 | macOS port 2026-11-10 | done |
 
 #### `tmp.c` → `tmp.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `tmpstart` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `tmpsave` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `tmpabort` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `tmpend` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `elvis_access` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `FAIL` | macro (fatal exit 9) | M3 | macOS port 2026-11-10 | done (macOS) |
-| `tmpname` | global | M3 | macOS port 2026-11-10 | done (macOS) |
+| `tmpstart` | fn | M3 | macOS port 2026-11-10 | done |
+| `tmpsave` | fn | M3 | macOS port 2026-11-10 | done |
+| `tmpabort` | fn | M3 | macOS port 2026-11-10 | done |
+| `tmpend` | fn | M3 | macOS port 2026-11-10 | done |
+| `elvis_access` | fn | M3 | macOS port 2026-11-10 | done |
+| `FAIL` | macro (fatal exit 9) | M3 | macOS port 2026-11-10 | done |
+| `tmpname` | global | M3 | macOS port 2026-11-10 | done |
 
 #### `misc.c` → `misc.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `fetchline` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `pfetch` | fn | M3 | macOS port 2026-11-10 | done (macOS) |
-| `regerror` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
-| `nextline`, `chglevel`, `nextscan`, `nextlnum` | statics | M3 | macOS port 2026-11-10 | done (macOS) |
-| `buf` (fetchline-local `static BLK`, found by M0) | static | M3 | macOS port 2026-11-10 | done (macOS) |
+| `fetchline` | fn | M3 | macOS port 2026-11-10 | done |
+| `pfetch` | fn | M3 | macOS port 2026-11-10 | done |
+| `regerror` | fn | M5 | macOS port 2026-11-10 | done |
+| `nextline`, `chglevel`, `nextscan`, `nextlnum` | statics | M3 | macOS port 2026-11-10 | done |
+| `buf` (fetchline-local `static BLK`, found by M0) | static | M3 | macOS port 2026-11-10 | done |
 
 #### `modify.c` → `modify.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `delete` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `add` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `change` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
+| `delete` | fn | M4 | macOS port 2026-11-10 | done |
+| `add` | fn | M4 | macOS port 2026-11-10 | done |
+| `change` | fn | M4 | macOS port 2026-11-10 | done |
 
 #### `cut.c` → `cut.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `cutneeds` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `cutfree` | static fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `cutswitch` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `cutend` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `cutname` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `cut` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `readcutblk` | static fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `paste` | fn | M4 | macOS port 2026-11-10 | done (macOS) |
-| `NANNONS`, `struct cutbuf`, `named[27]`, `annon[NANNONS]`, `cbname` | constant, type, globals | M4 | macOS port 2026-11-10 | done (macOS) |
+| `cutneeds` | fn | M4 | macOS port 2026-11-10 | done |
+| `cutfree` | static fn | M4 | macOS port 2026-11-10 | done |
+| `cutswitch` | fn | M4 | macOS port 2026-11-10 | done |
+| `cutend` | fn | M4 | macOS port 2026-11-10 | done |
+| `cutname` | fn | M4 | macOS port 2026-11-10 | done |
+| `cut` | fn | M4 | macOS port 2026-11-10 | done |
+| `readcutblk` | static fn | M4 | macOS port 2026-11-10 | done |
+| `paste` | fn | M4 | macOS port 2026-11-10 | done |
+| `NANNONS`, `struct cutbuf`, `named[27]`, `annon[NANNONS]`, `cbname` | constant, type, globals | M4 | macOS port 2026-11-10 | done |
 
 #### `regexp.c` → `regexp.rs`, `regsub.c` → `regsub.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `makeclass` | static fn | M5 | macOS port 2026-11-10 | done (macOS) |
-| `gettoken` | static fn | M5 | macOS port 2026-11-10 | done (macOS) |
-| `calcsize` | static fn | M5 | macOS port 2026-11-10 | done (macOS) |
-| `regcomp` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
-| `match1` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
-| `match` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
-| `regexec` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
-| `regsub` | fn | M5 | macOS port 2026-11-10 | done (macOS) |
-| `META`, `BASE_META`, `INT_META`, `IS_META`, `IS_CLASS`, `IS_START`, `IS_END`, `IS_CLOSURE`, `ADD_META`, `GET_META`, `M_BEGLINE`, `M_ENDLINE`, `M_BEGWORD`, `M_ENDWORD`, `M_ANY`, `M_SPLAT`, `M_PLUS`, `M_QMARK`, `M_CLASS`, `M_START`, `M_END`, `FAIL` | macros | M5 | macOS port 2026-11-10 | done (macOS) |
-| `NSUBEXP` (10), `struct regexp` | constant, type | M5 | macOS port 2026-11-10 | done (macOS) |
-| `previous` (regexp.c), `class_cnt`, `start_cnt`, `end_stk`, `end_sp`, `retext`, `errorhandler`; `previous` (regsub.c) | globals | M5 | macOS port 2026-11-10 | done (macOS) |
+| `makeclass` | static fn | M5 | macOS port 2026-11-10 | done |
+| `gettoken` | static fn | M5 | macOS port 2026-11-10 | done |
+| `calcsize` | static fn | M5 | macOS port 2026-11-10 | done |
+| `regcomp` | fn | M5 | macOS port 2026-11-10 | done |
+| `match1` | fn | M5 | macOS port 2026-11-10 | done |
+| `match` | fn | M5 | macOS port 2026-11-10 | done |
+| `regexec` | fn | M5 | macOS port 2026-11-10 | done |
+| `regsub` | fn | M5 | macOS port 2026-11-10 | done |
+| `META`, `BASE_META`, `INT_META`, `IS_META`, `IS_CLASS`, `IS_START`, `IS_END`, `IS_CLOSURE`, `ADD_META`, `GET_META`, `M_BEGLINE`, `M_ENDLINE`, `M_BEGWORD`, `M_ENDWORD`, `M_ANY`, `M_SPLAT`, `M_PLUS`, `M_QMARK`, `M_CLASS`, `M_START`, `M_END`, `FAIL` | macros | M5 | macOS port 2026-11-10 | done |
+| `NSUBEXP` (10), `struct regexp` | constant, type | M5 | macOS port 2026-11-10 | done |
+| `previous` (regexp.c), `class_cnt`, `start_cnt`, `end_stk`, `end_sp`, `retext`, `errorhandler`; `previous` (regsub.c) | globals | M5 | macOS port 2026-11-10 | done |
 
 #### `opts.c` → `opts.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `initopts` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `dumpopts` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `setopts` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `MAXWIDTH`, `BOOL`, `NUM`, `STR`, `SET`, `CANSET`, `RCSET`, `MR`, option table | macros, table | M6 | macOS port 2026-11-10 | done (macOS) |
-| `o_autoindent` … `o_wrapscan` (all 30 option arrays) | globals | M6 (defaults needed from M1) | M1 (defaults); rest 2026-11-10 | done (macOS) |
+| `initopts` | fn | M6 | macOS port 2026-11-10 | done |
+| `dumpopts` | fn | M6 | macOS port 2026-11-10 | done |
+| `setopts` | fn | M6 | macOS port 2026-11-10 | done |
+| `MAXWIDTH`, `BOOL`, `NUM`, `STR`, `SET`, `CANSET`, `RCSET`, `MR`, option table | macros, table | M6 | macOS port 2026-11-10 | done |
+| `o_autoindent` … `o_wrapscan` (all 30 option arrays) | globals | M6 (defaults needed from M1) | M1 (defaults); rest 2026-11-10 | done |
 
 #### `ex.c` → `ex.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `parseptrn` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `linespec` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `ex` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `doexcmd` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `doexrc` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `exstring` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `ARGT`, `FROM`, `TO`, `BANG`, `EXTRA`, `XFILE`, `NOSPC`, `DFLALL`, `DFLNONE`, `NODFL`, `EXRCOK`, `NL`, `PLUS`, `ZERO`, `FILES`, `WORD1`, `FILE1`, `NAMEDF`, `NAMEDFS`, `RANGE`, `NONE`, `isascii` | type, macros | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmdnames[]` table (order is significant for abbreviations), `oldline` | table, static | M6 | macOS port 2026-11-10 | done (macOS) |
+| `parseptrn` | fn | M6 | macOS port 2026-11-10 | done |
+| `linespec` | fn | M6 | macOS port 2026-11-10 | done |
+| `ex` | fn | M6 | macOS port 2026-11-10 | done |
+| `doexcmd` | fn | M6 | macOS port 2026-11-10 | done |
+| `doexrc` | fn | M6 | macOS port 2026-11-10 | done |
+| `exstring` | fn | M6 | macOS port 2026-11-10 | done |
+| `ARGT`, `FROM`, `TO`, `BANG`, `EXTRA`, `XFILE`, `NOSPC`, `DFLALL`, `DFLNONE`, `NODFL`, `EXRCOK`, `NL`, `PLUS`, `ZERO`, `FILES`, `WORD1`, `FILE1`, `NAMEDF`, `NAMEDFS`, `RANGE`, `NONE`, `isascii` | type, macros | M6 | macOS port 2026-11-10 | done |
+| `cmdnames[]` table (order is significant for abbreviations), `oldline` | table, static | M6 | macOS port 2026-11-10 | done |
 
 #### `cmd1.c` → `cmd1.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `cmd_mark` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_write` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_write2` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_shell` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_global` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_file` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_edit` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_next` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_xit` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_args` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_cd` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_map` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_set` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_tag` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_visual` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_version` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `prevextra`, `whenwarned`, `prevtag` | function-local statics | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_mark` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_write` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_write2` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_shell` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_global` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_file` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_edit` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_next` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_xit` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_args` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_cd` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_map` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_set` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_tag` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_visual` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_version` | fn | M6 | macOS port 2026-11-10 | done |
+| `prevextra`, `whenwarned`, `prevtag` | function-local statics | M6 | macOS port 2026-11-10 | done |
 
 #### `cmd2.c` → `cmd2.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `cmd_substitute` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_delete` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_append` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_put` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_join` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_shift` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_read` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_undo` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_print` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_move` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `cmd_source` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `optp`, `optg`, `optc` | statics | M6 | macOS port 2026-11-10 | done (macOS) |
+| `cmd_substitute` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_delete` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_append` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_put` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_join` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_shift` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_read` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_undo` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_print` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_move` | fn | M6 | macOS port 2026-11-10 | done |
+| `cmd_source` | fn | M6 | macOS port 2026-11-10 | done |
+| `optp`, `optg`, `optc` | statics | M6 | macOS port 2026-11-10 | done |
 
 #### `system.c` → `system.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `elvis_system` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `rpipe` | static fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `rpclose` | static fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `wildcard` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `filter` | fn | M6 | macOS port 2026-11-10 | done (macOS) |
-| `PROG`, `PROGLEN`, `environ` | macros, extern | M6 | macOS port 2026-11-10 | done (macOS) |
+| `elvis_system` | fn | M6 | macOS port 2026-11-10 | done |
+| `rpipe` | static fn | M6 | macOS port 2026-11-10 | done |
+| `rpclose` | static fn | M6 | macOS port 2026-11-10 | done |
+| `wildcard` | fn | M6 | macOS port 2026-11-10 | done |
+| `filter` | fn | M6 | macOS port 2026-11-10 | done |
+| `PROG`, `PROGLEN`, `environ` | macros, extern | M6 | macOS port 2026-11-10 | done |
 
 #### `tio.c` → `tio.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `vgets` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
-| `beep` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
-| `showmsg` | static fn | M7 | macOS port 2026-11-10 | done (macOS) |
-| `endmsgs` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
-| `msg` | variadic fn | M7 (needed from M3) | macOS port 2026-11-10 | done (macOS) |
-| `exrefresh` | fn | M7 (needed from M6) | macOS port 2026-11-10 | done (macOS) |
-| `dummy` | static fn (`SIGALRM` handler) | M7, replaced by timed read (section 3.7) | macOS port 2026-11-10 | done (macOS) |
-| `getkey` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
-| `mapkey` | fn | M7 (needed from M6) | macOS port 2026-11-10 | done (macOS) |
-| `dumpkey` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
-| `savekeys` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
-| `manymsgs`, `pmsg`, `keybuf`, `nkeys`, `next`, `struct _keymap`, `mapped[MAXMAPS]`, getkey statics (`cooked`, `oldwhen`, `oldleft`, `oldtop`, `oldnlines`, `cshape`) | statics | M7 | macOS port 2026-11-10 | done (macOS) |
+| `vgets` | fn | M7 | macOS port 2026-11-10 | done |
+| `beep` | fn | M7 | macOS port 2026-11-10 | done |
+| `showmsg` | static fn | M7 | macOS port 2026-11-10 | done |
+| `endmsgs` | fn | M7 | macOS port 2026-11-10 | done |
+| `msg` | variadic fn | M7 (needed from M3) | macOS port 2026-11-10 | done |
+| `exrefresh` | fn | M7 (needed from M6) | macOS port 2026-11-10 | done |
+| `dummy` | static fn (`SIGALRM` handler) | M7, replaced by timed read (section 3.7) | macOS port 2026-11-10 | done |
+| `getkey` | fn | M7 | macOS port 2026-11-10 | done |
+| `mapkey` | fn | M7 (needed from M6) | macOS port 2026-11-10 | done |
+| `dumpkey` | fn | M7 | macOS port 2026-11-10 | done |
+| `savekeys` | fn | M7 | macOS port 2026-11-10 | done |
+| `manymsgs`, `pmsg`, `keybuf`, `nkeys`, `next`, `struct _keymap`, `mapped[MAXMAPS]`, getkey statics (`cooked`, `oldwhen`, `oldleft`, `oldtop`, `oldnlines`, `cshape`) | statics | M7 | macOS port 2026-11-10 | done |
 
 #### `input.c` → `input.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `input` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
+| `input` | fn | M7 | macOS port 2026-11-10 | done |
 
 #### `move1.c` … `move5.c` → `move1.rs` … `move5.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `m_updnto`, `m_right`, `m_left`, `m_tocol`, `m_front`, `m_rear`, `m_fparagraph`, `m_bparagraph`, `m_fsection`, `m_bsection`, `m_match`, `m_tomark`, `isascii` (move1.c) | fns, macro | M7 | macOS port 2026-11-10 | done (macOS) |
-| `m_nsrch`, `m_Nsrch`, `m_fsrch`, `m_bsrch`, statics `re`, `prevsf` (move2.c) | fns, statics | M7 | macOS port 2026-11-10 | done (macOS) |
-| `m__ch`, `m_fch`, `m_Fch`, `m_tch`, `m_Tch`, static `prev_key` (move3.c) | fns, static | M7 | macOS port 2026-11-10 | done (macOS) |
-| `prevfwdfn`, `prevrevfn` (move3.c file statics, found by M0) | statics | M7 | macOS port 2026-11-10 | done (macOS) |
-| `m_row`, `m_z`, `m_scroll` (move4.c) | fns | M7 | macOS port 2026-11-10 | done (macOS) |
-| `m_fword`, `m_bword`, `m_eword`, `isascii` (move5.c) | fns, macro | M7 | macOS port 2026-11-10 | done (macOS) |
+| `m_updnto`, `m_right`, `m_left`, `m_tocol`, `m_front`, `m_rear`, `m_fparagraph`, `m_bparagraph`, `m_fsection`, `m_bsection`, `m_match`, `m_tomark`, `isascii` (move1.c) | fns, macro | M7 | macOS port 2026-11-10 | done |
+| `m_nsrch`, `m_Nsrch`, `m_fsrch`, `m_bsrch`, statics `re`, `prevsf` (move2.c) | fns, statics | M7 | macOS port 2026-11-10 | done |
+| `m__ch`, `m_fch`, `m_Fch`, `m_tch`, `m_Tch`, static `prev_key` (move3.c) | fns, static | M7 | macOS port 2026-11-10 | done |
+| `prevfwdfn`, `prevrevfn` (move3.c file statics, found by M0) | statics | M7 | macOS port 2026-11-10 | done |
+| `m_row`, `m_z`, `m_scroll` (move4.c) | fns | M7 | macOS port 2026-11-10 | done |
+| `m_fword`, `m_bword`, `m_eword`, `isascii` (move5.c) | fns, macro | M7 | macOS port 2026-11-10 | done |
 
 #### `vcmd.c` → `vcmd.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `v_quit`, `v_redraw`, `v_1ex`, `v_undo`, `v_xchar`, `v_mark`, `v_ulcase`, `v_replace`, `v_overtype`, `v_selcut`, `v_paste`, `v_yank`, `v_delete`, `v_insert`, `v_change`, `v_subst`, `v_join`, `shift_help` (static), `v_lshift`, `v_rshift`, `v_filter`, `v_status`, `v_again`, `v_switch`, `v_tag`, `v_keyword`, `v_increment`, `v_xit`, `v_undoline` | fns (one row each when tracking; listed together here for brevity) | M7 | macOS port 2026-11-10 | done (macOS) |
-| `flip[]`, `width` (v_replace), `sign` (v_increment) | statics | M7 | macOS port 2026-11-10 | done (macOS) |
-| M0 note: `width` is local to `v_overtype` (symbol `v_overtype.width`), not `v_replace` | — | M7 | macOS port 2026-11-10 | done (macOS) |
+| `v_quit`, `v_redraw`, `v_1ex`, `v_undo`, `v_xchar`, `v_mark`, `v_ulcase`, `v_replace`, `v_overtype`, `v_selcut`, `v_paste`, `v_yank`, `v_delete`, `v_insert`, `v_change`, `v_subst`, `v_join`, `shift_help` (static), `v_lshift`, `v_rshift`, `v_filter`, `v_status`, `v_again`, `v_switch`, `v_tag`, `v_keyword`, `v_increment`, `v_xit`, `v_undoline` | fns (one row each when tracking; listed together here for brevity) | M7 | macOS port 2026-11-10 | done |
+| `flip[]`, `width` (v_replace), `sign` (v_increment) | statics | M7 | macOS port 2026-11-10 | done |
+| M0 note: `width` is local to `v_overtype` (symbol `v_overtype.width`), not `v_replace` | — | M7 | macOS port 2026-11-10 | done |
 
 Track each `v_*` function as its own row in the checkpoint log (section 7.4)
 when it is ported.
@@ -538,24 +548,24 @@ when it is ported.
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `vi` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
-| `adjmove` | fn | M7 | macOS port 2026-11-10 | done (macOS) |
-| `m_rear_wrapper`, `m_match_wrapper`, `m_front_wrapper` | static fns | M7 | macOS port 2026-11-10 | done (macOS) |
-| `struct keystru`, `vikeys[]` table, `NO_FUNC`, `NO_ARGS_F`, `KEYWORD_F`, `CURSOR_F`, `CURSOR_COUNT_F`, `CURSOR_CNT_KEY_F`, `CURSOR_TEXT_F`, `CURSOR_CNT_CMD_F`, `CURSOR_MOVED_F`, `CURSOR_EOL_F`, argument-kind and flag macros (`MVMT`, `PTMV`, `FRNT`, `INCL`, `LNMD`, `NCOL`, `NREL`, `SDOT`, …) | table, macros | M7 | macOS port 2026-11-10 | done (macOS) |
-| `colno` (adjmove static) | static | M7 | macOS port 2026-11-10 | done (macOS) |
+| `vi` | fn | M7 | macOS port 2026-11-10 | done |
+| `adjmove` | fn | M7 | macOS port 2026-11-10 | done |
+| `m_rear_wrapper`, `m_match_wrapper`, `m_front_wrapper` | static fns | M7 | macOS port 2026-11-10 | done |
+| `struct keystru`, `vikeys[]` table, `NO_FUNC`, `NO_ARGS_F`, `KEYWORD_F`, `CURSOR_F`, `CURSOR_COUNT_F`, `CURSOR_CNT_KEY_F`, `CURSOR_TEXT_F`, `CURSOR_CNT_CMD_F`, `CURSOR_MOVED_F`, `CURSOR_EOL_F`, argument-kind and flag macros (`MVMT`, `PTMV`, `FRNT`, `INCL`, `LNMD`, `NCOL`, `NREL`, `SDOT`, …) | table, macros | M7 | macOS port 2026-11-10 | done |
+| `colno` (adjmove static) | static | M7 | macOS port 2026-11-10 | done |
 
 #### `redraw.c` → `redraw.rs`
 
 | C item | Kind | M | Ported in | Status |
 |--------|------|---|-----------|--------|
-| `redrawrange` | fn | M8 (needed from M4) | macOS port 2026-11-10 | done (macOS) |
-| `idx2col` | fn | M8 (needed from M7) | macOS port 2026-11-10 | done (macOS) |
-| `mark2phys` | static fn | M8 | macOS port 2026-11-10 | done (macOS) |
-| `drawtext` | static fn | M8 | macOS port 2026-11-10 | done (macOS) |
-| `smartdrawtext` | static fn | M8 | macOS port 2026-11-10 | done (macOS) |
-| `redraw` | fn | M8 (needed from M6) | macOS port 2026-11-10 | done (macOS) |
-| `smartlno`, `redrawafter`, `preredraw`, `postredraw`, redraw statics (`pcursor`, `pcol`, `chgs`), smartdrawtext static `chgs` | statics | M8 | macOS port 2026-11-10 | done (macOS) |
-| M0 note: `pcursor`, `pcol`, `chgs` are locals of `idx2col` (redraw.c:88-90); the second `chgs` is local to `redraw` (redraw.c:357); `smartdrawtext` has no static | — | M8 | macOS port 2026-11-10 | done (macOS) |
+| `redrawrange` | fn | M8 (needed from M4) | macOS port 2026-11-10 | done |
+| `idx2col` | fn | M8 (needed from M7) | macOS port 2026-11-10 | done |
+| `mark2phys` | static fn | M8 | macOS port 2026-11-10 | done |
+| `drawtext` | static fn | M8 | macOS port 2026-11-10 | done |
+| `smartdrawtext` | static fn | M8 | macOS port 2026-11-10 | done |
+| `redraw` | fn | M8 (needed from M6) | macOS port 2026-11-10 | done |
+| `smartlno`, `redrawafter`, `preredraw`, `postredraw`, redraw statics (`pcursor`, `pcol`, `chgs`), smartdrawtext static `chgs` | statics | M8 | macOS port 2026-11-10 | done |
+| M0 note: `pcursor`, `pcol`, `chgs` are locals of `idx2col` (redraw.c:88-90); the second `chgs` is local to `redraw` (redraw.c:357); `smartdrawtext` has no static | — | M8 | macOS port 2026-11-10 | done |
 
 ### 2.5 Excluded items
 
@@ -801,6 +811,7 @@ and treat overflow as a rejected operation (D7).
 | Raw I/O | `tty_read(buf) -> ReadOutcome`, `read_timeout(fd, buf, secs)`, `tty_write(bytes)`, `read`, `write`, `lseek`, `close`, `dup`, `pipe` |
 | Files | `open(path, flags, mode)`, `stat(path)` returning `st_ino`, `st_dev`, `st_mode`, `st_mtime`, `st_uid`, `geteuid()`, `access(path, mode)`, `link`, `unlink`, `rename`, `mkstemp(template)`, `chdir`, `getpid` |
 | Terminal | opaque `Termios` snapshot, `tcgetattr(fd)`, `tcsetattr_now(fd, &Termios)`, `elvis_mode(&Termios) -> Termios` (performs exactly the C flag edits in `resume_curses`), `erase_char(&Termios) -> u8`, `output_speed(&Termios) -> u32`, `window_size(fd) -> Option<(u16, u16)>`, `save_restore_state(...)` for the panic hook |
+| Terminal library facts | `TPUTS_PADS` (the C reference's `tputs` pads with elvis's `ospeed`/`PC`: Linux), `baudrate(ospeed)` (`_nc_baudrate`), `TRIM_SGR0_STRIPS_PADDING` (Linux libtinfo 6.5), `GOLDEN_OS` (tests) |
 | Signals | `ignore_sigint()`, `default_sigint()`, `trap_sigint()`, `ignore_sigquit()`, `trap_sigwinch()`, `take_sigint() -> bool`, `take_sigwinch() -> bool` |
 | Processes | `spawn_shell(shell, ShellRun, stdin: Option<RawFd>, capture: bool) -> io::Result<Child>`, `wait_child(&Child) -> i32` |
 | Misc | `sleep_secs(n)`, `exit(code) -> !`, `getenv(name)` (`libc::getenv`; `std::env::var_os` costs about 2K of code) |
@@ -953,6 +964,10 @@ Rust has no such limit. Record this as a safe divergence.
 - Compare the `locate()` search order (`TERMINFO`, `$HOME/.terminfo`,
   `TERMINFO_DIRS`, system directories) with ncurses on each reference OS. Tests always set `TERMINFO` to a fixture directory, so both
   binaries read the same file.
+- Result (M0): neither the macOS ncurses nor the Linux libtinfo 6.5 ever
+  returns -1, even with no database directory at all (checked on Linux by
+  hiding every system directory in a user namespace). Every failure is
+  "Unrecognized TERM type", exit 3 (B7).
 
 ### 4.5 Cursor addressing and persistent expansion
 
@@ -1007,6 +1022,25 @@ Unit tests cover: no directives, integer and fractional delays, `*` with
 `affcnt` 1 and `LINES`, mandatory `/`, malformed directives, literal `$`
 without `<`, and `cup` with trailing padding. Golden tests compare bytes
 against the M0 captures.
+
+**Result (M0, both systems).** The candidate model in step 3 was wrong for
+the termcap interface: without a `SCREEN`, ncurses ignores `xon` and `pb`.
+What the adapter implements (`terminfo::tputs_into`, with `Pad` built by
+`Curses::pad`):
+
+- macOS: no interposition, so every well-formed directive is removed and
+  nothing is padded (`os::TPUTS_PADS` is false).
+- Linux: elvis's globals are libtinfo's. For each directive with a delay
+  of `tenths` tenths of a millisecond (after `*`), if `tenths > 0`, output
+  `(tenths / 10) * baud / 9000` copies of `PC` in C `int` arithmetic, where
+  `baud` is `os::baudrate(ospeed)` (`_nc_baudrate`, -1 for unknown codes)
+  and `PC` is the first byte of `pad`, else 0. With `npc` nothing is output
+  (ncurses sleeps instead; B19). The `ospeed` that matters is the one
+  `resume()` sets from `cfgetospeed(oldtermio)`, so piped mode (fd 2 not a
+  tty) never pads.
+
+`terminfo::tests::tputs_pad_counts` holds counts measured from libtinfo
+for every speed class, including the `int` wrap at `B4000000`.
 
 ### 4.7 Early integration proof
 
@@ -1398,7 +1432,8 @@ expects them (for example, a crash simulation).
 - On mismatch, print a readable diff that shows escape sequences.
 - Scenarios are files in `tests/scenarios/<suite>/` with the input files,
   the keystrokes or script, the expected divergences (Appendix B IDs), and the
-  timeout.
+  timeout. An `os` list limits a scenario to some hosts (`files/write-dev-full`
+  runs only on Linux).
 
 ### 6.4 Seed scenario categories
 
@@ -1422,7 +1457,7 @@ the exec failure path.
 ### 6.6 Failure injection
 
 Cover: unwritable directory for `directory`; a file the user cannot read;
-`/dev/full` as a write target (Linux only); an existing temporary-file name (busy); a
+`/dev/full` as a write target (Linux only, `files/write-dev-full`); an existing temporary-file name (busy); a
 missing terminfo entry and missing capabilities; a too-small pty; the key map
 table full (`MAXMAPS`); a nonexistent `shell`; `SIGINT` and `SIGWINCH` at
 fixed points; end of input in piped ex mode.
@@ -1503,17 +1538,51 @@ Implications:
   Before `terminfo-lean` was replaced by the reader in `terminfo.rs`, the
   two Rust builds were 376832 and 147456 bytes of `__TEXT`.
 
+  Linux x86_64 (Debian 13, rustc 1.85.1, 2026-11-11), as file size / `.text`
+  section, all stripped (the C binary with `strip`):
+
+  | Build | File | `.text` |
+  |---|---|---|
+  | C reference (`target/c-ref/src/elvis`, gcc 14.2 `-O2`) | 108664 | 62992 |
+  | `cargo build --release` | 494096 | 347799 |
+  | `scripts/build-tiny.sh` | 133480 | 102975 |
+
+  The tiny build drops `.eh_frame` (43440 bytes in the stable build) and
+  packs the relocations (`.rela.dyn` 28512 → 1632 plus a 136-byte
+  `.relr.dyn`).
+
+  Linux M9 run-time measurements (2026-11-11), peak resident memory from
+  `wait4`'s `ru_maxrss` in KiB for `-e` on a 400000-byte file, and
+  startup to the first screen on a 24x80 pty (median of 20):
+
+  | Build | Load and `q` | `:%s/a/b/g` | `:%s/x/y/g` | Startup |
+  |---|---|---|---|---|
+  | C reference | 1976–2096 | 2188, or SIGSEGV (B21) | 2132, or SIGSEGV (B21) | 1.33 ms |
+  | `cargo build --release` | 2248–2292 | 2244–2252 | 2220–2240 | 1.37 ms |
+  | `scripts/build-tiny.sh` | 1952–1964 | 1916–1952 | 1932–1948 | 1.34 ms |
+
+  Two 400000-byte files were used: 80-byte lines with 8 `a`s each, and
+  76-byte lines with 16 `x`s each. C crashes on whichever substitution
+  touches most lines; the Rust builds stop with "File too big" (B21). Linked libraries: C
+  `libtinfo.so.6` and `libc.so.6`; both Rust builds `libgcc_s.so.1` and
+  `libc.so.6`.
+
   Most of the stable build's extra size is std's panic printing and
   backtrace code (gimli, addr2line, rustc_demangle), which the prebuilt std
   always links. Neither replacing the panic hook nor codegen or linker flags
   remove it on stable.
 - `scripts/build-tiny.sh` is an opt-in build that rebuilds std from source
-  with `panic = "immediate-abort"`. It uses unstable flags through
-  `RUSTC_BOOTSTRAP=1` and needs the rust-src component. A panic then aborts
-  without running the panic hook, so the terminal is not restored; `os::init`
-  skips installing the hook under `cfg(panic = "immediate-abort")`, because
+  with immediate-abort panics (`-Cpanic=immediate-abort` where the toolchain
+  has it, otherwise std's `panic_immediate_abort` feature, as on 1.85). It
+  uses unstable flags through `RUSTC_BOOTSTRAP=1` and needs the rust-src
+  component. A panic then aborts without running the panic hook, so the
+  terminal is not restored; `os::init` skips installing the hook under
+  `cfg(elvis_immediate_abort)`, which the script sets, because
   `take_hook` alone links the backtrace printer. The stable profile stays the
   supported build.
+- A test build with `RUSTFLAGS="--cfg elvis_test_panic"` (for example
+  `--target-dir target/panic-test`) panics when `^_` is read, to check the
+  panic hook's terminal restore (M8). Normal builds do not contain it.
 - Code-level size rules: no `format!`/`to_string` in non-test code (use
   `tio::sprintf`, whose integer conversions avoid `core::fmt`); `os::strerror`
   instead of `io::Error`'s `Display`. `vi`, `initscr`, `initopts` and
@@ -1601,10 +1670,10 @@ user asks.
 | B1 | curses.c `starttcap` | Capability strings copied into an 800-byte buffer without a bound | No limit | D7 | M2 | pending |
 | B2 | main.c `trapint` | Interrupt handled immediately by `siglongjmp` | Interrupt handled at the next checkpoint | D5 | M8 | pending |
 | B3 | opts.c `setopts` | A string value longer than its option array (`directory` 30 bytes) overflows into the next option | Reject the value (message chosen in M6 per section 6.7) | D7 | options/directory-overflow | pending |
-| B4 | curses.c `getsize` at startup | "Screen too small", then SIGSEGV: `endwin()` writes through `stdscr` before `initscr()` sets it | Same message, restore the terminal, exit 2 | D7 | startup/small-screen | pending |
-| B5 | tio.c `getkey` | On macOS the `alarm(keytime)` read never times out (`SA_RESTART`), so an ambiguous map prefix waits for more keys | Timed read with `keytime` seconds (section 3.7). Linux not yet measured | 3.7 | c-behavior.md "Key timeout" | pending |
-| B6 | ncurses `tgetstr("me")` | Returns `sgr0` trimmed by `_nc_trim_sgr0` (e.g. xterm `\E(B\E[m` → `\E[0m`) | Same trimming reimplemented in `curses.rs` | 4.2 parity | `curses::tests::capprobe_golden` | pending |
-| B7 | curses.c `starttcap` | `tgetent` = -1 prints `Can't read /etc/termcap`, exit 2 | Never produced: every lookup or parse failure is `Unrecognized TERM type`, exit 3 (macOS ncurses never returns -1 either) | 4.4 | `curses::tests::exit_paths` | pending |
+| B4 | curses.c `getsize` at startup | "Screen too small", then SIGSEGV (macOS and Linux): `endwin()` writes through `stdscr` before `initscr()` sets it | Same message, restore the terminal, exit 2 | D7 | startup/small-screen | pending |
+| B5 | tio.c `getkey` | On macOS and Linux the `alarm(keytime)` read never times out (`SA_RESTART` from both C libraries' `signal()`), so an ambiguous map prefix waits for more keys | Timed read with `keytime` seconds (section 3.7) | 3.7 | c-behavior.md "Key timeout" | pending |
+| B6 | ncurses `tgetstr("me")` | Returns `sgr0` trimmed by `_nc_trim_sgr0` (e.g. xterm `\E(B\E[m` → `\E[0m`). Linux libtinfo 6.5 also strips delays from the `sgr` expansions first (vt100 `\E[0m`, macOS `\E[0m$<2>`) | Same trimming reimplemented in `terminfo.rs`, delay stripping when `os::TRIM_SGR0_STRIPS_PADDING` | 4.2 parity | `curses::tests::capprobe_golden`, `terminfo::tests::trim_sgr0_matches_libtinfo` | pending |
+| B7 | curses.c `starttcap` | `tgetent` = -1 prints `Can't read /etc/termcap`, exit 2 | Never produced: every lookup or parse failure is `Unrecognized TERM type`, exit 3 (neither the macOS ncurses nor Linux libtinfo 6.5 returns -1, even without a database) | 4.4 | `curses::tests::exit_paths` | pending |
 | B8 | tgoto/tparm | Expansion errors produce `OOPS` | Nothing is output for that move; a literal `$` in `cup` is kept via re-encoding | 4.5 | `curses::tests::tgoto_order_and_padding` | pending |
 | B9 | tio.c `msg`, `mapkey`, `vgets` | `pmsg[80]`, `rawin[10]`, `cooked[80]`, `widths[132]` overflow | Message cut at 79 bytes, raw keys at 10, mapped text at 79; `widths` sized to the buffer | D7 | — | pending |
 | B10 | tio.c `msg` in vi mode | ^C at `[More...]` longjmps immediately | Interrupt re-armed and handled at the next checkpoint | D5 | — | pending |
@@ -1616,6 +1685,9 @@ user asks.
 | B16 | modify.c `add` | Lines over 1023 bytes corrupt memory (KNOWN.BUGS); crashes with SIGBUS on macOS | `add` refuses text that would make any line longer than `BLKSIZE - 1` bytes (newline included): shows "Line too long", changes nothing, sets `vars.toolong`. Input mode does not advance the cursor and a counted insert stops repeating. In `change`, the delete has already happened (undo restores it); a multi-block paste can be partly applied | D7 | `tmp::tests::modify_and_undo` | pending |
 | B17 | various loops | Interrupt only via longjmp | Extra `take_sigint` checkpoints in `:s` (per match), `:g`, `:w`/`:r`, `<`/`>`, `:p`, searches, `9999a` | D5 | — | pending |
 | B18 | ex.c, vcmd.c, cmd1.c buffers | `%`/`#` expansion, `wildcard`, `v_keyword` `cmdline[130]`, `prevorig`, `args`, `v_increment` `newval[12]` overflow | Truncated to the C buffer size or unbounded where no observable limit exists | D7 | — | pending |
+| B19 | ncurses `delay_output` with `npc` (Linux) | Flushes ncurses's own buffer and sleeps for each padded delay (xterm `flash` `$<100/>` sleeps 100 ms; elvis's `kbuf` is not flushed) | No pad characters and no sleep; output bytes are the same | 4.6 | `curses::tests::capprobe_golden` (xterm) | pending |
+| B20 | ncurses `_nc_trim_sgr0` final `strstr` branch | `chop_out(tmp, i, strlen(off))` with `strlen(off) < i` copies past the end of the string | `sgr0` is kept unchanged in that case; otherwise bytes `i..strlen(off)` are removed as in C (the port used to truncate at `i`) | D7 | `terminfo::tests::trim_sgr0_matches_libtinfo` | pending |
+| B21 | tmp.c `tmpstart`, modify.c `add`, blk.c `blkadd` | No check of the header's 511 text blocks: a file needing more (974 lines of 513 bytes, under 500000 bytes) writes past `hdr.n[]`/`lnum[]`; `:%s/a/b/g` on a 400000-byte file of 80-byte lines makes `blkadd` drop the last block and `add` read past `lnum[]`. Both SIGSEGV on Linux | Loading stops with `"name" is too big` and falls back to `[NO FILE]` like the 500000-byte check (loading keeps one spare slot, so at most 510 blocks). `add` and `change` count the blocks the change would add and refuse with `File too big` before changing anything (`change` checks before its delete); `:s` stops at the first refusal without its report. Up to 511 blocks behaves as C | D7 | `tmp::tests::block_table_limits` | pending |
 
 Add entries as they are found. Candidate entries to evaluate: line length over
 `BLKSIZE - 1` (`KNOWN.BUGS`), `msg()` formatting longer than 79 bytes into
@@ -1689,3 +1761,33 @@ Add entries as they are found. Candidate entries to evaluate: line length over
 - Commands and results: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` → pass; `cargo test` → 76 passed (12 consecutive full runs after the fd 10 fix); `tests/harness/run.py --suite all` on the stable and the tiny binary → 88 runs each, only `startup/small-screen` (B4) differs.
 - Sizes: section 7.2 (tiny `__text` 97512 → 91456, stable 286732 → 281356).
 - Next step: user review of B1–B18; Linux verification; M9.
+
+### Checkpoint 2026-11-11 — M0 to M8 on Linux
+
+- Host OS and version: Debian 13.7 (trixie), x86_64, kernel 6.12.116; gcc 14.2.0; glibc 2.41; ncurses/libtinfo 6.5.20250216; rustc 1.85.1 (Debian; `rust-version` lowered to 1.85, let-chains rewritten).
+- Milestone and step: M0 steps 1–7 and the exit criteria of M1–M8, Linux. Also part of M9 step 5 (Linux measurements, section 7.2).
+- Ledger rows changed: every `done (macOS)` row → `done` (Linux verified in this session, macOS in checkpoints 1–5).
+- Files changed:
+  - `src/os.rs`: `TPUTS_PADS`, `baudrate()`, `TRIM_SGR0_STRIPS_PADDING`, `GOLDEN_OS`; `cfg(elvis_immediate_abort)` replaces `cfg(panic = "immediate-abort")`; the `elvis_test_panic` hook.
+  - `src/terminfo.rs`: `tputs_into` pads (`Pad`); `strip_padding`/`skip_padding` from ncurses 6.5; the `chop_out` fix (B20); `npc`, `pad` lookups.
+  - `src/curses.rs`: `pc`, `npc`, `Curses::pad()`; probe reports with padding; fixture lookup in both directory layouts.
+  - `src/modify.rs`, `src/tmp.rs`, `src/cmd2.rs`: block-table limits (B21).
+  - `Cargo.toml` (`rust-version`, check-cfg), `scripts/build-tiny.sh` (1.85 support), `tests/harness/run.py` (`os` key), `tests/scenarios/files/write-dev-full.json`, `tests/golden/linux/**`, `tests/golden/c-behavior.md` (Linux section), `tests/tools/{padprobe.c,maxrss.c,tmpimage.py,sttycheck.py,keytime.py}`.
+- Commands run and results:
+  - C reference `-O2` (unchanged settings) and `-O0 -g` builds → pass, no warnings. `nm --defined-only` inventory → every ledger function is defined; the only other symbols are members of grouped rows and crt helpers. The link succeeding confirms no caller of the declared-but-undefined prototypes.
+  - `capprobe` (`-ltinfo`) on a pty at 1200 and 38400 baud, with `ospeed` 0 and with the tty's `B*` code, for 8 fixtures plus an unknown name → `tests/golden/linux/capprobe/` (34 reports). Differences from macOS: `me` trimming (B6) and padding.
+  - `run.py --c target/c-ref/elvis --suite all --update-golden`, then `--repeat 3` → 264 runs, 0 failures. Against macOS, the goldens differ only in pad NULs, except the timing-dependent `signals/sigint-global`.
+  - `run.py --rust target/release/elvis-tiny-rs --suite all --repeat 3` → 267 runs, 3 failures, all `startup/small-screen` (B4, intended). Tiny build → 89 runs, the same single failure.
+  - `cargo build`, `cargo build --release`, `scripts/build-tiny.sh` → pass, no warnings; `cargo test` → 79 passed, 3 consecutive runs (capprobe goldens, plain and padded, ran against the compiled fixtures).
+  - `tests/tools/tmpimage.py` → identical temporary-file names and images for 9 fixtures. `/dev/full` scenario → C and Rust identical. `tests/tools/sttycheck.py` → terminal restored on 11 exit paths for C and Rust, and after a forced panic (`elvis_test_panic` release build, status 134).
+  - Enforcement checks → no `unsafe`/`libc` outside `os.rs`, no `static mut`, no `todo!`/`unimplemented!`, `target_os` only in `os.rs`; `cargo tree -e normal` → `libc` only.
+- Commands not run, and why:
+  - `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings`: `rustfmt` and `rust-clippy` are not installed on this host (no root access in the session).
+  - `tests/tools/active-source.sh`: `unifdef` is not installed; the symbol inventory was checked against the `-O0` binary only.
+  - `/usr/bin/time -v`: package `time` not installed; peak memory comes from `wait4` (`tests/tools/maxrss.c`) instead.
+  - Nothing on macOS. This session changed code that also runs there (B20, B21, the `tputs_into` signature, the capprobe test, the harness `os` key); macOS output is meant to be unchanged.
+- New Appendix B entries: B19 (`npc` sleep not reproduced), B20 (`chop_out` overrun in `_nc_trim_sgr0`), B21 (header block table overflow). Updated: B4, B5, B6, B7.
+- Open problems:
+  - M0–M8 exit criteria hold on Linux, except M1's `cargo fmt --check` and `cargo clippy` (not run). Because of this session's code changes, macOS needs `cargo test` and `run.py --suite all --repeat 3` again before M0–M8 count as complete on both systems.
+  - The Linux padding model assumes libtinfo 6.x. An older or different terminal library on another distribution can differ (see the capprobe reports).
+- Next step: install the missing tools (`apt install rustfmt rust-clippy unifdef time`), then run `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `tests/tools/active-source.sh` on Linux. Rerun `cargo test` and `run.py --suite all --repeat 3` on macOS. Then user review of B1–B21 and M9.

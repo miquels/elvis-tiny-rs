@@ -5,7 +5,8 @@ use crate::blk::{
 };
 use crate::tio::msg;
 use crate::types::{
-    BLKSIZE, INFINITY, MARK_FIRST, MARK_UNSET, Mark, NMARKS, cstr, mark_at_line, markidx, markline,
+    BLKSIZE, INFINITY, MARK_FIRST, MARK_UNSET, MAXBLKS, Mark, NMARKS, cstr, mark_at_line, markidx,
+    markline,
 };
 use crate::vars::Editor;
 
@@ -120,6 +121,68 @@ fn would_overflow(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
         || lastpart + rest > BLKSIZE - 1
 }
 
+/// The logical block that `add` inserts into for line `l`.  C has no
+/// `blkno + 1 < MAXBLKS` bound and reads past `lnum[]` once the table is full.
+fn add_block(ed: &Editor, l: i64) -> usize {
+    let mut blkno = 1;
+    while ed.vars.lnum[blkno] < l && blkno + 1 < MAXBLKS && ed.vars.lnum[blkno + 1] < INFINITY {
+        blkno += 1;
+    }
+    blkno
+}
+
+/// The number of blocks `append_text` adds when it copies `parts` into a
+/// block that already holds `prefix`, or `usize::MAX` if it never ends.
+fn blocks_needed(prefix: &[u8], parts: [&[u8]; 2]) -> usize {
+    let mut c = [0u8; BLKSIZE];
+    c[..prefix.len()].copy_from_slice(prefix);
+    let mut build = prefix.len();
+    let mut adds = 0;
+    for src in parts {
+        let mut nt = 0;
+        while nt < src.len() {
+            let n = (src.len() - nt).min((BLKSIZE - 1).saturating_sub(build));
+            c[build..build + n].copy_from_slice(&src[nt..nt + n]);
+            build += n;
+            nt += n;
+            if nt < src.len() {
+                let keep = c[..build]
+                    .iter()
+                    .rposition(|&b| b == b'\n')
+                    .map_or(0, |p| p + 1);
+                if keep == 0 && n == 0 {
+                    return usize::MAX;
+                }
+                c.copy_within(keep..build, 0);
+                build -= keep;
+                adds += 1;
+            }
+        }
+    }
+    adds
+}
+
+/// Whether adding `newtext` at `atmark` would need more text blocks than the
+/// header holds (`MAXBLKS - 1`).  C's `blkadd` then drops the last block and
+/// later reads past `lnum[]` (B21).
+fn would_exhaust_blocks(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
+    let used = (1..MAXBLKS).filter(|&i| ed.vars.lnum[i] != INFINITY).count();
+    let l = markline(atmark);
+    let blkno = add_block(ed, l);
+    let blk = blkget(ed, blkno as i32);
+    let buf = ed.blk.blk[blk].buf.c;
+    let newptr = skiplines(&buf, 0, l - ed.vars.lnum[blkno - 1] - 1) + markidx(atmark);
+    let need = blocks_needed(&buf[..newptr], [newtext, cstr(&buf[newptr..])]);
+    used.saturating_add(need) > MAXBLKS - 1
+}
+
+/// `add`'s refusal when the change does not fit (B16, B21).
+fn refuse(ed: &mut Editor, text: &[u8]) -> bool {
+    msg(ed, text, &[]);
+    ed.vars.toolong = true;
+    false
+}
+
 /// Copies `src` into block `*blk` at `*build`.  When the block fills up, the
 /// partial last line moves to a new block added after it.
 fn append_text(ed: &mut Editor, blk: &mut BufId, blkno: &mut usize, build: &mut usize, src: &[u8]) {
@@ -152,7 +215,8 @@ fn append_text(ed: &mut Editor, blk: &mut BufId, blkno: &mut usize, build: &mut 
 
 // C: modify.c:add
 /// `newtext` has no NUL terminator.  Returns false, changing nothing, when a
-/// line would grow past `BLKSIZE - 1` bytes (Appendix B16).
+/// line would grow past `BLKSIZE - 1` bytes (Appendix B16) or the text would
+/// not fit in the header's block table (B21).
 pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
     let newtext = cstr(newtext);
 
@@ -161,9 +225,10 @@ pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
     }
 
     if would_overflow(ed, atmark, newtext) {
-        msg(ed, b"Line too long", &[]);
-        ed.vars.toolong = true;
-        return false;
+        return refuse(ed, b"Line too long");
+    }
+    if would_exhaust_blocks(ed, atmark, newtext) {
+        return refuse(ed, b"File too big");
     }
 
     ed.vars.changes += 1;
@@ -210,10 +275,7 @@ pub fn add(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
         }
     }
 
-    let mut blkno = 1;
-    while ed.vars.lnum[blkno] < l && ed.vars.lnum[blkno + 1] < INFINITY {
-        blkno += 1;
-    }
+    let mut blkno = add_block(ed, l);
     let mut blk = blkget(ed, blkno as i32);
     let buf = ed.blk.blk[blk].buf.c;
 
@@ -267,6 +329,13 @@ pub fn change(ed: &mut Editor, frommark: Mark, tomark: Mark, newtext: &[u8]) {
             return;
         }
         // else it is a complex change involving a newline
+    }
+
+    // Refuse before the delete, so nothing is lost (B21).  With the old text
+    // still in place this can only overestimate the blocks needed.
+    if would_exhaust_blocks(ed, frommark, newtext) {
+        refuse(ed, b"File too big");
+        return;
     }
 
     beforedo(ed, false);

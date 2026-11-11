@@ -7,7 +7,7 @@ use crate::opts::Opt;
 use std::io;
 
 use crate::os::{self, Termios};
-use crate::terminfo::{Terminfo, tgoto, tputs_into};
+use crate::terminfo::{Pad, TI_PAD, Terminfo, tgoto, tputs_into};
 use crate::vars::Editor;
 
 pub const KBSIZ: usize = 6 * 1024;
@@ -81,6 +81,10 @@ const TINFO: [u8; NCAPS - 1] = [
 
 pub struct Curses {
     pub ospeed: i16,
+    /// `PC`, which ncurses `tgetent()` sets from `pad` (0 when absent).
+    pub pc: u8,
+    /// `npc`: ncurses sleeps instead of sending pad characters.
+    pub npc: bool,
     /// `kbuf`; `stdscr` is `kbuf.len()`.
     pub kbuf: Vec<u8>,
     pub lines: i32,
@@ -107,6 +111,8 @@ impl Default for Curses {
     fn default() -> Curses {
         Curses {
             ospeed: 0,
+            pc: 0,
+            npc: false,
             kbuf: Vec::with_capacity(KBSIZ),
             lines: 0,
             cols: 0,
@@ -179,12 +185,22 @@ impl Curses {
         }
     }
 
+    /// The padding the host's C `tputs` applies (section 4.6).  With `npc`
+    /// ncurses only sleeps; the delay is not reproduced (B19).
+    fn pad(&self) -> Option<Pad> {
+        (os::TPUTS_PADS && !self.npc).then(|| Pad {
+            baud: os::baudrate(self.ospeed),
+            pc: self.pc,
+        })
+    }
+
     /// `move(y, x)`: `tputs(tgoto(CM, x, y), 1, faddch)`.
     pub fn mv(&mut self, y: i32, x: i32) {
-        if let Some(cm) = &self.caps[CM]
-            && let Some(s) = tgoto(&mut self.tvars, cm, x, y)
-        {
-            tputs_into(&s, 1, &mut self.kbuf);
+        let pad = self.pad();
+        if let Some(cm) = &self.caps[CM] {
+            if let Some(s) = tgoto(&mut self.tvars, cm, x, y) {
+                tputs_into(&s, 1, pad, &mut self.kbuf);
+            }
         }
     }
 
@@ -211,8 +227,9 @@ impl Curses {
             DC => self.cols,
             _ => 1,
         };
+        let pad = self.pad();
         if let Some(s) = &self.caps[slot] {
-            tputs_into(s, aff, &mut self.kbuf);
+            tputs_into(s, aff, pad, &mut self.kbuf);
         }
     }
 
@@ -344,6 +361,7 @@ impl Curses {
             tputs_into(
                 self.caps[KE].as_deref().unwrap_or_default(),
                 1,
+                self.pad(),
                 &mut restore,
             );
         }
@@ -465,6 +483,8 @@ fn starttcap(ed: &mut Editor) {
         (May, AL), (May, DL), (Must, CE), (May, CD), (May, SR), (Pair, IM), (May, IC), (May, DC),
     ]);
 
+    ed.curses.pc = ti.str(TI_PAD).map_or(0, |s| s.first().copied().unwrap_or(0));
+    ed.curses.npc = ti.flag("npc");
     ed.curses.am = ti.flag("am");
     ed.curses.pt = ti.flag("pt");
     getsize(ed, true);
@@ -520,8 +540,9 @@ mod tests {
             .unwrap()
     }
 
-    /// The `capprobe.c` report, produced from the Rust side.
-    fn report(file: &[u8]) -> String {
+    /// The `capprobe.c` report, produced from the Rust side.  `ospeed` is
+    /// the probe's first argument; its `PC` is 0.
+    fn report(file: &[u8], ospeed: i16) -> String {
         fn esc(out: &mut String, s: &[u8]) {
             for &c in s {
                 if (0x20..0x7f).contains(&c) && c != b'\\' {
@@ -537,7 +558,14 @@ mod tests {
             "kP", "kN", "kh", "kH",
         ];
         let ti = Terminfo::parse(file).unwrap();
-        let mut o = String::from("tgetent=1\nospeed=0 PC=0\n");
+        let mut c = Curses {
+            ospeed,
+            npc: ti.flag("npc"),
+            ..Curses::default()
+        };
+        c.pc = 0;
+        let pad = c.pad();
+        let mut o = format!("tgetent=1\nospeed={ospeed} PC=0\n");
         for s in STRS {
             o.push_str(&format!("str {s}="));
             match tgetstr(&ti, slot(s)) {
@@ -568,7 +596,7 @@ mod tests {
                 for c in [0, 1, 7, 79, 132] {
                     let mut out = Vec::new();
                     if let Some(s) = tgoto(&mut e, &cm, c, r) {
-                        tputs_into(&s, 1, &mut out);
+                        tputs_into(&s, 1, pad, &mut out);
                     }
                     o.push_str(&format!("cm row={r} col={c} \""));
                     esc(&mut o, &out);
@@ -583,7 +611,7 @@ mod tests {
             for aff in [1, 24] {
                 o.push_str(&format!("tputs {s} aff={aff} \""));
                 let mut out = Vec::new();
-                tputs_into(&v, aff, &mut out);
+                tputs_into(&v, aff, pad, &mut out);
                 esc(&mut o, &out);
                 o.push_str("\"\n");
             }
@@ -595,11 +623,16 @@ mod tests {
         std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     }
 
+    /// A compiled fixture, in the `x/xterm` (Linux) or `78/xterm` (macOS)
+    /// layout the host `tic` writes.
     fn fixture_file(name: &str) -> Option<Vec<u8>> {
         let dir = root().join("target/terminfo-fixtures");
-        let first = format!("{:x}", name.as_bytes()[0]);
-        std::fs::read(dir.join(first).join(name)).ok()
+        let first = name.as_bytes()[0];
+        [format!("{}", first as char), format!("{first:x}")]
+            .iter()
+            .find_map(|sub| std::fs::read(dir.join(sub).join(name)).ok())
     }
+
 
     /// ncurses rewrites `%{50}` as `%'2'` when returning `cm` through
     /// `tgetstr`; elvis only ever expands `cm`, so the stored spelling is
@@ -610,7 +643,7 @@ mod tests {
 
     #[test]
     fn capprobe_golden() {
-        let golden = root().join("tests/golden/macos/capprobe");
+        let golden = root().join("tests/golden").join(os::GOLDEN_OS).join("capprobe");
         let mut checked = 0;
         let mut diffs = Vec::new();
         for t in [
@@ -627,18 +660,24 @@ mod tests {
                 eprintln!("skipping {t}: run tests/tools/build-terminfo.sh");
                 continue;
             };
-            let got = report(&file);
-            for speed in ["1200", "38400"] {
-                let want = std::fs::read_to_string(golden.join(format!("{t}.{speed}.txt")))
+            // Reports with the probe's ospeed 0, and on Linux also with the
+            // tty's B* code (9 = B1200, 15 = B38400), where libtinfo pads.
+            let mut cases = vec![("1200", 0, ""), ("38400", 0, "")];
+            if os::TPUTS_PADS {
+                cases.extend([("1200", 9, ".pad"), ("38400", 15, ".pad")]);
+            }
+            for (speed, ospeed, suffix) in cases {
+                let got = report(&file, ospeed);
+                let want = std::fs::read_to_string(golden.join(format!("{t}.{speed}{suffix}.txt")))
                     .expect("golden capprobe report");
                 let (g, w) = (normalize(&got), normalize(&want));
                 for (a, b) in g.lines().zip(w.lines()) {
                     if a != b {
-                        diffs.push(format!("{t}.{speed}: got {a} want {b}"));
+                        diffs.push(format!("{t}.{speed}{suffix}: got {a} want {b}"));
                     }
                 }
                 if g.lines().count() != w.lines().count() {
-                    diffs.push(format!("{t}.{speed}: line counts differ"));
+                    diffs.push(format!("{t}.{speed}{suffix}: line counts differ"));
                 }
                 checked += 1;
             }
