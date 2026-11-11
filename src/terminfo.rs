@@ -104,10 +104,10 @@ impl Terminfo {
     pub fn flag(&self, id: &str) -> bool {
         let i = match id {
             "am" => 1,
-            "xo" => 20, // xon
-            "nx" => 21, // nxon
+            "xo" => 20,  // xon
+            "nx" => 21,  // nxon
             "npc" => 25, // no_pad_char
-            "pt" => 42, // OTpt
+            "pt" => 42,  // OTpt
             _ => return false,
         };
         self.bools.get(i) == Some(&true)
@@ -167,7 +167,7 @@ impl Terminfo {
         rewrite_sgr(&mut on, smacs);
         rewrite_sgr(&mut off, rmacs);
         rewrite_sgr(&mut end, rmacs);
-        if !(similar_sgr(&off, &end) && !similar_sgr(&off, &on)) {
+        if !similar_sgr(&off, &end) || similar_sgr(&off, &on) {
             return sgr0.to_vec();
         }
         let mut found = false;
@@ -774,7 +774,11 @@ mod tests {
             strs[TI_SMACS] = Some(smacs.to_vec());
             strs[TI_RMACS] = Some(rmacs.to_vec());
         }
-        Terminfo { bools: vec![], nums: vec![], strs }
+        Terminfo {
+            bools: vec![],
+            nums: vec![],
+            strs,
+        }
     }
 
     /// `tgetstr("me")` results from the Linux libtinfo 6.5 for crafted
@@ -844,7 +848,12 @@ mod tests {
             (4000000, [22222, 0, 106666, 0, 0, 39111]),
         ] {
             let caps: [&[u8]; 6] = [
-                b"$<50>", b"$<1000>", b"$<10*>", b"$<1000/>", b"$<.5>", b"$<3.7*>",
+                b"$<50>",
+                b"$<1000>",
+                b"$<10*>",
+                b"$<1000/>",
+                b"$<.5>",
+                b"$<3.7*>",
             ];
             for (cap, want) in caps.iter().zip(counts) {
                 assert_eq!(pads(cap, 24, baud), want, "{baud} {cap:?}");

@@ -483,7 +483,9 @@ fn starttcap(ed: &mut Editor) {
         (May, AL), (May, DL), (Must, CE), (May, CD), (May, SR), (Pair, IM), (May, IC), (May, DC),
     ]);
 
-    ed.curses.pc = ti.str(TI_PAD).map_or(0, |s| s.first().copied().unwrap_or(0));
+    ed.curses.pc = ti
+        .str(TI_PAD)
+        .map_or(0, |s| s.first().copied().unwrap_or(0));
     ed.curses.npc = ti.flag("npc");
     ed.curses.am = ti.flag("am");
     ed.curses.pt = ti.flag("pt");
@@ -633,7 +635,6 @@ mod tests {
             .find_map(|sub| std::fs::read(dir.join(sub).join(name)).ok())
     }
 
-
     /// ncurses rewrites `%{50}` as `%'2'` when returning `cm` through
     /// `tgetstr`; elvis only ever expands `cm`, so the stored spelling is
     /// not observable.
@@ -643,7 +644,10 @@ mod tests {
 
     #[test]
     fn capprobe_golden() {
-        let golden = root().join("tests/golden").join(os::GOLDEN_OS).join("capprobe");
+        let golden = root()
+            .join("tests/golden")
+            .join(os::GOLDEN_OS)
+            .join("capprobe");
         let mut checked = 0;
         let mut diffs = Vec::new();
         for t in [

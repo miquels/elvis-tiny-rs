@@ -21,7 +21,10 @@ pub const O_CREAT: i32 = libc::O_CREAT;
 pub const O_TRUNC: i32 = libc::O_TRUNC;
 pub const O_APPEND: i32 = libc::O_APPEND;
 
+// `mode_t` is `u32` on Linux but `u16` on macOS.
+#[allow(clippy::unnecessary_cast)]
 pub const S_IFMT: u32 = libc::S_IFMT as u32;
+#[allow(clippy::unnecessary_cast)]
 pub const S_IFREG: u32 = libc::S_IFREG as u32;
 
 pub const ENOENT: i32 = libc::ENOENT;
@@ -405,7 +408,11 @@ pub const TPUTS_PADS: bool = cfg!(target_os = "linux");
 
 /// The host's directory under `tests/golden/` (IMPLEMENTATION.md 1.6).
 #[cfg(test)]
-pub const GOLDEN_OS: &str = if cfg!(target_os = "linux") { "linux" } else { "macos" };
+pub const GOLDEN_OS: &str = if cfg!(target_os = "linux") {
+    "linux"
+} else {
+    "macos"
+};
 
 /// Whether the host's ncurses strips delays from the `sgr` expansions it
 /// compares in `_nc_trim_sgr0()` (Linux libtinfo 6.5 does, the macOS

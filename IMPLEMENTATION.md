@@ -1791,3 +1791,19 @@ Add entries as they are found. Candidate entries to evaluate: line length over
   - M0–M8 exit criteria hold on Linux, except M1's `cargo fmt --check` and `cargo clippy` (not run). Because of this session's code changes, macOS needs `cargo test` and `run.py --suite all --repeat 3` again before M0–M8 count as complete on both systems.
   - The Linux padding model assumes libtinfo 6.x. An older or different terminal library on another distribution can differ (see the capprobe reports).
 - Next step: install the missing tools (`apt install rustfmt rust-clippy unifdef time`), then run `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` and `tests/tools/active-source.sh` on Linux. Rerun `cargo test` and `run.py --suite all --repeat 3` on macOS. Then user review of B1–B21 and M9.
+
+### Checkpoint 2026-11-11 (2) — Linux tool checks
+
+- Host OS and version: as in the previous checkpoint; rustfmt and clippy 1.85.1, unifdef 2.12, GNU time 1.9 installed since.
+- Milestone and step: the checks that checkpoint 2026-11-11 could not run (M0 step 2, M1 exit criteria, M9 step 5 cross-check).
+- Ledger rows changed: none.
+- Files changed: `src/{curses,modify,os,terminfo}.rs` (`cargo fmt`; only this session's code was affected); `src/fmt.rs` and `src/terminfo.rs` (two `clippy::nonminimal_bool` simplifications, same logic); `src/os.rs` (`#[allow(clippy::unnecessary_cast)]` on `S_IFMT`/`S_IFREG`, whose cast is needed on macOS where `mode_t` is `u16`).
+- Commands run and results:
+  - `cargo fmt --check` → pass after `cargo fmt`. `cargo clippy --all-targets -- -D warnings` → pass, also with `--cfg elvis_immediate_abort` and `--cfg elvis_test_panic`. clippy 1.85 has lints the macOS clippy 1.99 did not report.
+  - `cargo test` → 79 passed, 3 consecutive runs.
+  - `tests/tools/active-source.sh` → pass. The remaining conditionals are the `config.h` default guards, `#if 1`, `TURBO_C` and the `__linux__` include (section 1.4). Its 172 function definitions are all in the ledger and in the `-O0` binary; the binary adds only crt startup symbols.
+  - `/usr/bin/time -v` peak memory for loading the 400000-byte file: C 2096, stable 2240, tiny 1964 KiB, as measured with `wait4` (section 7.2).
+- Commands not run, and why: anything on macOS (no macOS host).
+- New Appendix B entries: none.
+- Open problems: M0–M8 exit criteria now all hold on Linux. They count as complete on both systems once macOS reruns `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` and `tests/harness/run.py --suite all --repeat 3` on this code.
+- Next step: the macOS reruns above; user review of Appendix B (B1–B21); M9.

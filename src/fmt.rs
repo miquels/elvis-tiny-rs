@@ -45,7 +45,7 @@ pub fn put_num(
         digits.splice(0..0, std::iter::repeat_n(b'0', p - digits.len()));
     }
     let pad = width.saturating_sub(prefix.len() + digits.len());
-    if !left && !(zero && prec.is_none()) {
+    if !(left || (zero && prec.is_none())) {
         out.extend(std::iter::repeat_n(b' ', pad));
     }
     out.extend_from_slice(prefix);

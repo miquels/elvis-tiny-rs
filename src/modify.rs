@@ -166,7 +166,9 @@ fn blocks_needed(prefix: &[u8], parts: [&[u8]; 2]) -> usize {
 /// header holds (`MAXBLKS - 1`).  C's `blkadd` then drops the last block and
 /// later reads past `lnum[]` (B21).
 fn would_exhaust_blocks(ed: &mut Editor, atmark: Mark, newtext: &[u8]) -> bool {
-    let used = (1..MAXBLKS).filter(|&i| ed.vars.lnum[i] != INFINITY).count();
+    let used = (1..MAXBLKS)
+        .filter(|&i| ed.vars.lnum[i] != INFINITY)
+        .count();
     let l = markline(atmark);
     let blkno = add_block(ed, l);
     let blk = blkget(ed, blkno as i32);
